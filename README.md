@@ -29,7 +29,9 @@
 
 ## Why?
 
-JSON data structures are at the the very core of JS/TS development, and the need often arises to be able to perform complex queries and transformations against that data. This is easily enough implemented programatically through Javascript's `Array` and `Object` prototype methods, however there is no clear solution when you want to perform dynamic operations against that dataset as you would a database. This is needed for instance, when you want to securely execute user supplied queries and transformations against a JSON data source.
+JSON data structures are at the the very core of JS/TS development, and the need often arises to be able to perform complex queries and transformations against that data.
+
+This is easily enough implemented programatically through Javascript's `Array` and `Object` prototype methods, however there is no clear solution when you want to perform dynamic operations against that dataset as you would a database. This is needed for instance, when you want to securely execute user supplied queries and transformations against a JSON data source.
 
 ## Installation
 
@@ -54,6 +56,29 @@ const db = new cleardb(users);
 
 db.find({ house: "slytherin" });
 // => [ { id: 4, name: "draco", house: "slytherin", born: 1980 } ]
+```
+
+#### Using multiple collections
+
+```ts
+import cleardb from "cleardb";
+
+const db = {
+  houses: [
+    {id: 'gryffindor', emblem: 'lion'},
+    {id: 'hufflepuff', emblem: 'badger'},
+    {id: 'ravenclaw', emblem: 'eagle'},
+    {id: 'slytherin', emblem: 'serpent'}
+  ],
+  users: [
+    { id: 1, name: "harry", house: "gryffindor", born: 1980, married: true },
+    { id: 4, name: "draco", house: "slytherin", born: 1980, married: true }
+  ]
+];
+const db = new cleardb(db);
+
+db.users.find({ name: "draco" }).with(['houses', 'house']);
+// => [ { id: 4, name: "draco", house: { "id": "slytherin", "emblem": "serpent" }, born: 1980 } ]
 ```
 
 ## API
