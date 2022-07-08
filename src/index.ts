@@ -1,3 +1,3 @@
-export function hello() {
-  return "world";
-}
+import init from "./db/init";
+
+export default init;

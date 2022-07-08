@@ -1,8 +1,6 @@
-export type AnyCollectionDataType = Record<string, unknown>;
+export class Collection<DataShape> {
+  constructor(public data: DataShape[]) {}
 
-export type AnyCollection = Collection<AnyCollectionDataType>;
-
-export class Collection<DataShape extends AnyCollectionDataType> {
   find(): DataShape[] {
     return [];
   }
