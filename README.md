@@ -14,7 +14,7 @@
   <a href="#key-features">Key Features</a> •
   <a href="#why">Why?</a> •
   <a href="#installation">Installation</a> •
-  <a href="#example">Basic Example</a> •
+  <a href="#basic-example">Basic Example</a> •
   <a href="#api">API</a> •
   <a href="#license">License</a>
 </p>
@@ -65,10 +65,10 @@ import cleardb from "cleardb";
 
 const db = {
   houses: [
-    {id: 'gryffindor', emblem: 'lion'},
-    {id: 'hufflepuff', emblem: 'badger'},
-    {id: 'ravenclaw', emblem: 'eagle'},
-    {id: 'slytherin', emblem: 'serpent'}
+    { id: 'gryffindor', emblem: 'lion' },
+    { id: 'hufflepuff', emblem: 'badger' },
+    { id: 'ravenclaw', emblem: 'eagle' },
+    { id: 'slytherin', emblem: 'serpent' }
   ],
   users: [
     { id: 1, name: "harry", house: "gryffindor", born: 1980, married: true },
@@ -82,6 +82,36 @@ db.users.find({ name: "draco" }).with(['houses', 'house']);
 ```
 
 ## API
+
+- [Adapters](#adapters)
+  - [Memory adapter](#memory-adapter)
+  - [File adapter](#file-adapter)
+- [Instantiating a database](#instantiating-a-database)
+  - [Options](#constructor-options)
+- [Collections](#collections)
+  - [.insert](#insert)
+  - [.get](#get)
+  - [.find](#find)
+  - [.set](#set)
+  - [.delete](#delete)
+  - [.patch](#patch)
+  - [.expand](#expand)
+  - [.sort](#sort)
+  - [.limit](#limit)
+  - [.offset](#offset)
+- [Relationships](#relationships)
+  - [one to one](#one-to-one)
+  - [one to many](#one-to-many)
+  - [many to many](#many-to-many)
+- [Applying patches](#applying-patches)
+- [Pagination](#pagination)
+- [Guides and concepts](#guides-and-concepts)
+  - [Type inference](#type-inference)
+  - [Error handling](#error-handling)
+- [Comparison](#comparison)
+  - [lowdb](#lowdb)
+  - [pouchdb](#pouchdb)
+  - [lokijs](#lokijs)
 
 #### `exampleFunction(param: ExampleInput): ExampleOutput`
 
