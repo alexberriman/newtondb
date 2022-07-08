@@ -1,0 +1,13 @@
+src/
+.github/
+.husky/
+examples/
+.commitlintrc.json
+.eslintrc.json
+.gitignore
+.nvmrc
+.prettierignore
+.prettierrc.json
+jest.config.ts
+tsconfig.build.json
+tsconfig.json

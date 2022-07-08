@@ -1,0 +1,6 @@
+#!/bin/sh
+HUSKY_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+HUSKY_PATH="${HUSKY_DIR}/_/husky.sh"
+. $HUSKY_PATH
+
+npx --no -- commitlint --edit "\${1}"
