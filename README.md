@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="https://github.com/alexberriman/cleardb"><img src="./logo.svg" alt="cleardb" height="110"></a>
+  <a href="https://github.com/alexberriman/cleardb"><img src="./logo.svg" alt="cleardb" height="120"></a>
   <br><br>
   cleardb
   <br>
@@ -16,6 +16,8 @@
   <a href="#installation">Installation</a> •
   <a href="#basic-example">Basic Example</a> •
   <a href="#api">API</a> •
+  <a href="#comparison">Comparison</a> •
+  <a href="#changelog">Changelog</a> •
   <a href="#license">License</a>
 </p>
 
@@ -83,12 +85,18 @@ db.users.find({ name: "draco" }).with(['houses', 'house']);
 
 ## API
 
+- [Philosophy](#philosophy)
 - [Adapters](#adapters)
   - [Memory adapter](#memory-adapter)
   - [File adapter](#file-adapter)
-- [Instantiating a database](#instantiating-a-database)
-  - [Options](#constructor-options)
+- [Database](#database)
+  - [new cleardb(options)](#new-cleardb)
+  - [.write](#write)
+  - [.delete](#delete)
+  - [.observe](#observe)
+  - [.unobserve](#unobserve)
 - [Collections](#collections)
+  - [Options](#options)
   - [.insert](#insert)
   - [.get](#get)
   - [.find](#find)
@@ -99,33 +107,38 @@ db.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.sort](#sort)
   - [.limit](#limit)
   - [.offset](#offset)
+  - [.observe](#observe)
+  - [.unobserve](#unobserve)
+  - [.createPatch](#create-changeset)
+  - [.applyPatch](#create-changeset)
+- [Querying](#querying)
+  - [Basic conditions](#basic-conditions)
+  - [Advanced conditions](#advanced-conditions)
+    - [`all` and `some`](#all-and-some)l
+    - [Operators](#operators)
+    - [Examples](#operator-examples)
+  - [Custom functions](#custom-functions)
 - [Relationships](#relationships)
   - [one to one](#one-to-one)
   - [one to many](#one-to-many)
   - [many to many](#many-to-many)
-- [Applying patches](#applying-patches)
-- [Pagination](#pagination)
 - [Guides and concepts](#guides-and-concepts)
   - [Type inference](#type-inference)
   - [Error handling](#error-handling)
-- [Comparison](#comparison)
-  - [lowdb](#lowdb)
-  - [pouchdb](#pouchdb)
-  - [lokijs](#lokijs)
+  - [Patching](#applying-patches)
+  - [Pagination](#pagination)
 
-#### `exampleFunction(param: ExampleInput): ExampleOutput`
+## Comparison
 
-Example function.
+#### lowdb
 
-```ts
-import { exampleFunction } from "cleardb";
+#### couchdb
 
-const result = exampleFunction({
-  lorem: "ipsum",
-});
+#### lokijs
 
-// => { result: "lorem" };
-```
+## Changelog
+
+View the changelog at [CHANGELOG.md](CHANGELOG.md)
 
 ## License
 
