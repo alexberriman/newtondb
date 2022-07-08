@@ -1,14 +1,12 @@
 <h1 align="center">
   <br>
-  <a href="https://github.com/alexberriman/cleardb"><img src="./logo.svg" alt="cleardb" height="160"></a>
+  <a href="https://github.com/alexberriman/cleardb"><img src="./logo.svg" alt="cleardb" height="110"></a>
   <br><br>
   cleardb
   <br>
 </h1>
 
-<div align="center">
 > :warning: **This package is under active development**: Compatibility and APIs may change.
-</div>
 
 <h4 align="center">A zero-dependency local JSON database written in Typescript.</h4>
 
