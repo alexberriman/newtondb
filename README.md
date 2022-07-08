@@ -14,8 +14,8 @@
   <a href="#key-features">Key Features</a> •
   <a href="#why">Why?</a> •
   <a href="#installation">Installation</a> •
+  <a href="#example">Basic Example</a> •
   <a href="#api">API</a> •
-  <a href="#example">Example</a> •
   <a href="#license">License</a>
 </p>
 
@@ -37,6 +37,25 @@ JSON data structures are at the the very core of JS/TS development, and the need
 $ npm install cleardb
 ```
 
+## Basic Example
+
+#### Using a single collection
+
+```ts
+import cleardb from "cleardb";
+
+const users = [
+  { id: 1, name: "harry", house: "gryffindor", born: 1980, married: true },
+  { id: 2, name: "hermione", house: "gryffindor", born: 1979, married: false },
+  { id: 3, name: "ron", house: "gryffindor", born: 1980, married: false },
+  { id: 4, name: "draco", house: "slytherin", born: 1980, married: true },
+];
+const db = new cleardb(users);
+
+db.find({ house: "slytherin" });
+// => [ { id: 4, name: "draco", house: "slytherin", born: 1980 } ]
+```
+
 ## API
 
 #### `exampleFunction(param: ExampleInput): ExampleOutput`
@@ -51,12 +70,6 @@ const result = exampleFunction({
 });
 
 // => { result: "lorem" };
-```
-
-## Example
-
-```ts
-// example goes here
 ```
 
 ## License
