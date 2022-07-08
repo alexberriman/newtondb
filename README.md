@@ -1,7 +1,7 @@
 <h1 align="center">
   <br>
   <a href="https://github.com/alexberriman/cleardb"><img src="./logo.svg" alt="cleardb" height="120"></a>
-  <br><br>
+  <br>
   cleardb
   <br>
 </h1>
@@ -103,18 +103,17 @@ db.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.set](#set)
   - [.delete](#delete)
   - [.patch](#patch)
+  - [.createPatch](#create-changeset)
   - [.expand](#expand)
   - [.sort](#sort)
   - [.limit](#limit)
   - [.offset](#offset)
   - [.observe](#observe)
   - [.unobserve](#unobserve)
-  - [.createPatch](#create-changeset)
-  - [.applyPatch](#create-changeset)
 - [Querying](#querying)
   - [Basic conditions](#basic-conditions)
   - [Advanced conditions](#advanced-conditions)
-    - [`all` and `some`](#all-and-some)l
+    - [`all` and `some`](#all-and-some)
     - [Operators](#operators)
     - [Examples](#operator-examples)
   - [Custom functions](#custom-functions)
