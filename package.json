@@ -7,6 +7,7 @@
   "scripts": {
     "build": "rm -rf dist && tsc --project tsconfig.build.json",
     "ci": "concurrently \"npm:lint\" \"npm:test\"",
+    "jest": "jest",
     "lint": "eslint src/",
     "prepare": "husky install",
     "test": "jest src/"

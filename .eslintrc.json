@@ -9,5 +9,8 @@
     "plugin:jest/recommended",
     "plugin:jest/style"
   ],
+  "rules": {
+    "@typescript-eslint/no-empty-interface": "off"
+  },
   "ignorePatterns": ["dist"]
 }
