@@ -122,6 +122,7 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [one to one](#one-to-one)
   - [one to many](#one-to-many)
   - [many to many](#many-to-many)
+- [Indexing](#indexing)
 - [Guides and concepts](#guides-and-concepts)
   - [Type inference](#type-inference)
   - [Error handling](#error-handling)

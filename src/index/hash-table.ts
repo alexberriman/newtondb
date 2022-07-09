@@ -2,12 +2,12 @@ import { objectSubset } from "../utils/object";
 
 interface HashTableOptions<T> {
   index: (keyof T)[];
-  item: (o: T) => Partial<T>;
+  item?: (o: T) => Partial<T>;
 }
 
 type HashTableData<T> = Record<string, Partial<T>[]>;
 
-type HashTable<T> = {
+export type HashTable<T> = {
   data: HashTableData<T>;
   options: HashTableOptions<T>;
 };
@@ -31,14 +31,11 @@ function insertItem<T>(
 
   return {
     ...data,
-    [hash]: [...(data[hash] ?? []), options.item(item)],
+    [hash]: [...(data[hash] ?? []), options.item ? options.item(item) : item],
   };
 }
 
-export function createHashTable<T extends object>(
-  data: T[],
-  options: HashTableOptions<T>
-) {
+export function createHashTable<T>(data: T[], options: HashTableOptions<T>) {
   const hashTable = data.reduce(
     (table: HashTableData<T>, o) => insertItem(table, o, options),
     {}
