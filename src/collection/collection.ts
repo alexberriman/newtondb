@@ -1,10 +1,10 @@
-import { FindError } from "../errors/find-error";
 import { createHashTable, type HashTable } from "../data/hash-table";
-import { asArray, isDefined, isObject, isScalar } from "../utils/types";
+import { asArray } from "../utils/types";
 import {
   get as getByBasicCondition,
   query as queryByBasicCondition,
 } from "../data/basic-query";
+import { createCondition } from "./utils";
 
 interface CollectionOptions<T> {
   primaryKey?: keyof T | (keyof T)[];
@@ -14,7 +14,7 @@ interface CollectionOptions<T> {
 
 export class Collection<T> {
   hashTable?: HashTable<T>;
-  primaryKey!: (keyof T)[];
+  primaryKey: (keyof T)[];
 
   constructor(public data: T[], private options: CollectionOptions<T> = {}) {
     const { primaryKey } = options;
@@ -36,22 +36,8 @@ export class Collection<T> {
     };
   }
 
-  private condition(condition: unknown): Record<string, unknown> {
-    if (isObject(condition)) {
-      return condition;
-    }
-
-    if (isScalar(condition) && this.primaryKey.length === 1) {
-      return { [this.primaryKey[0]]: condition };
-    }
-
-    throw new FindError(
-      "Attempted to find by a scalar without configuring a primaryKey"
-    );
-  }
-
   get(value: unknown) {
-    const condition = this.condition(value);
+    const condition = createCondition(value, { primaryKey: this.primaryKey });
 
     // @todo find by primary key
     // @todo find by index
@@ -61,9 +47,10 @@ export class Collection<T> {
   }
 
   find(value?: unknown, data?: T[]) {
-    const condition = isDefined(value) ? this.condition(value) : {};
-    const source = data ?? this.data;
-    const filtered = queryByBasicCondition(source, condition as Partial<T>);
+    const filtered = queryByBasicCondition(
+      data ?? this.data,
+      createCondition(value, { primaryKey: this.primaryKey }) as Partial<T>
+    );
 
     // @todo find by primary key
     // @todo find by index
