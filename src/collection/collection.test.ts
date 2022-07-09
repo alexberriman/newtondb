@@ -36,9 +36,15 @@ describe("get", () => {
     }).toThrow(FindError);
   });
 
-  it("get by function", () => {
+  it("gets by function", () => {
     const $ = new Collection(wizards);
     const ron = $.get(({ name }: Wizard) => name === "ron");
+    expect(ron).toMatchObject({ id: 3, name: "ron" });
+  });
+
+  it("gets by advanced condition", () => {
+    const $ = new Collection(wizards);
+    const ron = $.get({ property: "name", operator: "equal", value: "ron" });
     expect(ron).toMatchObject({ id: 3, name: "ron" });
   });
 });
@@ -77,6 +83,21 @@ describe("find", () => {
     const gryffindors = $.find(
       ({ house }: Wizard) => house === "gryffindor"
     ).data;
+    expect(gryffindors).toHaveLength(3);
+    expect(gryffindors).toMatchObject([
+      { id: 1, name: "harry" },
+      { id: 2, name: "hermione" },
+      { id: 3, name: "ron" },
+    ]);
+  });
+
+  it("finds by advanced condition", () => {
+    const $ = new Collection(wizards);
+    const gryffindors = $.find({
+      property: "house",
+      operator: "equal",
+      value: "gryffindor",
+    }).data;
     expect(gryffindors).toHaveLength(3);
     expect(gryffindors).toMatchObject([
       { id: 1, name: "harry" },

@@ -1,10 +1,18 @@
 import { createHashTable, type HashTable } from "../data/hash-table";
 import { asArray } from "../utils/types";
 import {
+  get as getByAdvancedCondition,
+  query as queryByAdvancedCondition,
+} from "../data/advanced-query";
+import {
   get as getByBasicCondition,
   query as queryByBasicCondition,
 } from "../data/basic-query";
 import { createCondition, isFindPredicate } from "./utils";
+import {
+  type AdvancedCondition,
+  isCondition as isAdvancedCondition,
+} from "../data/advanced-query";
 
 interface CollectionOptions<T> {
   primaryKey?: keyof T | (keyof T)[];
@@ -42,37 +50,45 @@ export class Collection<T> {
     };
   }
 
-  get(value: FindPredicate<T> | unknown, data: T[] = this.data) {
+  get(
+    value: FindPredicate<T> | AdvancedCondition | unknown,
+    data: T[] = this.data
+  ) {
+    // @todo find by primary key
+    // @todo find by index
     if (isFindPredicate<T>(value)) {
       return data.find(value);
     }
 
-    const condition = createCondition(value, { primaryKey: this.primaryKey });
+    if (isAdvancedCondition(value)) {
+      return getByAdvancedCondition(data, value);
+    }
 
-    // @todo find by primary key
-    // @todo find by index
-    // @todo find by condition
-
-    return getByBasicCondition(data, condition as Partial<T>);
+    return getByBasicCondition(
+      data,
+      createCondition(value, { primaryKey: this.primaryKey }) as Partial<T>
+    );
   }
 
   find(value?: FindPredicate<T> | unknown, data?: T[]) {
+    // @todo find by primary key
+    // @todo find by index
     const items = data ?? this.data;
 
     if (isFindPredicate<T>(value)) {
       return this.chain(items.filter(value));
     }
 
-    const filtered = queryByBasicCondition(
-      items,
-      createCondition(value, { primaryKey: this.primaryKey }) as Partial<T>
+    if (isAdvancedCondition(value)) {
+      return this.chain(queryByAdvancedCondition(items, value));
+    }
+
+    return this.chain(
+      queryByBasicCondition(
+        items,
+        createCondition(value, { primaryKey: this.primaryKey }) as Partial<T>
+      )
     );
-
-    // @todo find by primary key
-    // @todo find by index
-    // @todo find by condition
-
-    return this.chain(filtered);
   }
 
   insert(record: T) {

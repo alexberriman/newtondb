@@ -1,3 +1,9 @@
+// @todo:
+// - case insensitivity
+// - type coercion
+// - startsWith
+// - endsWith
+
 import { isObject } from "../utils/types";
 
 type ValueReference = {
@@ -44,7 +50,7 @@ type AndCondition = { and: AdvancedCondition[] };
 
 type OrCondition = { or: AdvancedCondition[] };
 
-type AdvancedCondition = AtomicCondition | AndCondition | OrCondition;
+export type AdvancedCondition = AtomicCondition | AndCondition | OrCondition;
 
 function isValueReference<T>(
   value: ConditionValue<T>
@@ -77,6 +83,15 @@ function isInCondition(
 
 function isAtomicCondition(condition: unknown): condition is AtomicCondition {
   return isObject(condition) && "operator" in condition;
+}
+
+export function isCondition(
+  condition: unknown
+): condition is AdvancedCondition {
+  return (
+    isAtomicCondition(condition) ||
+    (isObject(condition) && ("and" in condition || "or" in condition))
+  );
 }
 
 // @todo put in helper
@@ -198,10 +213,15 @@ export function evaluate<T>(
   return condition.or.some((condition) => evaluate(condition, candidate));
 }
 
-// export function query<T>(data: T[], condition: Partial<T>): T[] {
-//   return [];
-// }
+const isMatch =
+  <T>(condition: AdvancedCondition) =>
+  (item: T) =>
+    evaluate(condition, item);
 
-// export function get<T>(data: T[], condition: Partial<T>): T | undefined {
-//   return undefined;
-// }
+export function query<T>(data: T[], condition: AdvancedCondition): T[] {
+  return data.filter(isMatch(condition));
+}
+
+export function get<T>(data: T[], condition: AdvancedCondition): T | undefined {
+  return data.find(isMatch(condition));
+}
