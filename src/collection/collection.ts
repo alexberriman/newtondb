@@ -1,7 +1,17 @@
-export class Collection<DataShape> {
-  constructor(public data: DataShape[]) {}
+interface CollectionOptions {
+  primaryKey?: string | string[];
+  indexes?: string[][];
+  validateId?: boolean;
+}
 
-  find(): DataShape[] {
+export class Collection<T> {
+  constructor(public data: T[], private options: CollectionOptions = {}) {}
+
+  find(): T[] {
     return [];
+  }
+
+  insert(record: T) {
+    this.data = [...this.data, record];
   }
 }

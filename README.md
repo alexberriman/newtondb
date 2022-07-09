@@ -56,7 +56,7 @@ const users = [
 ];
 const db = new cleardb(users);
 
-db.find({ house: "slytherin" });
+db.$.find({ house: "slytherin" });
 // => [ { id: 4, name: "draco", house: "slytherin", born: 1980 } ]
 ```
 
@@ -79,7 +79,7 @@ const db = {
 ];
 const db = new cleardb(db);
 
-db.users.find({ name: "draco" }).with(['houses', 'house']);
+db.$.users.find({ name: "draco" }).with(['houses', 'house']);
 // => [ { id: 4, name: "draco", house: { "id": "slytherin", "emblem": "serpent" }, born: 1980 } ]
 ```
 
@@ -97,10 +97,11 @@ db.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.unobserve](#unobserve)
 - [Collections](#collections)
   - [Options](#options)
-  - [.insert](#insert)
   - [.get](#get)
   - [.find](#find)
-  - [.set](#set)
+  - [.insert](#insert)
+  - [.update](#update)
+  - [.upsert](#upsert)
   - [.delete](#delete)
   - [.patch](#patch)
   - [.createPatch](#create-changeset)
