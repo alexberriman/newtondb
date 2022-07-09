@@ -9,6 +9,7 @@ export interface Wizard {
 export interface House {
   id: string;
   emblem: string;
+  headmasters: string[];
 }
 
 export const wizards: Wizard[] = [
@@ -19,8 +20,21 @@ export const wizards: Wizard[] = [
 ];
 
 export const houses: House[] = [
-  { id: "gryffindor", emblem: "lion" },
-  { id: "hufflepuff", emblem: "badger" },
-  { id: "ravenclaw", emblem: "eagle" },
-  { id: "slytherin", emblem: "serpent" },
+  {
+    id: "gryffindor",
+    emblem: "lion",
+    headmasters: ["albus dumbledore", "minerva mcgonagall"],
+  },
+  { id: "hufflepuff", emblem: "badger", headmasters: [] },
+  { id: "ravenclaw", emblem: "eagle", headmasters: [] },
+  {
+    id: "slytherin",
+    emblem: "serpent",
+    headmasters: [
+      "elizabeth burke",
+      "phineas nigellus black",
+      "dolores umbridge",
+      "severus snape",
+    ],
+  },
 ];
