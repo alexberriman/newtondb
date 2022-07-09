@@ -1,6 +1,7 @@
 import { FindError } from "../errors/find-error";
-import { createHashTable, type HashTable } from "../index/hash-table";
+import { createHashTable, type HashTable } from "../data/hash-table";
 import { asArray, isObject, isScalar } from "../utils/types";
+import { get as getByBasicCondition } from "../data/basic-query";
 
 interface CollectionOptions<T> {
   primaryKey?: keyof T | (keyof T)[];
@@ -44,13 +45,13 @@ export class Collection<T> {
   }
 
   get(value: unknown) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const condition = this.condition(value);
 
     // @todo find by primary key
     // @todo find by index
+    // @todo find by function
 
-    return this.data[0];
+    return getByBasicCondition(this.data, condition as Partial<T>);
   }
 
   find(): T[] {

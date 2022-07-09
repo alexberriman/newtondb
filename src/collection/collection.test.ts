@@ -1,4 +1,5 @@
 // import { ConflictError } from "../errors/conflict-error";
+import { FindError } from "../errors/find-error";
 import { wizards } from "../test-data";
 import { Collection } from "./collection";
 
@@ -12,7 +13,27 @@ describe("constructor", () => {
 describe("get", () => {
   it("retrieves a record by primary key", () => {
     const $ = new Collection(wizards, { primaryKey: "id" });
-    expect($.get(1)).toMatchObject(wizards[0]);
+    expect($.get(4)).toMatchObject({ id: 4, name: "draco" });
+  });
+
+  it("returns undefined when value doesn't exist", () => {
+    const $ = new Collection(wizards, { primaryKey: "id" });
+    expect($.get(-1)).toBeUndefined();
+  });
+
+  it("returns from a basic query", () => {
+    const $ = new Collection(wizards);
+    expect($.get({ name: "draco", house: "slytherin" })).toMatchObject({
+      id: 4,
+      name: "draco",
+    });
+  });
+
+  it("throws an error when trying to get using a scalar without a primary key", () => {
+    expect(() => {
+      const $ = new Collection(wizards);
+      $.get(4);
+    }).toThrow(FindError);
   });
 });
 
