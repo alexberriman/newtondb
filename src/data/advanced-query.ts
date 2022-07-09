@@ -1,19 +1,27 @@
 // @todo:
-// - case insensitivity
-// - type coercion
+// - dot notation
+// pre-processors:
+//    - case insensitivity
+//    - type coercion
 // - startsWith
 // - endsWith
+// - matchesRegex
+// - doesNotMatchRegex
 
 import { isObject } from "../utils/types";
 
+type PreProcessor = string | { fn: string; args: (Property | unknown)[] };
+
+type Property = string | { name: string; preProcess?: PreProcessor[] };
+
 type ValueReference = {
-  property: string;
+  property: Property;
 };
 
 type ConditionValue<T> = T | ValueReference;
 
 interface BaseCondition {
-  property: string;
+  property: Property;
 }
 
 interface ScalarCondition extends BaseCondition {
