@@ -4,13 +4,19 @@ import {
   get as getByBasicCondition,
   query as queryByBasicCondition,
 } from "../data/basic-query";
-import { createCondition } from "./utils";
+import { createCondition, isFindPredicate } from "./utils";
 
 interface CollectionOptions<T> {
   primaryKey?: keyof T | (keyof T)[];
   validatePrimaryKey?: boolean;
   indexes?: (keyof T)[][];
 }
+
+export type FindPredicate<T> = (
+  value: T,
+  index: number,
+  array: T[]
+) => value is T;
 
 export class Collection<T> {
   hashTable?: HashTable<T>;
@@ -36,25 +42,35 @@ export class Collection<T> {
     };
   }
 
-  get(value: unknown) {
+  get(value: FindPredicate<T> | unknown, data: T[] = this.data) {
+    if (isFindPredicate<T>(value)) {
+      return data.find(value);
+    }
+
     const condition = createCondition(value, { primaryKey: this.primaryKey });
 
     // @todo find by primary key
     // @todo find by index
-    // @todo find by function
+    // @todo find by condition
 
-    return getByBasicCondition(this.data, condition as Partial<T>);
+    return getByBasicCondition(data, condition as Partial<T>);
   }
 
-  find(value?: unknown, data?: T[]) {
+  find(value?: FindPredicate<T> | unknown, data?: T[]) {
+    const items = data ?? this.data;
+
+    if (isFindPredicate<T>(value)) {
+      return this.chain(items.filter(value));
+    }
+
     const filtered = queryByBasicCondition(
-      data ?? this.data,
+      items,
       createCondition(value, { primaryKey: this.primaryKey }) as Partial<T>
     );
 
     // @todo find by primary key
     // @todo find by index
-    // @todo find by function
+    // @todo find by condition
 
     return this.chain(filtered);
   }

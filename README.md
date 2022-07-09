@@ -128,6 +128,7 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
 - [Indexing](#indexing)
   - [Primary key](#primary-key)
   - [Secondary keys](#secondary-keys)
+- [Asynchronous operations](#asynchronous-operations)
 - [Guides and concepts](#guides-and-concepts)
   - [Type inference](#type-inference)
   - [Error handling](#error-handling)

@@ -1,6 +1,6 @@
 // import { ConflictError } from "../errors/conflict-error";
 import { FindError } from "../errors/find-error";
-import { wizards } from "../test-data";
+import { Wizard, wizards } from "../test-data";
 import { Collection } from "./collection";
 
 describe("constructor", () => {
@@ -35,6 +35,12 @@ describe("get", () => {
       $.get(4);
     }).toThrow(FindError);
   });
+
+  it("get by function", () => {
+    const $ = new Collection(wizards);
+    const ron = $.get(({ name }: Wizard) => name === "ron");
+    expect(ron).toMatchObject({ id: 3, name: "ron" });
+  });
 });
 
 describe("find", () => {
@@ -64,6 +70,26 @@ describe("find", () => {
     expect(
       $.find({ house: "gryffindor" }).find({ name: "hermione" }).data
     ).toHaveLength(1);
+  });
+
+  it("finds by function", () => {
+    const $ = new Collection(wizards);
+    const gryffindors = $.find(
+      ({ house }: Wizard) => house === "gryffindor"
+    ).data;
+    expect(gryffindors).toHaveLength(3);
+    expect(gryffindors).toMatchObject([
+      { id: 1, name: "harry" },
+      { id: 2, name: "hermione" },
+      { id: 3, name: "ron" },
+    ]);
+  });
+
+  it("throws an error when trying find by a scalar without a primary key", () => {
+    expect(() => {
+      const $ = new Collection(wizards);
+      $.find(4);
+    }).toThrow(FindError);
   });
 });
 

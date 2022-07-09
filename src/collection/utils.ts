@@ -1,6 +1,6 @@
 import { FindError } from "../errors/find-error";
 import { isDefined, isObject, isScalar } from "../utils/types";
-import { type Collection } from "./collection";
+import type { FindPredicate, Collection } from "./collection";
 
 interface CreateConditionOptions<T> {
   primaryKey: Collection<T>["primaryKey"];
@@ -25,4 +25,10 @@ export function createCondition<T>(
   throw new FindError(
     "Attempted to find by a scalar without configuring a primaryKey"
   );
+}
+
+export function isFindPredicate<T>(
+  candidate: unknown
+): candidate is FindPredicate<T> {
+  return typeof candidate === "function";
 }
