@@ -6,6 +6,10 @@ export function isScalar(value: unknown): value is string | number | boolean {
   return ["number", "string", "boolean"].includes(typeof value);
 }
 
+export function isNumber(value: unknown): value is number {
+  return typeof value === "number";
+}
+
 export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && !Array.isArray(value);
 }

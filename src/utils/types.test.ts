@@ -3,6 +3,7 @@ import {
   asArray,
   isArray,
   isDefined,
+  isNumber,
   isObject,
   isPartial,
   isScalar,
@@ -47,6 +48,15 @@ test.each([
   [undefined, false],
 ])("isDefined(%s) is %s", (input, expected) => {
   const actual = isDefined(input);
+  expect(actual).toBe(expected);
+});
+
+test.each([
+  [1, true],
+  ["test", false],
+  [undefined, false],
+])("isNumber(%s) is %s", (input, expected) => {
+  const actual = isNumber(input);
   expect(actual).toBe(expected);
 });
 

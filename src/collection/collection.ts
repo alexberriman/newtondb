@@ -1,7 +1,10 @@
 import { FindError } from "../errors/find-error";
 import { createHashTable, type HashTable } from "../data/hash-table";
-import { asArray, isObject, isScalar } from "../utils/types";
-import { get as getByBasicCondition } from "../data/basic-query";
+import { asArray, isDefined, isObject, isScalar } from "../utils/types";
+import {
+  get as getByBasicCondition,
+  query as queryByBasicCondition,
+} from "../data/basic-query";
 
 interface CollectionOptions<T> {
   primaryKey?: keyof T | (keyof T)[];
@@ -24,10 +27,13 @@ export class Collection<T> {
     }
   }
 
-  get canLookup() {
-    const { primaryKey } = this.options;
-
-    return !!(primaryKey && this.hashTable);
+  chain(data: T[]) {
+    return {
+      data,
+      find: (value?: unknown) => this.find(value, data),
+      offset: (amount: number) => this.offset(amount, data),
+      limit: (amount: number) => this.limit(amount, data),
+    };
   }
 
   private condition(condition: unknown): Record<string, unknown> {
@@ -54,11 +60,39 @@ export class Collection<T> {
     return getByBasicCondition(this.data, condition as Partial<T>);
   }
 
-  find(): T[] {
-    return [];
+  find(value?: unknown, data?: T[]) {
+    const condition = isDefined(value) ? this.condition(value) : {};
+    const source = data ?? this.data;
+    const filtered = queryByBasicCondition(source, condition as Partial<T>);
+
+    // @todo find by primary key
+    // @todo find by index
+    // @todo find by function
+
+    return this.chain(filtered);
   }
 
   insert(record: T) {
     this.data = [...this.data, record];
+  }
+
+  limit(amount: number, data: T[] = this.data) {
+    return this.chain(data.slice(0, amount));
+  }
+
+  offset(amount: number, data: T[] = this.data) {
+    return this.chain(data.slice(amount));
+  }
+
+  sort() {
+    // @todo
+  }
+
+  expand() {
+    // @todo
+  }
+
+  delete() {
+    // @todo
   }
 }
