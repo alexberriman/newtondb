@@ -1,7 +1,16 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 type PreprocessFn = (...args: any[]) => any;
 
-export const preprocessors: Record<string, PreprocessFn> = {};
+export const preprocessors: Record<string, PreprocessFn> = {
+  concat: (...args: string[]) => args.join(""),
+  substring: (input: string, start: number, end?: number) =>
+    input.substring(start, end),
+  toLength: (input: any) => input.length,
+  toLower: (input: string) => input.toLocaleLowerCase(),
+  toNumber: (input: any) => Number(input),
+  toString: (input: any) => input.toString(),
+  toUpper: (input: string) => input.toLocaleUpperCase(),
+};
 
 export function addPreprocessor(name: string, fn: PreprocessFn) {
   preprocessors[name] = fn;
@@ -9,7 +18,6 @@ export function addPreprocessor(name: string, fn: PreprocessFn) {
 
 interface ExecuteOptions {
   name: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[];
   defaultValue: unknown;
 }

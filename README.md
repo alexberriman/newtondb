@@ -98,7 +98,7 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
 - [Collections](#collections)
   - [`new Collection(options)`](#collection-options)
   - [.get](#get)
-  - [.find](#find)
+  - [.find](#find) ✅
   - [.insert](#insert)
   - [.update](#update)
   - [.upsert](#upsert)
@@ -107,39 +107,39 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.createPatch](#create-changeset)
   - [.expand](#expand)
   - [.sort](#sort)
-  - [.limit](#limit)
-  - [.offset](#offset)
+  - [.limit](#limit) ✅
+  - [.offset](#offset) ✅
   - [.observe](#observe)
   - [.unobserve](#unobserve)
 - [Querying](#querying)
-  - [By primary key](#by-primary-key)
-  - [Basic conditions](#basic-conditions)
-  - [Advanced conditions](#advanced-conditions)
-    - [`all` and `some`](#all-and-some)
-    - [Operators](#operators)
-      - [equal](#equal)
-      - [notEqual](#toLower)
-      - [lessThan](#toString)
-      - [lessThanInclusive](#toNumber)
-      - [greaterThan](#toLength)
-      - [greaterThanInclusive](#toLength)
-      - [in](#toLength)
-      - [notIn](#toLength)
-      - [contains](#toLength)
-      - [notContains](#toLength)
-      - [startsWith](#toLength)
-      - [endsWith](#toLength)
-      - [matchesRegex](#toLength)
-      - [doesNotMatchRegex](#toLength)
+  - [By primary key](#by-primary-key) ✅
+  - [Basic conditions](#basic-conditions) ✅
+  - [Advanced conditions](#advanced-conditions) ✅
+    - [`every` and `some`](#every-and-some)
+    - [Operators](#operators) ✅
+      - [equal](#equal) ✅
+      - [notEqual](#toLower) ✅
+      - [lessThan](#toString) ✅
+      - [lessThanInclusive](#toNumber) ✅
+      - [greaterThan](#toLength) ✅
+      - [greaterThanInclusive](#toLength) ✅
+      - [in](#toLength) ✅
+      - [notIn](#toLength) ✅
+      - [contains](#toLength) ✅
+      - [notContains](#toLength) ✅
+      - [startsWith](#toLength) ✅
+      - [endsWith](#toLength) ✅
+      - [matchesRegex](#toLength) ✅
+      - [doesNotMatchRegex](#toLength) ✅
     - [Preprocessors](#preprocess)
-      - [toUpper](#toUpper)
-      - [toLower](#toLower)
-      - [toString](#toString)
-      - [toNumber](#toNumber)
-      - [toLength](#toLength)
-      - [substring](#toLength)
+      - [toUpper](#toUpper) ✅
+      - [toLower](#toLower) ✅
+      - [toString](#toString) ✅
+      - [toNumber](#toNumber) ✅
+      - [toLength](#toLength) ✅
+      - [substring](#toLength) ✅
       - [Custom](#custom-preprocessors)
-  - [By function](#by-functions)
+  - [By function](#by-functions) ✅
   - [Extensions](#extensions)
     - [JsonLogic](#json-logic)
 - [Relationships](#relationships)

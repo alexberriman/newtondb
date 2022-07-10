@@ -1,14 +1,13 @@
-// @todo:
-// pre-processors:
-//    - case insensitivity
-//    - type coercion
-
 import { dot } from "../../utils/object";
 import { isObject } from "../../utils/types";
+import { preProcess } from "./preprocess";
 
-type PreProcessor = string | { fn: string; args: (Property | unknown)[] };
+type NestedPreProcessor = { fn: string; args?: (NestedProperty | unknown)[] };
+type PreProcessor = string | NestedPreProcessor;
 
-type Property = string | { name: string; preProcess?: PreProcessor[] };
+export type NestedProperty = { name: string; preProcess?: PreProcessor[] };
+
+type Property = string | NestedProperty;
 
 type ValueReference = {
   property: Property;
@@ -56,16 +55,23 @@ type AtomicCondition =
   | ArrayInCondition
   | ContainsCondition;
 
-type AndCondition = { and: AdvancedCondition[] };
+type EveryCondition = { every: AdvancedCondition[] };
 
-type OrCondition = { or: AdvancedCondition[] };
+type SomeCondition = { some: AdvancedCondition[] };
 
-export type AdvancedCondition = AtomicCondition | AndCondition | OrCondition;
+export type AdvancedCondition =
+  | AtomicCondition
+  | EveryCondition
+  | SomeCondition;
 
 function isValueReference<T>(
   value: ConditionValue<T>
 ): value is ValueReference {
   return isObject(value) && "property" in value;
+}
+
+function isNestedProperty(value: unknown): value is NestedProperty {
+  return isObject(value) && "name" in value;
 }
 
 function isStringCondition(
@@ -111,11 +117,29 @@ export function isCondition(
 ): condition is AdvancedCondition {
   return (
     isAtomicCondition(condition) ||
-    (isObject(condition) && ("and" in condition || "or" in condition))
+    (isObject(condition) && ("every" in condition || "some" in condition))
   );
 }
 
-function getByProperty(
+// recursively parse args
+function parseArgs(
+  args: NestedPreProcessor["args"],
+  object: Record<string, unknown>
+) {
+  if (!Array.isArray(args)) {
+    return [];
+  }
+
+  return args.map((arg) => {
+    if (isNestedProperty(arg)) {
+      return getProperty(object, arg);
+    }
+
+    return arg;
+  });
+}
+
+export function getProperty(
   object: Record<string, unknown>,
   property: Property
 ): unknown {
@@ -123,8 +147,26 @@ function getByProperty(
     return dot(object, property);
   }
 
-  // @todo preprocessors
   const value = dot(object, property.name);
+
+  if (Array.isArray(property.preProcess)) {
+    return property.preProcess.reduce((runningValue, preProcessor) => {
+      if (typeof preProcessor === "string") {
+        return preProcess({
+          name: preProcessor,
+          args: [runningValue],
+          defaultValue: runningValue,
+        });
+      }
+
+      const args = parseArgs(preProcessor.args, object);
+      return preProcess({
+        name: preProcessor.fn,
+        args: [runningValue, ...args],
+        defaultValue: runningValue,
+      });
+    }, value);
+  }
 
   return value;
 }
@@ -134,7 +176,7 @@ function getConditionValue<ValueType, CandidateType>(
   candidate: CandidateType
 ): ValueType {
   if (isValueReference(value)) {
-    return getByProperty(
+    return getProperty(
       candidate as Record<string, unknown>,
       value.property
     ) as ValueType;
@@ -144,7 +186,7 @@ function getConditionValue<ValueType, CandidateType>(
 }
 
 function evaluateStringCondition<T>(condition: StringCondition, candidate: T) {
-  const source = getByProperty(
+  const source = getProperty(
     candidate as Record<string, unknown>,
     condition.property
   ) as string;
@@ -163,7 +205,7 @@ function evaluateStringCondition<T>(condition: StringCondition, candidate: T) {
 }
 
 function evaluateScalarCondition<T>(condition: ScalarCondition, candidate: T) {
-  const source = getByProperty(
+  const source = getProperty(
     candidate as Record<string, unknown>,
     condition.property
   );
@@ -176,7 +218,7 @@ function evaluateNumericCondition<T>(
   condition: NumericCondition,
   candidate: T
 ) {
-  const source = getByProperty(
+  const source = getProperty(
     candidate as Record<string, unknown>,
     condition.property
   ) as number;
@@ -195,7 +237,7 @@ function evaluateNumericCondition<T>(
 }
 
 function evaluateInCondition<T>(condition: ArrayInCondition, candidate: T) {
-  const source = getByProperty(
+  const source = getProperty(
     candidate as Record<string, unknown>,
     condition.property
   );
@@ -210,7 +252,7 @@ function evaluateContainsCondition<T>(
   condition: ContainsCondition,
   candidate: T
 ) {
-  const source = getByProperty(
+  const source = getProperty(
     candidate as Record<string, unknown>,
     condition.property
   );
@@ -256,9 +298,9 @@ export function evaluate<T>(
     return evaluateAtom(condition, candidate);
   }
 
-  if ("and" in condition) {
-    return condition.and.every((condition) => evaluate(condition, candidate));
+  if ("every" in condition) {
+    return condition.every.every((condition) => evaluate(condition, candidate));
   }
 
-  return condition.or.some((condition) => evaluate(condition, candidate));
+  return condition.some.some((condition) => evaluate(condition, candidate));
 }

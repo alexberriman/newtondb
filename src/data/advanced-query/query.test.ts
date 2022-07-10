@@ -1,10 +1,83 @@
 import { houses, wizards } from "../../test-data";
-import { evaluate } from "./query";
+import { evaluate, getProperty } from "./query";
+
+const [harry] = wizards;
+const [gryffindor] = houses;
+
+describe("getProperty", () => {
+  const obj = harry as unknown as Record<string, unknown>;
+
+  test("basic string property", () => {
+    expect(getProperty(obj, "house")).toBe("gryffindor");
+  });
+
+  test("basic nested property", () => {
+    expect(getProperty(obj, { name: "house" })).toBe("gryffindor");
+  });
+
+  test("with preprocessors", () => {
+    expect(getProperty(obj, { name: "house", preProcess: ["toUpper"] })).toBe(
+      "GRYFFINDOR"
+    );
+
+    expect(
+      getProperty(obj, { name: "house", preProcess: ["toUpper", "toLower"] })
+    ).toBe("gryffindor");
+
+    expect(
+      getProperty(obj, {
+        name: "house",
+        preProcess: [
+          { fn: "toLower" },
+          "toUpper",
+          { fn: "concat", args: ["_test", "1"] },
+          { fn: "substring", args: [1] },
+        ],
+      })
+    ).toBe("RYFFINDOR_test1");
+  });
+
+  test("nested properties", () => {
+    expect(
+      getProperty(obj, {
+        name: "name",
+        preProcess: [
+          "toUpper",
+          {
+            fn: "substring",
+            args: [1, 4],
+          },
+          {
+            fn: "concat",
+            args: ["_"],
+          },
+          {
+            fn: "concat",
+            args: [
+              {
+                name: "house",
+                preProcess: [{ fn: "substring", args: [0, 5] }],
+              },
+              "|",
+              {
+                name: "house",
+                preProcess: [
+                  {
+                    fn: "substring",
+                    args: [1, 4],
+                  },
+                  "toUpper",
+                ],
+              },
+            ],
+          },
+        ],
+      })
+    ).toBe("ARR_gryff|RYF");
+  });
+});
 
 describe("evaluate", () => {
-  const [harry] = wizards;
-  const [gryffindor] = houses;
-
   test("equal operator", () => {
     expect(
       evaluate({ property: "name", operator: "equal", value: "harry" }, harry)
@@ -227,7 +300,7 @@ describe("evaluate", () => {
     expect(
       evaluate(
         {
-          and: [
+          every: [
             {
               property: "house",
               operator: "equal",
@@ -239,7 +312,7 @@ describe("evaluate", () => {
               value: 1000,
             },
             {
-              and: [
+              every: [
                 { property: "name", operator: "in", value: ["harry", "ron"] },
                 { property: "married", operator: "equal", value: true },
               ],
@@ -253,7 +326,7 @@ describe("evaluate", () => {
     expect(
       evaluate(
         {
-          and: [
+          every: [
             {
               property: "house",
               operator: "equal",
@@ -275,7 +348,7 @@ describe("evaluate", () => {
     expect(
       evaluate(
         {
-          or: [
+          some: [
             {
               property: "house",
               operator: "equal",
@@ -287,7 +360,7 @@ describe("evaluate", () => {
               value: 1000,
             },
             {
-              or: [
+              some: [
                 {
                   property: "name",
                   operator: "in",
@@ -305,7 +378,7 @@ describe("evaluate", () => {
     expect(
       evaluate(
         {
-          or: [
+          some: [
             {
               property: "house",
               operator: "equal",
@@ -343,6 +416,19 @@ describe("evaluate", () => {
     expect(
       evaluate(
         { property: { name: "house" }, operator: "equal", value: "gryffindor" },
+        harry
+      )
+    ).toBe(true);
+  });
+
+  it("evaluates with preprocessors", () => {
+    expect(
+      evaluate(
+        {
+          property: { name: "house", preProcess: ["toUpper"] },
+          operator: "equal",
+          value: "GRYFFINDOR",
+        },
         harry
       )
     ).toBe(true);
