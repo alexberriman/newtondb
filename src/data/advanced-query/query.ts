@@ -1,14 +1,10 @@
 // @todo:
-// - dot notation
 // pre-processors:
 //    - case insensitivity
 //    - type coercion
-// - startsWith
-// - endsWith
-// - matchesRegex
-// - doesNotMatchRegex
 
-import { isObject } from "../utils/types";
+import { dot } from "../../utils/object";
+import { isObject } from "../../utils/types";
 
 type PreProcessor = string | { fn: string; args: (Property | unknown)[] };
 
@@ -22,6 +18,11 @@ type ConditionValue<T> = T | ValueReference;
 
 interface BaseCondition {
   property: Property;
+}
+
+interface StringCondition extends BaseCondition {
+  operator: "startsWith" | "endsWith" | "matchesRegex" | "doesNotMatchRegex";
+  value: ConditionValue<string>;
 }
 
 interface ScalarCondition extends BaseCondition {
@@ -49,6 +50,7 @@ interface ContainsCondition extends BaseCondition {
 }
 
 type AtomicCondition =
+  | StringCondition
   | ScalarCondition
   | NumericCondition
   | ArrayInCondition
@@ -64,6 +66,17 @@ function isValueReference<T>(
   value: ConditionValue<T>
 ): value is ValueReference {
   return isObject(value) && "property" in value;
+}
+
+function isStringCondition(
+  condition: AtomicCondition
+): condition is StringCondition {
+  return [
+    "startsWith",
+    "endsWith",
+    "matchesRegex",
+    "doesNotMatchRegex",
+  ].includes(condition.operator);
 }
 
 function isScalarCondition(
@@ -102,12 +115,18 @@ export function isCondition(
   );
 }
 
-// @todo put in helper
 function getByProperty(
   object: Record<string, unknown>,
-  property: string
+  property: Property
 ): unknown {
-  return object[property];
+  if (typeof property === "string") {
+    return dot(object, property);
+  }
+
+  // @todo preprocessors
+  const value = dot(object, property.name);
+
+  return value;
 }
 
 function getConditionValue<ValueType, CandidateType>(
@@ -122,6 +141,25 @@ function getConditionValue<ValueType, CandidateType>(
   }
 
   return value;
+}
+
+function evaluateStringCondition<T>(condition: StringCondition, candidate: T) {
+  const source = getByProperty(
+    candidate as Record<string, unknown>,
+    condition.property
+  ) as string;
+  const value = getConditionValue(condition.value, candidate);
+
+  switch (condition.operator) {
+    case "startsWith":
+      return source.startsWith(value);
+    case "endsWith":
+      return source.endsWith(value);
+    case "matchesRegex":
+      return !!source.match(new RegExp(value));
+    case "doesNotMatchRegex":
+      return !source.match(new RegExp(value));
+  }
 }
 
 function evaluateScalarCondition<T>(condition: ScalarCondition, candidate: T) {
@@ -146,7 +184,7 @@ function evaluateNumericCondition<T>(
 
   switch (condition.operator) {
     case "lessThan":
-      return (source as number) < value;
+      return source < value;
     case "lessThanInclusive":
       return source <= value;
     case "greaterThan":
@@ -191,6 +229,10 @@ function evaluateContainsCondition<T>(
 }
 
 function evaluateAtom<T>(condition: AtomicCondition, candidate: T) {
+  if (isStringCondition(condition)) {
+    return evaluateStringCondition(condition, candidate);
+  }
+
   if (isScalarCondition(condition)) {
     return evaluateScalarCondition(condition, candidate);
   }
@@ -219,17 +261,4 @@ export function evaluate<T>(
   }
 
   return condition.or.some((condition) => evaluate(condition, candidate));
-}
-
-const isMatch =
-  <T>(condition: AdvancedCondition) =>
-  (item: T) =>
-    evaluate(condition, item);
-
-export function query<T>(data: T[], condition: AdvancedCondition): T[] {
-  return data.filter(isMatch(condition));
-}
-
-export function get<T>(data: T[], condition: AdvancedCondition): T | undefined {
-  return data.find(isMatch(condition));
 }

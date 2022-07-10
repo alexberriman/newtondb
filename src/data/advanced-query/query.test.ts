@@ -1,5 +1,5 @@
-import { houses, wizards } from "../test-data";
-import { evaluate } from "./advanced-query";
+import { houses, wizards } from "../../test-data";
+import { evaluate } from "./query";
 
 describe("evaluate", () => {
   const [harry] = wizards;
@@ -26,6 +26,58 @@ describe("evaluate", () => {
     expect(
       evaluate(
         { property: "name", operator: "notEqual", value: "neville" },
+        harry
+      )
+    ).toBe(true);
+  });
+
+  test("startsWith operator", () => {
+    expect(
+      evaluate({ property: "name", operator: "startsWith", value: "ha" }, harry)
+    ).toBe(true);
+
+    expect(
+      evaluate({ property: "name", operator: "startsWith", value: "ne" }, harry)
+    ).toBe(false);
+  });
+
+  test("endsWith operator", () => {
+    expect(
+      evaluate({ property: "name", operator: "endsWith", value: "rry" }, harry)
+    ).toBe(true);
+
+    expect(
+      evaluate({ property: "name", operator: "endsWith", value: "lle" }, harry)
+    ).toBe(false);
+  });
+
+  test("matchesRegex operator", () => {
+    expect(
+      evaluate(
+        { property: "name", operator: "matchesRegex", value: "^[a-z]+$" },
+        harry
+      )
+    ).toBe(true);
+
+    expect(
+      evaluate(
+        { property: "name", operator: "matchesRegex", value: "^[0-9]+$" },
+        harry
+      )
+    ).toBe(false);
+  });
+
+  test("doesNotMatchRegex operator", () => {
+    expect(
+      evaluate(
+        { property: "name", operator: "doesNotMatchRegex", value: "^[a-z]+$" },
+        harry
+      )
+    ).toBe(false);
+
+    expect(
+      evaluate(
+        { property: "name", operator: "doesNotMatchRegex", value: "^[0-9]+$" },
         harry
       )
     ).toBe(true);
@@ -269,5 +321,30 @@ describe("evaluate", () => {
         harry
       )
     ).toBe(false);
+  });
+
+  it("doesn't coerce values", () => {
+    expect(
+      evaluate(
+        { property: { name: "born" }, operator: "equal", value: "1980" },
+        harry
+      )
+    ).toBe(false);
+
+    expect(
+      evaluate(
+        { property: { name: "born" }, operator: "equal", value: 1980 },
+        harry
+      )
+    ).toBe(true);
+  });
+
+  it("evaluates nested properties", () => {
+    expect(
+      evaluate(
+        { property: { name: "house" }, operator: "equal", value: "gryffindor" },
+        harry
+      )
+    ).toBe(true);
   });
 });
