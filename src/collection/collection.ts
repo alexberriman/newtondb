@@ -1,5 +1,5 @@
 import { createHashTable, type HashTable } from "../data/hash-table";
-import { asArray } from "../utils/types";
+import { asArray, isSingular } from "../utils/types";
 import {
   get as getByAdvancedCondition,
   query as queryByAdvancedCondition,
@@ -41,12 +41,17 @@ export class Collection<T> {
     }
   }
 
-  chain(data: T[]) {
+  chain<C = T[]>(data: C) {
+    const array = asArray(data) as unknown as T[];
+
     return {
+      count: array.length,
       data,
-      find: (value?: unknown) => this.find(value, data),
-      offset: (amount: number) => this.offset(amount, data),
-      limit: (amount: number) => this.limit(amount, data),
+      exists: array.length > 0,
+      get: (value: unknown) => this.get(value, array),
+      find: (value?: unknown) => this.find(value, array),
+      offset: (amount: number) => this.offset(amount, array),
+      limit: (amount: number) => this.limit(amount, array),
     };
   }
 
@@ -57,16 +62,18 @@ export class Collection<T> {
     // @todo find by primary key
     // @todo find by index
     if (isFindPredicate<T>(value)) {
-      return data.find(value);
+      return this.chain(data.find(value));
     }
 
     if (isAdvancedCondition(value)) {
-      return getByAdvancedCondition(data, value);
+      return this.chain(getByAdvancedCondition(data, value));
     }
 
-    return getByBasicCondition(
-      data,
-      createCondition(value, { primaryKey: this.primaryKey }) as Partial<T>
+    return this.chain(
+      getByBasicCondition(
+        data,
+        createCondition(value, { primaryKey: this.primaryKey }) as Partial<T>
+      )
     );
   }
 

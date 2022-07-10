@@ -13,17 +13,25 @@ describe("constructor", () => {
 describe("get", () => {
   it("retrieves a record by primary key", () => {
     const $ = new Collection(wizards, { primaryKey: "id" });
-    expect($.get(4)).toMatchObject({ id: 4, name: "draco" });
+    const result = $.get(4);
+
+    expect(result.data).toMatchObject({ id: 4, name: "draco" });
+    expect(result.count).toBe(1);
+    expect(result.exists).toBe(true);
   });
 
-  it("returns undefined when value doesn't exist", () => {
+  it("returns correctly when value doesn't exist", () => {
     const $ = new Collection(wizards, { primaryKey: "id" });
-    expect($.get(-1)).toBeUndefined();
+    const result = $.get(-1);
+
+    expect(result.data).toBeUndefined();
+    expect(result.count).toBe(0);
+    expect(result.exists).toBe(false);
   });
 
   it("returns from a basic query", () => {
     const $ = new Collection(wizards);
-    expect($.get({ name: "draco", house: "slytherin" })).toMatchObject({
+    expect($.get({ name: "draco", house: "slytherin" }).data).toMatchObject({
       id: 4,
       name: "draco",
     });
@@ -38,13 +46,17 @@ describe("get", () => {
 
   it("gets by function", () => {
     const $ = new Collection(wizards);
-    const ron = $.get(({ name }: Wizard) => name === "ron");
+    const ron = $.get(({ name }: Wizard) => name === "ron").data;
     expect(ron).toMatchObject({ id: 3, name: "ron" });
   });
 
   it("gets by advanced condition", () => {
     const $ = new Collection(wizards);
-    const ron = $.get({ property: "name", operator: "equal", value: "ron" });
+    const ron = $.get({
+      property: "name",
+      operator: "equal",
+      value: "ron",
+    }).data;
     expect(ron).toMatchObject({ id: 3, name: "ron" });
   });
 });

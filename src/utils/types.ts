@@ -29,6 +29,14 @@ export function isArray<T>(value: unknown): value is T[] {
   return Array.isArray(value);
 }
 
+export function isSingular<T>(value: unknown): value is T {
+  return !isArray(value);
+}
+
 export function asArray<T>(value: T | T[]) {
+  if (!value) {
+    return [];
+  }
+
   return isArray(value) ? value : [value];
 }
