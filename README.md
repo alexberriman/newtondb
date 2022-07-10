@@ -85,37 +85,37 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
 
 ## API
 
-- [Philosophy](#philosophy)
-- [Adapters](#adapters)
-  - [Memory adapter](#memory-adapter)
-  - [File adapter](#file-adapter)
-- [Database](#database)
+- [Philosophy](#philosophy) ❌
+- [Adapters](#adapters) ❌
+  - [Memory adapter](#memory-adapter) ❌
+  - [File adapter](#file-adapter) ❌
+- [Database](#database) ❌
   - [`new cleardb(options)`](#options)
-  - [.write](#write)
-  - [.delete](#delete)
-  - [.observe](#observe)
-  - [.unobserve](#unobserve)
+  - [.write](#write) ❌
+  - [.delete](#delete) ❌
+  - [.observe](#observe) ❌
+  - [.unobserve](#unobserve) ❌
 - [Collections](#collections)
   - [`new Collection(options)`](#collection-options)
-  - [.get](#get)
+  - [.get](#get) ❌
   - [.find](#find) ✅
-  - [.insert](#insert)
-  - [.update](#update)
-  - [.upsert](#upsert)
-  - [.delete](#delete)
-  - [.patch](#patch)
-  - [.createPatch](#create-changeset)
-  - [.expand](#expand)
-  - [.sort](#sort)
+  - [.insert](#insert) ❌
+  - [.update](#update) ❌
+  - [.upsert](#upsert) ❌
+  - [.delete](#delete) ❌
+  - [.patch](#patch) ❌
+  - [.createPatch](#create-changeset) ❌
+  - [.expand](#expand) ❌
+  - [.sort](#sort) ❌
   - [.limit](#limit) ✅
   - [.offset](#offset) ✅
-  - [.observe](#observe)
-  - [.unobserve](#unobserve)
-- [Querying](#querying)
+  - [.observe](#observe) ❌
+  - [.unobserve](#unobserve) ❌
+- [Querying](#querying) ❌
   - [By primary key](#by-primary-key) ✅
   - [Basic conditions](#basic-conditions) ✅
   - [Advanced conditions](#advanced-conditions) ✅
-    - [`every` and `some`](#every-and-some)
+    - [`every` and `some`](#every-and-some) ✅
     - [Operators](#operators) ✅
       - [equal](#equal) ✅
       - [notEqual](#toLower) ✅
@@ -140,24 +140,24 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
       - [substring](#toLength) ✅
       - [Custom](#custom-preprocessors)
   - [By function](#by-functions) ✅
-  - [Extensions](#extensions)
-    - [JsonLogic](#json-logic)
-- [Relationships](#relationships)
-  - [one to one](#one-to-one)
-  - [one to many](#one-to-many)
-  - [many to many](#many-to-many)
-- [Indexing](#indexing)
-  - [Primary key](#primary-key)
-  - [Secondary keys](#secondary-keys)
-- [Asynchronous operations](#asynchronous-operations)
-- [Extending](#extending-cleardb)
-  - [Lodash example](#lodash-example)
-  - [Ramda example](#ramda-example)
-- [Guides and concepts](#guides-and-concepts)
-  - [Type inference](#type-inference)
-  - [Error handling](#error-handling)
-  - [Patching](#applying-patches)
-  - [Pagination](#pagination)
+  - [Extensions](#extensions) ❌
+    - [JsonLogic](#json-logic) ❌
+- [Relationships](#relationships) ❌
+  - [one to one](#one-to-one) ❌
+  - [one to many](#one-to-many) ❌
+  - [many to many](#many-to-many) ❌
+- [Indexing](#indexing) ❌
+  - [Primary key](#primary-key) ❌
+  - [Secondary keys](#secondary-keys) ❌
+- [Asynchronous operations](#asynchronous-operations) ❌
+- [Extending](#extending-cleardb) ❌
+  - [Lodash example](#lodash-example) ❌
+  - [Ramda example](#ramda-example) ❌
+- [Guides and concepts](#guides-and-concepts) ❌
+  - [Type inference](#type-inference) ❌
+  - [Error handling](#error-handling) ❌
+  - [Patching](#applying-patches) ❌
+  - [Pagination](#pagination) ❌
 
 ## Comparison
 
