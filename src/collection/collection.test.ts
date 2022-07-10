@@ -1,4 +1,5 @@
 // import { ConflictError } from "../errors/conflict-error";
+import { AssertionError } from "../errors/assertion-error";
 import { FindError } from "../errors/find-error";
 import { Wizard, wizards } from "../test-data";
 import { Collection } from "./collection";
@@ -7,6 +8,24 @@ describe("constructor", () => {
   it("sets data correctly", () => {
     const $ = new Collection(wizards);
     expect($.data).toEqual(wizards);
+  });
+});
+
+describe("chaining", () => {
+  test("placeholder", () => {
+    // $
+    //  .find({ house: "gryffindor" })
+    //  .assert(({ length }) => length === 3)
+    //  .set({ house: "Gryffindor" })
+    //  .get({ name: "harry "})
+    //  .assert(({ data: { name } }) => name === "harry")
+    //  .set(({ name: "harry potter" }))
+    //  .commit();
+
+    // const $ = new Collection(wizards);
+    // const res = $.find({ house: "gryffindor" });
+
+    expect(1).toBe(1);
   });
 });
 
@@ -123,6 +142,24 @@ describe("find", () => {
       const $ = new Collection(wizards);
       $.find(4);
     }).toThrow(FindError);
+  });
+});
+
+describe("assertion", () => {
+  const $ = new Collection(wizards);
+
+  it("continues when assertion passes", () => {
+    expect($.get({ name: "harry" }).assert(({ data }) => !!data).data).toEqual(
+      wizards[0]
+    );
+  });
+
+  it("throws an error when assertion fails", () => {
+    expect(() => {
+      $.get({ name: "harry" }).assert(
+        ({ data }) => (data as any)?.name === "ron"
+      ).data;
+    }).toThrow(AssertionError);
   });
 });
 

@@ -1,5 +1,5 @@
 import { createHashTable, type HashTable } from "../data/hash-table";
-import { asArray, isSingular } from "../utils/types";
+import { asArray } from "../utils/types";
 import {
   get as getByAdvancedCondition,
   query as queryByAdvancedCondition,
@@ -13,12 +13,21 @@ import {
   type AdvancedCondition,
   isCondition as isAdvancedCondition,
 } from "../data/advanced-query";
+import { AssertionError } from "../errors/assertion-error";
 
 interface CollectionOptions<T> {
   primaryKey?: keyof T | (keyof T)[];
   validatePrimaryKey?: boolean;
   indexes?: (keyof T)[][];
 }
+
+interface ChainData<T> {
+  count: number;
+  data: T | T[];
+  exists: boolean;
+}
+
+type AssertionFunction<C> = (arg0: ChainData<C>) => boolean;
 
 export type FindPredicate<T> = (
   value: T,
@@ -44,15 +53,29 @@ export class Collection<T> {
   chain<C = T[]>(data: C) {
     const array = asArray(data) as unknown as T[];
 
-    return {
+    const dataValues = {
       count: array.length,
       data,
       exists: array.length > 0,
+    };
+
+    return {
+      ...dataValues,
+      assert: (assertion: AssertionFunction<C>) =>
+        this.assert(assertion, dataValues),
       get: (value: unknown) => this.get(value, array),
       find: (value?: unknown) => this.find(value, array),
       offset: (amount: number) => this.offset(amount, array),
       limit: (amount: number) => this.limit(amount, array),
     };
+  }
+
+  private assert<C>(assertion: AssertionFunction<C>, chainData: ChainData<C>) {
+    if (!assertion(chainData)) {
+      throw new AssertionError();
+    }
+
+    return this.chain(chainData.data);
   }
 
   get(

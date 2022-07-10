@@ -97,7 +97,7 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.unobserve](#unobserve) ❌
 - [Collections](#collections)
   - [`new Collection(options)`](#collection-options)
-  - [.get](#get) ❌
+  - [.get](#get) ✅
   - [.find](#find) ✅
   - [.insert](#insert) ❌
   - [.update](#update) ❌
@@ -111,6 +111,8 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.offset](#offset) ✅
   - [.observe](#observe) ❌
   - [.unobserve](#unobserve) ❌
+  - [.or](#or) ❌
+  - [.assert](#assert) ❌
 - [Querying](#querying) ❌
   - [By primary key](#by-primary-key) ✅
   - [Basic conditions](#basic-conditions) ✅
