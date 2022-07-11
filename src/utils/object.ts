@@ -1,10 +1,13 @@
 import { isArray, isObject } from "./types";
 
-export function objectSubset<T extends Record<string, unknown>>(
-  object: Record<string, unknown>,
-  keys: string[]
-): Partial<T> {
-  return keys.reduce((subset, key) => ({ ...subset, [key]: object[key] }), {});
+export function objectSubset<T, K extends keyof T>(
+  object: T,
+  keys: K[]
+): Pick<T, K> {
+  return keys.reduce(
+    (subset, key) => ({ ...subset, [key]: object[key] }),
+    {}
+  ) as Pick<T, K>;
 }
 
 export function dot(object: Record<string, unknown>, path: string) {

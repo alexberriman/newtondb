@@ -1,63 +1,81 @@
 import { objectSubset } from "../utils/object";
+import { isScalar } from "../utils/types";
 
-interface HashTableOptions<T> {
-  index: (keyof T)[];
-  item?: (o: T) => Partial<T>;
+interface HashTableOptions<IndexKeys, StorageKeys> {
+  // need a key to generate a hash against for quick access
+  // when a key is omitted, the array index will be used.
+  keyBy?: IndexKeys[];
+
+  // by default, the entire item will be stored against the hash
+  // however, you can optionally pass through an array of keys
+  // to store a subset of the data.
+  //
+  // this can be useful when creating secondary indexes and
+  // you want to simply store the primary key against the
+  // index rather than the entire piece of data
+  attributes?: StorageKeys[];
 }
 
-type HashTableData<T> = Record<string, Partial<T>[]>;
+interface HashTableItem<Index, DataItem> {
+  position: number;
+  index: Index | string;
+  data: DataItem;
+}
 
-export type HashTable<T> = {
-  data: HashTableData<T>;
-  options: HashTableOptions<T>;
-};
-
-function createHash(hash: Record<string, unknown> | string) {
+function createHash(hash: Record<string, unknown> | string | number) {
   return typeof hash === "string" ? hash : JSON.stringify(hash);
 }
 
-function shallowClone<T>(input: HashTable<T>) {
-  return { ...input, data: { ...input.data } };
-}
+export class HashTable<
+  Data,
+  IndexKeys extends keyof Data,
+  StorageKeys extends keyof Data = keyof Data,
+  Index = Pick<Data, IndexKeys>,
+  DataItem = Pick<Data, StorageKeys>
+> {
+  size = 0;
+  data: Record<string, HashTableItem<Index, DataItem>[]> = {};
 
-function insertItem<T>(
-  data: HashTableData<T>,
-  item: T,
-  options: HashTableOptions<T>
-) {
-  const hash = createHash(
-    objectSubset(item as Record<string, unknown>, options.index as string[])
-  );
+  constructor(
+    items: Data[],
+    public options: HashTableOptions<IndexKeys, StorageKeys> = {}
+  ) {
+    items.forEach(this.insert.bind(this));
+  }
 
-  return {
-    ...data,
-    [hash]: [...(data[hash] ?? []), options.item ? options.item(item) : item],
-  };
-}
+  insert(data: Data) {
+    const { attributes, keyBy } = this.options;
 
-export function createHashTable<T>(data: T[], options: HashTableOptions<T>) {
-  const hashTable = data.reduce(
-    (table: HashTableData<T>, o) => insertItem(table, o, options),
-    {}
-  );
+    const index = keyBy
+      ? (objectSubset(data, keyBy) as unknown as Index)
+      : this.size.toString();
+    const hash = createHash(index as string | Record<string, unknown>);
 
-  return { options, data: hashTable };
-}
+    const storage =
+      Array.isArray(attributes) && attributes.length > 0
+        ? objectSubset(data, attributes)
+        : data;
 
-export function get<T>(table: HashTable<T>, hash: Partial<T> | string) {
-  return table.data[createHash(hash)] ?? [];
-}
+    this.data[hash] = [
+      ...(this.data[hash] ?? []),
+      { position: this.size++, index, data: storage as unknown as DataItem },
+    ];
+  }
 
-export function deleteItem<T>(table: HashTable<T>, hash: Partial<T> | string) {
-  const updatable = shallowClone(table);
-  delete updatable.data[createHash(hash)];
+  private getByHash(hash: string) {
+    return (this.data[hash] ?? []).map(({ data }) => data);
+  }
 
-  return updatable;
-}
+  get(index: Index | unknown): DataItem[] {
+    const { keyBy } = this.options;
 
-export function insert<T>(table: HashTable<T>, item: T) {
-  const updatable = shallowClone(table);
-  updatable.data = insertItem(updatable.data, item, updatable.options);
+    if (isScalar(index) && Array.isArray(keyBy) && keyBy.length === 1) {
+      // have a single attribute for a key, can infer lookup key from scalar
+      return this.getByHash(createHash({ [keyBy[0]]: index }));
+    }
 
-  return updatable;
+    return this.getByHash(
+      createHash(index as string | number | Record<string, unknown>)
+    );
+  }
 }

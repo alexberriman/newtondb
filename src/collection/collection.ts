@@ -1,4 +1,3 @@
-import { createHashTable, type HashTable } from "../data/hash-table";
 import { asArray } from "../utils/types";
 import {
   get as getByAdvancedCondition,
@@ -36,18 +35,12 @@ export type FindPredicate<T> = (
 ) => value is T;
 
 export class Collection<T> {
-  hashTable?: HashTable<T>;
   primaryKey: (keyof T)[];
 
   constructor(public data: T[], private options: CollectionOptions<T> = {}) {
     const { primaryKey } = options;
 
     this.primaryKey = primaryKey ? asArray(primaryKey) : [];
-    if (primaryKey) {
-      this.hashTable = createHashTable(data, {
-        index: this.primaryKey,
-      });
-    }
   }
 
   chain<C = T[]>(data: C) {
