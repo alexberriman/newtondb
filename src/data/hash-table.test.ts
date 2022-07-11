@@ -9,6 +9,13 @@ const extraWizards = {
     born: 1980,
     married: false,
   },
+  cho: {
+    id: 101,
+    name: "cho",
+    house: "ravenclaw",
+    born: 1980,
+    married: true,
+  },
 };
 
 it("initializes correctly with default options", () => {
@@ -22,7 +29,7 @@ it("initializes correctly with default options", () => {
 });
 
 it("stores a subset of data when item option passed through", () => {
-  const $ = new HashTable(wizards, { attributes: ["id"] });
+  const $ = new HashTable(wizards, { properties: ["id"] });
   expect($.data).toEqual({
     "0": [{ position: 0, index: "0", data: { id: 1 } }],
     "1": [{ position: 1, index: "1", data: { id: 2 } }],
@@ -106,4 +113,14 @@ it("inserts", () => {
       },
     ],
   });
+});
+
+it("deletes basic scalar when no primary key set", () => {
+  const $ = new HashTable([extraWizards.cho, ...wizards], { keyBy: ["house"] });
+  expect($.size).toBe(5);
+
+  $.delete("gryffindor", (o) => o.name === "ron");
+  expect(Object.keys($.data)).toHaveLength(3);
+
+  // @todo check shape and that it's been re-keyed
 });
