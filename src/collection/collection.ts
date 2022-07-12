@@ -1,4 +1,9 @@
-import { asArray } from "../utils/types";
+import {
+  asArray,
+  isScalar,
+  isSingleArray,
+  objectOfProperties,
+} from "../utils/types";
 import {
   get as getByAdvancedCondition,
   query as queryByAdvancedCondition,
@@ -13,9 +18,10 @@ import {
   isCondition as isAdvancedCondition,
 } from "../data/advanced-query";
 import { AssertionError } from "../errors/assertion-error";
+import { HashTable } from "../data/hash-table";
 
-interface CollectionOptions<T> {
-  primaryKey?: keyof T | (keyof T)[];
+interface CollectionOptions<T, IndexKeys> {
+  primaryKey?: IndexKeys | IndexKeys[];
   validatePrimaryKey?: boolean;
   indexes?: (keyof T)[][];
 }
@@ -34,13 +40,26 @@ export type FindPredicate<T> = (
   array: T[]
 ) => value is T;
 
-export class Collection<T> {
-  primaryKey: (keyof T)[];
+export class Collection<
+  T,
+  IndexKeys extends keyof T,
+  Index = Pick<T, IndexKeys>
+> {
+  primaryKey: IndexKeys[];
+  hashTable: HashTable<T, keyof T>;
 
-  constructor(public data: T[], private options: CollectionOptions<T> = {}) {
+  constructor(
+    data: T[],
+    private options: CollectionOptions<T, IndexKeys> = {}
+  ) {
     const { primaryKey } = options;
 
     this.primaryKey = primaryKey ? asArray(primaryKey) : [];
+    this.hashTable = new HashTable(data, { keyBy: this.primaryKey });
+  }
+
+  get data(): T[] {
+    return this.hashTable.data;
   }
 
   chain<C = T[]>(data: C) {
@@ -71,51 +90,69 @@ export class Collection<T> {
     return this.chain(chainData.data);
   }
 
-  get(
-    value: FindPredicate<T> | AdvancedCondition | unknown,
-    data: T[] = this.data
+  private $find(
+    value: FindPredicate<T> | AdvancedCondition | Index | unknown,
+    data: T[] = this.data,
+    { mode }: { mode: "find" | "get" }
   ) {
-    // @todo find by primary key
-    // @todo find by index
-    if (isFindPredicate<T>(value)) {
-      return this.chain(data.find(value));
-    }
-
-    if (isAdvancedCondition(value)) {
-      return this.chain(getByAdvancedCondition(data, value));
-    }
-
-    return this.chain(
-      getByBasicCondition(
-        data,
-        createCondition(value, { primaryKey: this.primaryKey }) as Partial<T>
-      )
-    );
-  }
-
-  find(value?: FindPredicate<T> | unknown, data?: T[]) {
-    // @todo find by primary key
-    // @todo find by index
     const items = data ?? this.data;
 
     if (isFindPredicate<T>(value)) {
-      return this.chain(items.filter(value));
+      return mode === "get" ? asArray(items.find(value)) : items.filter(value);
     }
 
     if (isAdvancedCondition(value)) {
-      return this.chain(queryByAdvancedCondition(items, value));
+      return mode === "get"
+        ? asArray(getByAdvancedCondition(items, value))
+        : queryByAdvancedCondition(items, value);
     }
 
-    return this.chain(
-      queryByBasicCondition(
+    if (
+      objectOfProperties<Pick<T, keyof T>>(value, this.primaryKey as string[])
+    ) {
+      // primary key was passed through - can pull directly from hash table
+      // rather than iterate through the list
+      return this.hashTable.get(value) as T[];
+    }
+
+    if (isScalar(value) && isSingleArray(this.primaryKey)) {
+      // scalar value was passed through and collection has a single primary
+      // key - can hit the hash table
+      return this.hashTable.get({
+        [this.primaryKey[0]]: value,
+      } as unknown as Pick<T, keyof T>) as T[];
+    }
+
+    const basicFn =
+      mode === "get" ? getByBasicCondition : queryByBasicCondition;
+
+    return asArray(
+      basicFn(
         items,
         createCondition(value, { primaryKey: this.primaryKey }) as Partial<T>
       )
     );
   }
 
+  get(
+    value: FindPredicate<T> | AdvancedCondition | Index | unknown,
+    data: T[] = this.data
+  ) {
+    const items = this.$find(value, data, { mode: "get" });
+    return this.chain(items[0]);
+  }
+
+  find(
+    value?: FindPredicate<T> | AdvancedCondition | Index | unknown,
+    data?: T[]
+  ) {
+    const items = this.$find(value, data, { mode: "find" });
+    return this.chain(items);
+  }
+
   insert(record: T) {
-    this.data = [...this.data, record];
+    // this.data = [...this.data, record];
+    // @todo add to hash table
   }
 
   limit(amount: number, data: T[] = this.data) {

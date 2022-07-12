@@ -29,7 +29,7 @@ it("initializes correctly with default options", () => {
   });
 });
 
-it("stores a subset of data when item option passed through", () => {
+it("stores a subset of data when properties option passed through", () => {
   const $ = new HashTable(wizards, { properties: ["id"] });
   expect($.table).toMatchObject({
     "0": [{ index: "0", data: { id: 1 } }],
@@ -75,8 +75,8 @@ test("get returns by scalar", () => {
 
 test("get returns an empty array when not found", () => {
   const $ = new HashTable(wizards, { keyBy: ["name"] });
-  const ron = $.get("sirius");
-  expect(ron).toHaveLength(0);
+  const sirius = $.get("sirius");
+  expect(sirius).toHaveLength(0);
 });
 
 test("get returns by numeric scalar when no index", () => {
@@ -116,9 +116,7 @@ it("inserts", () => {
 });
 
 it("converts hash table/linked list to array", () => {
-  const $ = new HashTable([...wizards, ...Object.values(extraWizards)], {
-    keyBy: ["house"],
-  });
+  const $ = new HashTable([...wizards, ...Object.values(extraWizards)]);
 
   expect($.data).toMatchObject([
     { id: 1, name: "harry" },

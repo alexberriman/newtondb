@@ -2,7 +2,10 @@ import { Collection } from "../collection/collection";
 import { BaseDatabase } from "./base-database";
 
 type Collections<DataShape> = {
-  [Property in keyof DataShape]: Collection<DataShape[Property]>;
+  [Property in keyof DataShape]: Collection<
+    DataShape[Property],
+    keyof DataShape[Property]
+  >;
 };
 
 function initCollections<T>(data: T) {

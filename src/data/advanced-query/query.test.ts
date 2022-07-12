@@ -296,7 +296,7 @@ describe("evaluate", () => {
     ).toBe(true);
   });
 
-  test("and condition", () => {
+  test("every condition", () => {
     expect(
       evaluate(
         {
@@ -344,7 +344,7 @@ describe("evaluate", () => {
     ).toBe(false);
   });
 
-  test("or condition", () => {
+  test("some condition", () => {
     expect(
       evaluate(
         {

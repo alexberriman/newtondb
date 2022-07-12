@@ -1,6 +1,11 @@
 import isEqual from "lodash.isequal";
 import { objectSubset } from "../utils/object";
-import { isScalar, isSingleArray, objectOfProperties } from "../utils/types";
+import {
+  isPopulatedArray,
+  isScalar,
+  isSingleArray,
+  objectOfProperties,
+} from "../utils/types";
 
 interface HashTableOptions<IndexKeys, StorageKeys> {
   // need a key to generate a hash against for quick access
@@ -63,7 +68,7 @@ export class HashTable<
 
   private createItem(item: Data) {
     const { keyBy, properties } = this.options;
-    const index = keyBy
+    const index = isPopulatedArray(keyBy)
       ? (objectSubset(item, keyBy) as unknown as Index)
       : this.size.toString();
     const hash = createHash(index as string | Record<string, unknown>);

@@ -1,12 +1,12 @@
 import { FindError } from "../errors/find-error";
 import { isDefined, isObject, isScalar } from "../utils/types";
-import type { FindPredicate, Collection } from "./collection";
+import type { FindPredicate } from "./collection";
 
 interface CreateConditionOptions<T> {
-  primaryKey: Collection<T>["primaryKey"];
+  primaryKey: T[];
 }
 
-export function createCondition<T>(
+export function createCondition<T extends string | number | symbol>(
   condition: unknown,
   { primaryKey }: CreateConditionOptions<T>
 ) {
