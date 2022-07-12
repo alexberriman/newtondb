@@ -11,24 +11,6 @@ describe("constructor", () => {
   });
 });
 
-describe("chaining", () => {
-  test("placeholder", () => {
-    // $
-    //  .find({ house: "gryffindor" })
-    //  .assert(({ length }) => length === 3)
-    //  .set({ house: "Gryffindor" })
-    //  .get({ name: "harry "})
-    //  .assert(({ data: { name } }) => name === "harry")
-    //  .set(({ name: "harry potter" }))
-    //  .commit();
-
-    // const $ = new Collection(wizards);
-    // const res = $.find({ house: "gryffindor" });
-
-    expect(1).toBe(1);
-  });
-});
-
 describe("get", () => {
   it("retrieves a record by primary key", () => {
     const $ = new Collection(wizards, { primaryKey: "id" });
@@ -107,19 +89,16 @@ describe("find", () => {
     const $ = new Collection(wizards);
     expect($.find().data).toHaveLength(wizards.length);
   });
-
   it("filters using a basic query", () => {
     const $ = new Collection(wizards);
     expect($.find({ house: "gryffindor" }).data).toHaveLength(3);
   });
-
   it("returns a single row when finding by primary key", () => {
     const $ = new Collection(wizards, { primaryKey: "id" });
     const result = $.find(3);
     expect(result.data).toHaveLength(1);
     expect(result.data[0]).toMatchObject({ id: 3, name: "ron" });
   });
-
   it("chains subsequent find operations", () => {
     const $ = new Collection(wizards);
     expect(
@@ -129,7 +108,6 @@ describe("find", () => {
       $.find({ house: "gryffindor" }).find({ name: "hermione" }).data
     ).toHaveLength(1);
   });
-
   it("finds by function", () => {
     const $ = new Collection(wizards);
     const gryffindors = $.find(
@@ -142,7 +120,6 @@ describe("find", () => {
       { id: 3, name: "ron" },
     ]);
   });
-
   it("finds by advanced condition", () => {
     const $ = new Collection(wizards);
     const gryffindors = $.find({
@@ -157,25 +134,21 @@ describe("find", () => {
       { id: 3, name: "ron" },
     ]);
   });
-
   it("throws an error when trying find by a scalar without a primary key", () => {
     expect(() => {
       const $ = new Collection(wizards);
       $.find(4);
     }).toThrow(FindError);
   });
-
   it("finds using primary key", () => {
     const $ = new Collection(wizards, { primaryKey: ["house"] });
     const gryffindors = $.find({ house: "gryffindor" });
-
     expect(gryffindors.data).toHaveLength(3);
     expect(gryffindors.data).toMatchObject([
       { id: 1, name: "harry" },
       { id: 2, name: "hermione" },
       { id: 3, name: "ron" },
     ]);
-
     const slytherins = $.find("slytherin");
     expect(slytherins.data).toHaveLength(1);
     expect(slytherins.data).toMatchObject([{ id: 4, name: "draco" }]);
@@ -271,6 +244,23 @@ describe("insert", () => {
   it("allows multiple values to be inserted", () => {
     // const $ = new Collection(wizards);
 
+    expect(1).toBe(1);
+  });
+});
+
+describe("delete", () => {
+  it("deletes a subset", () => {
+    const $ = new Collection(wizards);
+    expect($.data).toHaveLength(4);
+
+    $.find({ house: "slytherin" })
+      .assert(({ count }) => count === 1)
+      .set()
+      .limit(100)
+      .delete()
+      .commit();
+
+    // expect($.data).toHaveLength(3);
     expect(1).toBe(1);
   });
 });

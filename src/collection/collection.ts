@@ -19,6 +19,7 @@ import {
 } from "../data/advanced-query";
 import { AssertionError } from "../errors/assertion-error";
 import { HashTable } from "../data/hash-table";
+import { Chain } from "./chain";
 
 interface CollectionOptions<T, IndexKeys> {
   primaryKey?: IndexKeys | IndexKeys[];
@@ -32,13 +33,15 @@ interface ChainData<T> {
   exists: boolean;
 }
 
-type AssertionFunction<C> = (arg0: ChainData<C>) => boolean;
+type AssertionFunction<C> = (arg0: Chain<C>) => boolean;
 
 export type FindPredicate<T> = (
   value: T,
   index: number,
   array: T[]
 ) => value is T;
+
+type Mutation = any;
 
 export class Collection<
   T,
@@ -62,32 +65,46 @@ export class Collection<
     return this.hashTable.data;
   }
 
-  chain<C = T[]>(data: C) {
-    const array = asArray(data) as unknown as T[];
+  private chain<C = T[]>(data: C, chain: Chain<T>) {
+    const items = asArray(data) as unknown as T[];
+    chain.data = items;
 
     const dataValues = {
-      count: array.length,
+      count: items.length,
       data,
-      exists: array.length > 0,
+      exists: items.length > 0,
     };
 
     return {
       ...dataValues,
-      assert: (assertion: AssertionFunction<C>) =>
-        this.assert(assertion, dataValues),
-      get: (value: unknown) => this.get(value, array),
-      find: (value?: unknown) => this.find(value, array),
-      offset: (amount: number) => this.offset(amount, array),
-      limit: (amount: number) => this.limit(amount, array),
+      assert: (assertion: AssertionFunction<T>) =>
+        this.assert(assertion, data, chain),
+      commit: () => this.commit(chain),
+      delete: () => {
+        const result = this.delete(chain);
+        return result;
+      },
+      get: (value: unknown) => this.get(value, chain),
+      find: (value?: unknown) => this.find(value, chain),
+      limit: (amount: number) => this.limit(amount, chain),
+      offset: (amount: number) => this.offset(amount, chain),
+      set: () => {
+        const result = this.set(chain);
+        return result;
+      },
     };
   }
 
-  private assert<C>(assertion: AssertionFunction<C>, chainData: ChainData<C>) {
-    if (!assertion(chainData)) {
+  private assert<C>(
+    assertion: AssertionFunction<T>,
+    data: C,
+    chain: Chain<T> = new Chain(this.data)
+  ) {
+    if (!assertion(chain)) {
       throw new AssertionError();
     }
 
-    return this.chain(chainData.data);
+    return this.chain(data, chain);
   }
 
   private $find(
@@ -136,18 +153,38 @@ export class Collection<
 
   get(
     value: FindPredicate<T> | AdvancedCondition | Index | unknown,
-    data: T[] = this.data
+    chain: Chain<T> = new Chain(this.data)
   ) {
-    const items = this.$find(value, data, { mode: "get" });
-    return this.chain(items[0]);
+    const items = this.$find(value, chain.data, { mode: "get" });
+
+    return this.chain(items[0], chain);
   }
 
   find(
     value?: FindPredicate<T> | AdvancedCondition | Index | unknown,
-    data?: T[]
+    chain: Chain<T> = new Chain(this.data)
   ) {
-    const items = this.$find(value, data, { mode: "find" });
-    return this.chain(items);
+    const items = this.$find(value, chain.data, { mode: "find" });
+    return this.chain(items, chain);
+  }
+
+  set(chain: Chain<T> = new Chain(this.data)) {
+    const mutation = [{ fn: "set" }, { example: "alamat" }];
+    chain.addMutation(mutation);
+
+    return this.chain(chain.data, chain);
+  }
+
+  delete(chain: Chain<T> = new Chain(this.data)) {
+    const mutation = [{ lorem: "ipsum" }, { dolor: "alamat" }];
+    chain.addMutation(mutation);
+
+    return this.chain(chain.data, chain);
+  }
+
+  private commit(chain: Chain<T> = new Chain(this.data)) {
+    // console.log("commit", "mutations", chain.mutations);
+    // do nothing
   }
 
   insert(record: T) {
@@ -155,12 +192,12 @@ export class Collection<
     // @todo add to hash table
   }
 
-  limit(amount: number, data: T[] = this.data) {
-    return this.chain(data.slice(0, amount));
+  limit(amount: number, chain: Chain<T> = new Chain(this.data)) {
+    return this.chain(chain.data.slice(0, amount), chain);
   }
 
-  offset(amount: number, data: T[] = this.data) {
-    return this.chain(data.slice(amount));
+  offset(amount: number, chain: Chain<T> = new Chain(this.data)) {
+    return this.chain(chain.data.slice(amount), chain);
   }
 
   sort() {
@@ -168,10 +205,6 @@ export class Collection<
   }
 
   expand() {
-    // @todo
-  }
-
-  delete() {
     // @todo
   }
 }
