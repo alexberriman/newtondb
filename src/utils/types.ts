@@ -66,3 +66,24 @@ export function objectOfProperties<T>(
     shallowEqual(Object.keys(object), properties)
   );
 }
+
+/**
+ * Construct a union of properties that are functions from an object
+ *
+ * FunctionKeys<{ arg0: () => void; arg1: Function; arg2: string }
+ *
+ * => "arg0" | "arg1"
+ */
+export type FunctionKeys<T> = {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  [Property in keyof T]: T[Property] extends Function ? Property : never;
+}[keyof T];
+
+/**
+ * Construct a type which only includes functions from an object
+ *
+ * FunctionProperties<{ arg0: () => void; arg1: Function; arg2: string }
+ *
+ * => { arg0: () => void; arg1: Function; }
+ */
+export type FunctionProperties<T> = Pick<T, FunctionKeys<T>>;

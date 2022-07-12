@@ -214,28 +214,27 @@ describe("offset", () => {
 });
 
 // describe("insert", () => {
-//   // it("adds a record successfully", () => {
-//   //   const $ = new Collection(wizards);
-//   //   expect($.data).toHaveLength(4);
-//   //   $.insert({
-//   //     id: 5,
-//   //     name: "neville",
-//   //     house: "gryffindor",
-//   //     born: 1980,
-//   //     married: true,
-//   //   });
-//   //   expect($.data).toHaveLength(5);
-//   // });
+//   it("adds a record successfully", () => {
+//     const $ = new Collection(wizards);
+//     expect($.data).toHaveLength(4);
+//     $.insert({
+//       id: 5,
+//       name: "neville",
+//       house: "gryffindor",
+//       born: 1980,
+//       married: true,
+//     });
+//     expect($.data).toHaveLength(5);
+//   });
 
-//   // eslint-disable-next-line jest/no-commented-out-tests
-//   // it("returns an error when adding with the same id", () => {
-//   //   // const $ = new Collection(wizards);
-//   //   const $ = new Collection(wizards, { primaryKey: "id" });
+//   it("returns an error when adding with the same id", () => {
+//     // const $ = new Collection(wizards);
+//     const $ = new Collection(wizards, { primaryKey: "id" });
 
-//   //   expect(() => {
-//   //     $.insert(wizards[0]);
-//   //   }).toThrow(ConflictError);
-//   // });
+//     expect(() => {
+//       $.insert(wizards[0]);
+//     }).toThrow(ConflictError);
+//   });
 
 //   it("returns an error when data doesn't have valid id", () => {
 //     // const $ = new Collection(wizards);
@@ -250,29 +249,38 @@ describe("offset", () => {
 //   });
 // });
 
-// describe("delete", () => {
-//   it("deletes a subset", () => {
-//     // const $ = new Collection(wizards, { primaryKey: ["id"] });
-//     // expect($.data).toHaveLength(4);
+describe("delete", () => {
+  it("deletes a subset", () => {
+    // const $ = new Collection(wizards, { primaryKey: ["id"] });
+    // expect($.data).toHaveLength(4);
 
-//     // $.find({ house: "gryffindor", married: false })
-//     //   .assert(({ count }) => count === 2)
-//     //   .set()
-//     //   .limit(100)
-//     //   .delete()
-//     //   .commit();
+    // $.find({ house: "gryffindor", married: false })
+    //   .assert(({ count }) => count === 2)
+    //   .set()
+    //   .limit(100)
+    //   .delete()
+    //   .commit();
 
-//     const $ = new Collection(wizards);
-//     expect($.data).toHaveLength(4);
+    const $ = new Collection(wizards);
+    expect($.data).toHaveLength(4);
 
-//     $.find({ married: false })
-//       .assert(({ count }) => count === 2)
-//       .set()
-//       .limit(100)
-//       .delete()
-//       .commit();
+    const actual = $.find({ married: false })
+      .assert(({ count }) => count === 2)
+      .limit(100)
+      .delete()
+      .find();
 
-//     // expect($.data).toHaveLength(3);
-//     expect(1).toBe(1);
-//   });
-// });
+    // should only see married wizards
+    console.log("actual", actual.data);
+    expect(actual.data).toHaveLength(2);
+    expect(actual.data).toMatchObject([
+      { id: 1, married: true },
+      { id: 4, married: true },
+    ]);
+
+    console.log($);
+
+    // expect($.data).toHaveLength(3);
+    expect(1).toBe(1);
+  });
+});

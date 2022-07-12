@@ -1,3 +1,4 @@
+import cloneDeep from "lodash.clonedeep";
 import isEqual from "lodash.isequal";
 import { shallowEqual } from "../utils/array";
 import { objectSubset } from "../utils/object";
@@ -272,5 +273,16 @@ export class HashTable<
     if (index >= 0) {
       this.deleteItem(this.table[hash][index], hash, index);
     }
+  }
+
+  clone() {
+    // @todo more efficient don't rely on cloneDeep
+    // create a clone of the hash table
+    const $nodes = cloneDeep(this.nodes);
+    return new HashTable($nodes);
+  }
+
+  patch() {
+    // @todo apply patches
   }
 }

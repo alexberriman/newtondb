@@ -182,7 +182,7 @@ export class Collection<
     chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
   ) {
     const items = this.$find(value, { mode: "get" }, chain);
-    chain.update(items, { operation: "get", args: { value } });
+    chain.update(items, { operation: "get", args: [value] });
 
     return this.chain<T>(chain);
   }
@@ -196,79 +196,24 @@ export class Collection<
     chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
   ) {
     const items = this.$find(value, { mode: "find" }, chain);
-    chain.update(items, { operation: "find", args: { value } });
+    chain.update(items, { operation: "find", args: [value] });
 
     return this.chain(chain);
   }
 
   set(chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)) {
     const mutation = [{ fn: "set" }, { example: "alamat" }];
-    chain.addMutation(mutation);
+    chain.mutate(mutation);
 
     return this.chain(chain);
   }
 
-  /**
-   * create an index object from a data object
-   *
-   * response when `primaryKey` is `["id"]`
-   *
-   * ```ts
-   * createIndex({ id: 100, name: "harry", house: "gryffindor" });
-   *
-   * // => { id: 100}
-   */
-  private createIndex(data: T) {
-    if (this.primaryKey.length === 0) {
-      throw new KeyError("Primary key attributes not set");
-    }
-
-    return this.primaryKey.reduce(
-      (key, attribute) => ({ ...key, [attribute]: data[attribute] }),
-      {}
-    ) as Index;
-  }
-
   delete(chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)) {
-    console.log(this.hashTable);
-    if (this.primaryKey.length > 0) {
-      // have a primary key - much easier to delete
-      // @todo don't rely on external library
-      const mutations = chain.data.map((item) =>
-        createPatch({ [createHash(this.createIndex(item))]: [] }, {})
-      );
-
-      console.log("mutations", mutations);
-
-      return this.chain(chain);
-    }
-
-    // do not have a primary key
-    //
-    // this is a lot less performant as we have to use array indexes
-    // to compute a set of patches/mutations.
-    //
-    // fetch all keys from a single traversal of the linked list to
-    // optimize performance.
-    // const nodes = this.hashTable
-
-    // create a patch to delete the item in the chain
-
-    console.log("chain", chain);
-    const patch = chain.data.map((item) => {
-      console.log("item", item);
-      // const a = this.hashTable.get(item);
-      // console.log("a", a);
-      return "";
-    });
-
-    // $.find(4).delete();
-    // no primary key + scalar, we know the id is 4
-
-    console.log(patch);
-
-    const mutation = [{ lorem: "ipsum" }, { dolor: "alamat" }];
-    chain.addMutation(mutation);
+    const mutations = createPatch(
+      chain.nodes.reduce((o, node) => ({ ...o, [node.hash]: null }), {}),
+      {}
+    );
+    chain.mutate(mutations);
 
     return this.chain(chain);
   }
