@@ -1,3 +1,4 @@
+import isEqual from "lodash.isequal";
 import { objectSubset } from "../utils/object";
 import { isScalar, isSingleArray, objectOfProperties } from "../utils/types";
 
@@ -17,17 +18,16 @@ interface HashTableOptions<IndexKeys, StorageKeys> {
 }
 
 interface HashTableItem<Index, DataItem> {
-  position: number;
   index: Index | string;
   data: DataItem;
+  previous: HashTableItem<Index, DataItem> | null;
+  next: HashTableItem<Index, DataItem> | null;
 }
 
-// @todo move to util
 function createHash(hash: unknown) {
   return typeof hash === "string" ? hash : JSON.stringify(hash);
 }
 
-// @todo move to util
 export class HashTable<
   Data,
   IndexKeys extends keyof Data,
@@ -36,13 +36,29 @@ export class HashTable<
   DataItem = Pick<Data, StorageKeys>
 > {
   size = 0;
-  data: Record<string, HashTableItem<Index, DataItem>[]> = {};
+  table: Record<string, HashTableItem<Index, DataItem>[]> = {};
+
+  // doubly linked list to be able to convert between array and hash map
+  private tail: HashTableItem<Index, DataItem> | null = null;
+  private head: HashTableItem<Index, DataItem> | null = null;
 
   constructor(
     items: Data[],
     public options: HashTableOptions<IndexKeys, StorageKeys> = {}
   ) {
     items.forEach(this.insert.bind(this));
+  }
+
+  // convert linked list to array
+  get data() {
+    const data = [];
+    let node = this.tail;
+    while (node !== null) {
+      data.push(node.data);
+      node = node.next;
+    }
+
+    return data;
   }
 
   private createItem(item: Data) {
@@ -60,16 +76,83 @@ export class HashTable<
   }
 
   private getByHash(hash: string) {
-    return (this.data[hash] ?? []).map(({ data }) => data);
+    return (this.table[hash] ?? []).map(({ data }) => data);
+  }
+
+  private deleteItem(
+    item: HashTableItem<Index, DataItem>,
+    hash: string,
+    index: number
+  ) {
+    const { previous, next } = item;
+
+    // update items to the left and right in the linked list to prepare for delete
+    if (previous) {
+      previous.next = next;
+    } else {
+      // was the first item in the linked list, have to update the tail to the next item
+      this.tail = next;
+    }
+
+    if (next) {
+      next.previous = previous;
+    } else {
+      // was the last item in the linked list, have to update the head to the previous
+      this.head = previous;
+    }
+
+    if (this.table[hash].length === 1) {
+      // delete the entire hash when this is the only item
+      delete this.table[hash];
+    } else {
+      // delete a single item from the hash table
+      this.table[hash].splice(index, 1);
+    }
+
+    --this.size;
+  }
+
+  private deleteByIndex(
+    index: Index | string | number,
+    predicate?: (item: DataItem) => boolean
+  ) {
+    const hash = createHash(index);
+    if (this.table[hash]) {
+      if (!predicate) {
+        [...this.table[hash]].forEach((item, index) =>
+          this.deleteItem(item, hash, index)
+        );
+      } else {
+        [...this.table[hash]]
+          .filter(({ data }) => predicate(data))
+          .map((item, index) => this.deleteItem(item, hash, index));
+      }
+    }
   }
 
   insert(item: Data) {
     const { data, hash, index } = this.createItem(item);
 
-    this.data[hash] = [
-      ...(this.data[hash] ?? []),
-      { position: this.size++, index, data: data as unknown as DataItem },
-    ];
+    const node = {
+      index,
+      data: data as unknown as DataItem,
+      previous: this.head,
+      next: null,
+    };
+    this.table[hash] = [...(this.table[hash] ?? []), node];
+
+    if (this.head) {
+      // update current head to point to newly created node
+      this.head.next = node;
+    }
+
+    if (!this.tail) {
+      // set tail if not exist
+      this.tail = node;
+    }
+
+    this.head = node;
+    ++this.size;
   }
 
   get(index: Index | number | string): DataItem[] {
@@ -84,34 +167,6 @@ export class HashTable<
       createHash(index as string | number | Record<string, unknown>)
     );
   }
-
-  private deleteByIndex(
-    index: Index | string | number,
-    predicate?: (item: DataItem) => boolean
-  ) {
-    const hash = createHash(index);
-    if (this.data[hash]) {
-      if (!predicate) {
-        delete this.data[hash];
-        // @todo re-order
-      } else {
-        const filteredItems = this.data[hash].filter(
-          ({ data }) => !predicate(data)
-        );
-
-        if (filteredItems.length === 0) {
-          delete this.data[hash];
-          // @todo re-order
-        } else {
-          this.data[hash] = filteredItems;
-          // @todo re-ordwer
-        }
-      }
-    }
-  }
-
-  // delete by data item
-  // delete by hash (optional predicate)
 
   delete(item: Data): void;
   delete(
@@ -143,7 +198,12 @@ export class HashTable<
     }
 
     // the entire data object was passed through, delete (can delete by data even if not indexed)
-    const { index } = this.createItem(itemOrIndex);
-    return this.deleteByIndex(index, predicate);
+    const { data, hash } = this.createItem(itemOrIndex);
+    const index = (this.table[hash] ?? []).findIndex((item) =>
+      isEqual(item.data, data)
+    );
+    if (index >= 0) {
+      this.deleteItem(this.table[hash][index], hash, index);
+    }
   }
 }

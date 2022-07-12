@@ -63,6 +63,6 @@ export function objectOfProperties<T>(
     object !== null &&
     typeof object === "object" &&
     !isArray(object) &&
-    shallowEqual(Object.values(object), properties)
+    shallowEqual(Object.keys(object), properties)
   );
 }

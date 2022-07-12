@@ -20,38 +20,39 @@ const extraWizards = {
 
 it("initializes correctly with default options", () => {
   const $ = new HashTable(wizards);
-  expect($.data).toEqual({
-    "0": [{ position: 0, index: "0", data: wizards[0] }],
-    "1": [{ position: 1, index: "1", data: wizards[1] }],
-    "2": [{ position: 2, index: "2", data: wizards[2] }],
-    "3": [{ position: 3, index: "3", data: wizards[3] }],
+
+  expect($.table).toMatchObject({
+    "0": [{ index: "0", data: wizards[0], previous: null }],
+    "1": [{ index: "1", data: wizards[1] }],
+    "2": [{ index: "2", data: wizards[2] }],
+    "3": [{ index: "3", data: wizards[3], next: null }],
   });
 });
 
 it("stores a subset of data when item option passed through", () => {
   const $ = new HashTable(wizards, { properties: ["id"] });
-  expect($.data).toEqual({
-    "0": [{ position: 0, index: "0", data: { id: 1 } }],
-    "1": [{ position: 1, index: "1", data: { id: 2 } }],
-    "2": [{ position: 2, index: "2", data: { id: 3 } }],
-    "3": [{ position: 3, index: "3", data: { id: 4 } }],
+  expect($.table).toMatchObject({
+    "0": [{ index: "0", data: { id: 1 } }],
+    "1": [{ index: "1", data: { id: 2 } }],
+    "2": [{ index: "2", data: { id: 3 } }],
+    "3": [{ index: "3", data: { id: 4 } }],
   });
 });
 
 it("keys by supplied keyBy option", () => {
   const $ = new HashTable(wizards, { keyBy: ["id", "name"] });
-  expect($.data).toEqual({
+  expect($.table).toMatchObject({
     '{"id":1,"name":"harry"}': [
-      { position: 0, index: { id: 1, name: "harry" }, data: wizards[0] },
+      { index: { id: 1, name: "harry" }, data: wizards[0] },
     ],
     '{"id":2,"name":"hermione"}': [
-      { position: 1, index: { id: 2, name: "hermione" }, data: wizards[1] },
+      { index: { id: 2, name: "hermione" }, data: wizards[1] },
     ],
     '{"id":3,"name":"ron"}': [
-      { position: 2, index: { id: 3, name: "ron" }, data: wizards[2] },
+      { index: { id: 3, name: "ron" }, data: wizards[2] },
     ],
     '{"id":4,"name":"draco"}': [
-      { position: 3, index: { id: 4, name: "draco" }, data: wizards[3] },
+      { index: { id: 4, name: "draco" }, data: wizards[3] },
     ],
   });
 });
@@ -92,22 +93,21 @@ it("inserts", () => {
 
   $.insert(extraWizards.neville);
   expect($.size).toBe(5);
-  expect($.data).toEqual({
+  expect($.table).toMatchObject({
     '{"id":1,"name":"harry"}': [
-      { position: 0, index: { id: 1, name: "harry" }, data: wizards[0] },
+      { index: { id: 1, name: "harry" }, data: wizards[0] },
     ],
     '{"id":2,"name":"hermione"}': [
-      { position: 1, index: { id: 2, name: "hermione" }, data: wizards[1] },
+      { index: { id: 2, name: "hermione" }, data: wizards[1] },
     ],
     '{"id":3,"name":"ron"}': [
-      { position: 2, index: { id: 3, name: "ron" }, data: wizards[2] },
+      { index: { id: 3, name: "ron" }, data: wizards[2] },
     ],
     '{"id":4,"name":"draco"}': [
-      { position: 3, index: { id: 4, name: "draco" }, data: wizards[3] },
+      { index: { id: 4, name: "draco" }, data: wizards[3] },
     ],
     '{"id":100,"name":"neville"}': [
       {
-        position: 4,
         index: { id: 100, name: "neville" },
         data: extraWizards.neville,
       },
@@ -115,12 +115,101 @@ it("inserts", () => {
   });
 });
 
-it("deletes basic scalar when no primary key set", () => {
-  const $ = new HashTable([extraWizards.cho, ...wizards], { keyBy: ["house"] });
+it("converts hash table/linked list to array", () => {
+  const $ = new HashTable([...wizards, ...Object.values(extraWizards)], {
+    keyBy: ["house"],
+  });
+
+  expect($.data).toMatchObject([
+    { id: 1, name: "harry" },
+    { id: 2, name: "hermione" },
+    { id: 3, name: "ron" },
+    { id: 4, name: "draco" },
+    { id: 100, name: "neville" },
+    { id: 101, name: "cho" },
+  ]);
+});
+
+it("deletes correctly", () => {
+  const $ = new HashTable([...wizards, ...Object.values(extraWizards)], {
+    keyBy: ["house"],
+  });
+  expect($.size).toBe(6);
+
+  $.delete(wizards[1]); // delete hermione
   expect($.size).toBe(5);
+  expect($.data).toMatchObject([
+    { id: 1, name: "harry" },
+    { id: 3, name: "ron" },
+    { id: 4, name: "draco" },
+    { id: 100, name: "neville" },
+    { id: 101, name: "cho" },
+  ]);
 
-  $.delete("gryffindor", (o) => o.name === "ron");
-  expect(Object.keys($.data)).toHaveLength(3);
+  // delete first on list
+  $.delete(wizards[0]);
+  expect($.size).toBe(4);
+  expect($.data).toMatchObject([
+    { id: 3, name: "ron" },
+    { id: 4, name: "draco" },
+    { id: 100, name: "neville" },
+    { id: 101, name: "cho" },
+  ]);
 
-  // @todo check shape and that it's been re-keyed
+  // delete by scalar
+  $.delete("slytherin");
+  expect($.size).toBe(3);
+  expect($.data).toMatchObject([
+    { id: 3, name: "ron" },
+    { id: 100, name: "neville" },
+    { id: 101, name: "cho" },
+  ]);
+
+  // delete by index (and last on list)
+  $.delete({ house: "ravenclaw" });
+  expect($.size).toBe(2);
+  expect($.data).toMatchObject([
+    { id: 3, name: "ron" },
+    { id: 100, name: "neville" },
+  ]);
+
+  // doesn't delete when no match
+  $.delete(wizards[0]);
+  expect($.size).toBe(2);
+});
+
+it("deletes by scalar when no key set", () => {
+  const $ = new HashTable(wizards);
+  expect($.size).toBe(4);
+
+  $.delete(1);
+  expect($.size).toBe(3);
+  expect($.data).toMatchObject([
+    { id: 1, name: "harry" },
+    { id: 3, name: "ron" },
+    { id: 4, name: "draco" },
+  ]);
+});
+
+it("deletes multiple by index", () => {
+  const $ = new HashTable(wizards, { keyBy: ["house"] });
+
+  $.delete({ house: "gryffindor" });
+  expect($.size).toBe(1);
+  expect($.data).toMatchObject([{ id: 4, name: "draco" }]);
+});
+
+it("deletes by predicate", () => {
+  const $ = new HashTable(wizards, {
+    properties: ["id", "house"],
+    keyBy: ["house"],
+  });
+
+  $.delete({ house: "gryffindor" }, (data) => data.id === 3);
+  expect($.size).toBe(3);
+  expect($.data).toEqual([
+    { id: 1, house: "gryffindor" },
+    { id: 2, house: "gryffindor" },
+    { id: 4, house: "slytherin" },
+  ]);
 });
