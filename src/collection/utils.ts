@@ -27,8 +27,8 @@ export function createCondition<T extends string | number | symbol>(
   );
 }
 
-export function isFindPredicate<T>(
+export function isFindPredicate<T, Y>(
   candidate: unknown
-): candidate is FindPredicate<T> {
+): candidate is FindPredicate<T, Y> {
   return typeof candidate === "function";
 }

@@ -1,6 +1,8 @@
 import isEqual from "lodash.isequal";
+import { shallowEqual } from "../utils/array";
 import { objectSubset } from "../utils/object";
 import {
+  isObject,
   isPopulatedArray,
   isScalar,
   isSingleArray,
@@ -22,14 +24,31 @@ interface HashTableOptions<IndexKeys, StorageKeys> {
   properties?: StorageKeys[];
 }
 
-interface HashTableItem<Index, DataItem> {
+export interface HashTableItem<Index, DataItem> {
   index: Index | string;
+  hash: string;
   data: DataItem;
   previous: HashTableItem<Index, DataItem> | null;
   next: HashTableItem<Index, DataItem> | null;
 }
 
-function createHash(hash: unknown) {
+// @todo move to util
+function isHashTableItem<Index, DataItem>(
+  value: unknown
+): value is HashTableItem<Index, DataItem> {
+  return (
+    isObject(value) &&
+    shallowEqual(Object.keys(value), [
+      "index",
+      "hash",
+      "data",
+      "previous",
+      "next",
+    ])
+  );
+}
+
+export function createHash(hash: unknown) {
   return typeof hash === "string" ? hash : JSON.stringify(hash);
 }
 
@@ -44,44 +63,61 @@ export class HashTable<
   table: Record<string, HashTableItem<Index, DataItem>[]> = {};
 
   // doubly linked list to be able to convert between array and hash map
-  private tail: HashTableItem<Index, DataItem> | null = null;
-  private head: HashTableItem<Index, DataItem> | null = null;
+  tail: HashTableItem<Index, DataItem> | null = null;
+  head: HashTableItem<Index, DataItem> | null = null;
 
+  constructor(items: HashTableItem<Index, DataItem>[]);
   constructor(
     items: Data[],
+    options?: HashTableOptions<IndexKeys, StorageKeys>
+  );
+  constructor(
+    items: (Data | HashTableItem<Index, DataItem>)[],
     public options: HashTableOptions<IndexKeys, StorageKeys> = {}
   ) {
-    items.forEach(this.insert.bind(this));
+    items.forEach(this.$insert.bind(this));
   }
 
   // convert linked list to array
-  get data() {
+  private toArray<T = HashTableItem<Index, DataItem>>(
+    transformer?: (node: HashTableItem<Index, DataItem>) => T
+  ): T[] {
     const data = [];
     let node = this.tail;
     while (node !== null) {
-      data.push(node.data);
+      data.push(transformer ? transformer(node) : node);
       node = node.next;
     }
 
-    return data;
+    return data as unknown as T[];
+  }
+
+  // return data
+  get data() {
+    return this.toArray<DataItem>(({ data }) => data);
+  }
+
+  // return raw nodes
+  get nodes() {
+    return this.toArray();
   }
 
   private createItem(item: Data) {
     const { keyBy, properties } = this.options;
     const index = isPopulatedArray(keyBy)
       ? (objectSubset(item, keyBy) as unknown as Index)
-      : this.size.toString();
+      : (Number(this.head?.index ?? "-1") + 1).toString(); // auto incrementing ids as index
     const hash = createHash(index as string | Record<string, unknown>);
     const data =
       Array.isArray(properties) && properties.length > 0
         ? objectSubset(item, properties)
         : item;
 
-    return { data, hash, index };
+    return { data: data as unknown as DataItem, hash, index };
   }
 
   private getByHash(hash: string) {
-    return (this.table[hash] ?? []).map(({ data }) => data);
+    return this.table[hash] ?? [];
   }
 
   private deleteItem(
@@ -135,11 +171,10 @@ export class HashTable<
     }
   }
 
-  insert(item: Data) {
-    const { data, hash, index } = this.createItem(item);
-
+  private insertItem(data: DataItem, hash: string, index: string | Index) {
     const node = {
       index,
+      hash,
       data: data as unknown as DataItem,
       previous: this.head,
       next: null,
@@ -160,17 +195,44 @@ export class HashTable<
     ++this.size;
   }
 
-  get(index: Index | number | string): DataItem[] {
-    const { keyBy } = this.options;
-
-    if (isScalar(index) && isSingleArray(keyBy)) {
-      // have a single attribute for a key, can infer lookup key from scalar
-      return this.getByHash(createHash({ [keyBy[0]]: index }));
+  private $insert(item: Data | HashTableItem<Index, DataItem>) {
+    if (isHashTableItem<Index, DataItem>(item)) {
+      // insert hash table item
+      const { data, hash, index } = item;
+      return this.insertItem(data, hash, index); // @todo might need to deep clone
     }
 
-    return this.getByHash(
-      createHash(index as string | number | Record<string, unknown>)
-    );
+    this.insert(item);
+  }
+
+  insert(item: Data) {
+    const { data, hash, index } = this.createItem(item);
+    this.insertItem(data, hash, index);
+  }
+
+  get(index: Index | number | string): DataItem[];
+  get(index: Index | number | string, options: { asItem: true }): DataItem[];
+  get(
+    index: Index | number | string,
+    options: { asItem: false }
+  ): HashTableItem<Index, DataItem>[];
+  get(
+    index: Index | number | string,
+    options: { asItem: boolean } = { asItem: true }
+  ): DataItem[] | HashTableItem<Index, DataItem>[] {
+    const { asItem } = options;
+    const { keyBy } = this.options;
+
+    const items =
+      isScalar(index) && isSingleArray(keyBy)
+        ? // have a single attribute for a key, can infer lookup key from scalar
+          this.getByHash(createHash({ [keyBy[0]]: index }))
+        : // index was passed through
+          this.getByHash(
+            createHash(index as string | number | Record<string, unknown>)
+          );
+
+    return asItem ? items.map(({ data }) => data) : items;
   }
 
   delete(item: Data): void;

@@ -55,6 +55,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "lodash.isequal": "^4.5.0"
+    "lodash.isequal": "^4.5.0",
+    "rfc6902": "^5.0.1"
   }
 }

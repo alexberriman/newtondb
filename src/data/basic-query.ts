@@ -1,14 +1,32 @@
 const isMatch =
-  <T>(condition: Partial<T>) =>
-  (item: T) =>
-    Object.entries(condition).every(
-      ([key, value]) => item[key as keyof T] === value
-    );
+  <Node, Data>(
+    condition: Partial<Data>,
+    preProcessor?: (input: Node) => Data
+  ) =>
+  (item: Node) => {
+    const data = (preProcessor ? preProcessor(item) : item) as Data;
 
-export function query<T>(data: T[], condition: Partial<T>): T[] {
-  return data.filter(isMatch(condition));
+    return Object.entries(condition).every(
+      ([key, value]) => data[key as keyof Data] === value
+    );
+  };
+
+export function query<Node, Data>(
+  data: Node[],
+  condition: Partial<Data>,
+  preProcessor?: (input: Node) => Data
+): Node[] {
+  const fn = isMatch(condition, preProcessor);
+
+  return data.filter(fn);
 }
 
-export function get<T>(data: T[], condition: Partial<T>): T | undefined {
-  return data.find(isMatch(condition));
+export function get<Node, Data>(
+  data: Node[],
+  condition: Partial<Data>,
+  preProcessor?: (input: Node) => Data
+): Node | undefined {
+  const fn = isMatch(condition, preProcessor);
+
+  return data.find(fn);
 }

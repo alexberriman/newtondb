@@ -1,22 +1,5 @@
-import { wizards } from "../test-data";
+import { extraWizards, wizards } from "../test-data";
 import { HashTable } from "./hash-table";
-
-const extraWizards = {
-  neville: {
-    id: 100,
-    name: "neville",
-    house: "gryffindor",
-    born: 1980,
-    married: false,
-  },
-  cho: {
-    id: 101,
-    name: "cho",
-    house: "ravenclaw",
-    born: 1980,
-    married: true,
-  },
-};
 
 it("initializes correctly with default options", () => {
   const $ = new HashTable(wizards);
@@ -87,6 +70,22 @@ test("get returns by numeric scalar when no index", () => {
   expect(draco[0]).toMatchObject({ name: "draco" });
 });
 
+test("get returns the 'raw' entry what `asItem` is false", () => {
+  const $ = new HashTable(wizards, { keyBy: ["name"] });
+  const harry = $.get("harry", { asItem: false });
+
+  expect(harry).toMatchObject([
+    {
+      index: { name: "harry" },
+      hash: '{"name":"harry"}',
+      data: {
+        id: 1,
+        name: "harry",
+      },
+    },
+  ]);
+});
+
 it("inserts", () => {
   const $ = new HashTable(wizards, { keyBy: ["id", "name"] });
   expect($.size).toBe(4);
@@ -125,6 +124,18 @@ it("converts hash table/linked list to array", () => {
     { id: 4, name: "draco" },
     { id: 100, name: "neville" },
     { id: 101, name: "cho" },
+  ]);
+});
+
+it("converts hash table/linked list to array of raw nodes", () => {
+  const $ = new HashTable([...wizards, ...Object.values(extraWizards)]);
+  expect($.nodes).toMatchObject([
+    { index: "0", hash: "0", data: { id: 1, name: "harry" } },
+    { index: "1", hash: "1", data: { id: 2, name: "hermione" } },
+    { index: "2", hash: "2", data: { id: 3, name: "ron" } },
+    { index: "3", hash: "3", data: { id: 4, name: "draco" } },
+    { index: "4", hash: "4", data: { id: 100, name: "neville" } },
+    { index: "5", hash: "5", data: { id: 101, name: "cho" } },
   ]);
 });
 

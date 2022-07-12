@@ -1,14 +1,24 @@
 import { evaluate, type AdvancedCondition } from "./query";
 
 const isMatch =
-  <T>(condition: AdvancedCondition) =>
+  <T, O>(condition: AdvancedCondition, preProcessor?: (input: T) => O) =>
   (item: T) =>
-    evaluate(condition, item);
+    evaluate(condition, preProcessor ? preProcessor(item) : item);
 
-export function query<T>(data: T[], condition: AdvancedCondition): T[] {
-  return data.filter(isMatch(condition));
+export function query<T, O>(
+  data: T[],
+  condition: AdvancedCondition,
+  preProcessor?: (input: T) => O
+): T[] {
+  const fn = isMatch(condition, preProcessor);
+  return data.filter(fn);
 }
 
-export function get<T>(data: T[], condition: AdvancedCondition): T | undefined {
-  return data.find(isMatch(condition));
+export function get<T, O>(
+  data: T[],
+  condition: AdvancedCondition,
+  preProcessor?: (input: T) => O
+): T | undefined {
+  const fn = isMatch(condition, preProcessor);
+  return data.find(fn);
 }

@@ -47,7 +47,7 @@ export function isSingular<T>(value: unknown): value is T {
   return !isArray(value);
 }
 
-export function asArray<T>(value: T | T[]) {
+export function asArray<T>(value: T | T[] | null | undefined): T[] {
   if (!value) {
     return [];
   }

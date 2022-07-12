@@ -1,7 +1,7 @@
 // import { ConflictError } from "../errors/conflict-error";
 import { AssertionError } from "../errors/assertion-error";
 import { FindError } from "../errors/find-error";
-import { Wizard, wizards } from "../test-data";
+import { extraWizards, Wizard, wizards } from "../test-data";
 import { Collection } from "./collection";
 
 describe("constructor", () => {
@@ -90,8 +90,9 @@ describe("find", () => {
     expect($.find().data).toHaveLength(wizards.length);
   });
   it("filters using a basic query", () => {
-    const $ = new Collection(wizards);
-    expect($.find({ house: "gryffindor" }).data).toHaveLength(3);
+    const $ = new Collection([extraWizards.cho, ...wizards]);
+    const gryffindors = $.find({ house: "gryffindor" });
+    expect(gryffindors.data).toHaveLength(3);
   });
   it("returns a single row when finding by primary key", () => {
     const $ = new Collection(wizards, { primaryKey: "id" });
@@ -101,6 +102,7 @@ describe("find", () => {
   });
   it("chains subsequent find operations", () => {
     const $ = new Collection(wizards);
+
     expect(
       $.find({ house: "gryffindor" }).find({ name: "draco" }).data
     ).toHaveLength(0);
@@ -211,56 +213,66 @@ describe("offset", () => {
   });
 });
 
-describe("insert", () => {
-  // it("adds a record successfully", () => {
-  //   const $ = new Collection(wizards);
-  //   expect($.data).toHaveLength(4);
-  //   $.insert({
-  //     id: 5,
-  //     name: "neville",
-  //     house: "gryffindor",
-  //     born: 1980,
-  //     married: true,
-  //   });
-  //   expect($.data).toHaveLength(5);
-  // });
+// describe("insert", () => {
+//   // it("adds a record successfully", () => {
+//   //   const $ = new Collection(wizards);
+//   //   expect($.data).toHaveLength(4);
+//   //   $.insert({
+//   //     id: 5,
+//   //     name: "neville",
+//   //     house: "gryffindor",
+//   //     born: 1980,
+//   //     married: true,
+//   //   });
+//   //   expect($.data).toHaveLength(5);
+//   // });
 
-  // eslint-disable-next-line jest/no-commented-out-tests
-  // it("returns an error when adding with the same id", () => {
-  //   // const $ = new Collection(wizards);
-  //   const $ = new Collection(wizards, { primaryKey: "id" });
+//   // eslint-disable-next-line jest/no-commented-out-tests
+//   // it("returns an error when adding with the same id", () => {
+//   //   // const $ = new Collection(wizards);
+//   //   const $ = new Collection(wizards, { primaryKey: "id" });
 
-  //   expect(() => {
-  //     $.insert(wizards[0]);
-  //   }).toThrow(ConflictError);
-  // });
+//   //   expect(() => {
+//   //     $.insert(wizards[0]);
+//   //   }).toThrow(ConflictError);
+//   // });
 
-  it("returns an error when data doesn't have valid id", () => {
-    // const $ = new Collection(wizards);
+//   it("returns an error when data doesn't have valid id", () => {
+//     // const $ = new Collection(wizards);
 
-    expect(1).toBe(1);
-  });
+//     expect(1).toBe(1);
+//   });
 
-  it("allows multiple values to be inserted", () => {
-    // const $ = new Collection(wizards);
+//   it("allows multiple values to be inserted", () => {
+//     // const $ = new Collection(wizards);
 
-    expect(1).toBe(1);
-  });
-});
+//     expect(1).toBe(1);
+//   });
+// });
 
-describe("delete", () => {
-  it("deletes a subset", () => {
-    const $ = new Collection(wizards);
-    expect($.data).toHaveLength(4);
+// describe("delete", () => {
+//   it("deletes a subset", () => {
+//     // const $ = new Collection(wizards, { primaryKey: ["id"] });
+//     // expect($.data).toHaveLength(4);
 
-    $.find({ house: "slytherin" })
-      .assert(({ count }) => count === 1)
-      .set()
-      .limit(100)
-      .delete()
-      .commit();
+//     // $.find({ house: "gryffindor", married: false })
+//     //   .assert(({ count }) => count === 2)
+//     //   .set()
+//     //   .limit(100)
+//     //   .delete()
+//     //   .commit();
 
-    // expect($.data).toHaveLength(3);
-    expect(1).toBe(1);
-  });
-});
+//     const $ = new Collection(wizards);
+//     expect($.data).toHaveLength(4);
+
+//     $.find({ married: false })
+//       .assert(({ count }) => count === 2)
+//       .set()
+//       .limit(100)
+//       .delete()
+//       .commit();
+
+//     // expect($.data).toHaveLength(3);
+//     expect(1).toBe(1);
+//   });
+// });
