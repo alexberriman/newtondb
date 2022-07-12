@@ -1,4 +1,4 @@
-import { HashTable } from "../data/hash-table";
+import { HashTable, type HashTableItem } from "../data/hash-table";
 
 type Mutation = any; // @todo
 
@@ -55,7 +55,7 @@ export class Chain<
   // the purpose of this is to create a mutable table that can be
   // changed without impacting the original until the chain is
   // committed.
-  update(nodes: typeof this.hashTable.nodes, operation?: HistoryItem) {
+  update(nodes: HashTableItem<Index, DataType>[], operation?: HistoryItem) {
     this.hashTable = new HashTable(nodes);
 
     if (operation) {
