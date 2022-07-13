@@ -96,24 +96,21 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.observe](#observe) ❌
   - [.unobserve](#unobserve) ❌
 - [Collections](#collections)
-  - [`new Collection(options)`](#collection-options)
+  - [`new Collection(options)`](#collection-options) ✅
   - [.get](#get) ✅
   - [.find](#find) ✅
   - [.insert](#insert) ❌
   - [.update](#update) ❌
   - [.upsert](#upsert) ❌
-  - [.delete](#delete) ❌
-  - [.patch](#patch) ❌
-  - [.createPatch](#create-changeset) ❌
+  - [.delete](#delete) ✅
   - [.expand](#expand) ❌
   - [.sort](#sort) ❌
   - [.limit](#limit) ✅
   - [.offset](#offset) ✅
   - [.observe](#observe) ❌
   - [.unobserve](#unobserve) ❌
-  - [.or](#or) ❌
-  - [.assert](#assert) ❌
-- [Querying](#querying) ❌
+  - [.assert](#assert) ✅
+- [Querying](#querying) ✅
   - [By primary key](#by-primary-key) ✅
   - [Basic conditions](#basic-conditions) ✅
   - [Advanced conditions](#advanced-conditions) ✅
@@ -142,8 +139,6 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
       - [substring](#toLength) ✅
       - [Custom](#custom-preprocessors)
   - [By function](#by-functions) ✅
-  - [Extensions](#extensions) ❌
-    - [JsonLogic](#json-logic) ❌
 - [Relationships](#relationships) ❌
   - [one to one](#one-to-one) ❌
   - [one to many](#one-to-many) ❌
