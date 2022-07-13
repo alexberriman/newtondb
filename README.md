@@ -99,11 +99,11 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [`new Collection(options)`](#collection-options) ✅
   - [.get](#get) ✅
   - [.find](#find) ✅
-  - [.insert](#insert) ❌
-  - [.update](#update) ❌
-  - [.upsert](#upsert) ❌
+  - [.insert](#insert) ✅
+  - [.set](#set) ❌
+  - [.replace](#upsert) ❌
   - [.delete](#delete) ✅
-  - [.expand](#expand) ❌
+  - [.with](#expand) ❌
   - [.sort](#sort) ❌
   - [.limit](#limit) ✅
   - [.offset](#offset) ✅

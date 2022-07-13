@@ -282,3 +282,21 @@ describe("delete", () => {
     });
   });
 });
+
+describe("insert", () => {
+  it("inserts correctly to chain", () => {
+    const $ = new Collection(wizards, { primaryKey: "house" });
+
+    expect(
+      $.insert(extraWizards.neville).find({ name: "neville" }).count
+    ).toBeGreaterThan(0);
+  });
+
+  it("commits", () => {
+    const $ = new Collection(wizards);
+    expect($.find({ name: "neville" }).count).toBe(0);
+
+    $.insert(extraWizards.neville).commit();
+    expect($.find({ name: "neville" }).count).toBeGreaterThan(0);
+  });
+});

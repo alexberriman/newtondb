@@ -1,6 +1,10 @@
 import { HashTable, type HashTableItem } from "../data/hash-table";
-import { type Patch } from "../data/json-patch";
-import { type FunctionKeys } from "../utils/types";
+import {
+  TestAddReplaceOperation,
+  toPointer,
+  type Patch,
+} from "../data/json-patch";
+import { asArray, type FunctionKeys } from "../utils/types";
 import { type Collection } from "./collection";
 
 interface HistoryItem<DataType, IndexKeys extends keyof DataType, Index> {
@@ -94,6 +98,20 @@ export class Chain<
     if (operation) {
       this.history = [...this.history, operation];
     }
+  }
+
+  insert(item: DataType | DataType[]) {
+    const mutations = asArray(item).map((item) => {
+      const node = this.hashTable.toNode(item);
+
+      return {
+        op: "add",
+        path: toPointer(node.hash),
+        value: item as unknown as object,
+      } as TestAddReplaceOperation;
+    });
+
+    this.mutate(mutations);
   }
 
   commit(): CommitResult {

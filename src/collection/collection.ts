@@ -98,6 +98,7 @@ export class Collection<
         const result = this.delete(chain);
         return result;
       },
+      insert: (value: T | T[]) => this.insert(value, chain),
       get: (value: unknown) => this.get(value, chain),
       find: (value?: unknown) => this.find(value, chain),
       limit: (amount: number) => this.limit(amount, chain),
@@ -246,8 +247,13 @@ export class Collection<
     return this.chain(chain);
   }
 
-  insert() {
-    // @todo add to hash table
+  insert(
+    items: T | T[],
+    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+  ) {
+    chain.insert(items);
+
+    return this.chain(chain);
   }
 
   limit(

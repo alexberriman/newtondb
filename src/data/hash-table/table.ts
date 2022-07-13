@@ -11,7 +11,12 @@ import {
   isSingleArray,
   objectOfProperties,
 } from "../../utils/types";
-import { Patch, RemoveOperation, toTokens } from "../json-patch";
+import {
+  Patch,
+  RemoveOperation,
+  TestAddReplaceOperation,
+  toTokens,
+} from "../json-patch";
 
 // @todo freeze data
 
@@ -122,7 +127,7 @@ export class HashTable<
     return this.toArray();
   }
 
-  private createItem(item: Data) {
+  toNode(item: Data) {
     const { keyBy, properties } = this.options;
     const index = isPopulatedArray(keyBy)
       ? (objectSubset(item, keyBy) as unknown as Index)
@@ -238,7 +243,7 @@ export class HashTable<
   }
 
   insert(item: Data) {
-    const { data, hash, index } = this.createItem(item);
+    const { data, hash, index } = this.toNode(item);
     this.insertItem(data, hash, index);
   }
 
@@ -297,7 +302,7 @@ export class HashTable<
     }
 
     // the entire data object was passed through, delete (can delete by data even if not indexed)
-    const { data, hash } = this.createItem(itemOrIndex);
+    const { data, hash } = this.toNode(itemOrIndex);
     const index = (this.table[hash] ?? []).findIndex((item) =>
       isEqual(item.data, data)
     );
@@ -353,10 +358,24 @@ export class HashTable<
     this.table[hash].forEach((node) => this.deleteItem(node));
   }
 
+  private $patchAdd(operation: TestAddReplaceOperation) {
+    const { value } = operation;
+    if (!isObject(value)) {
+      throw new PatchError(operation, "Invalid data value");
+    }
+
+    this.insert(value as unknown as Data);
+  }
+
   patch(operations: Patch) {
     operations.forEach((operation) => {
-      if (operation.op === "remove") {
-        this.$patchRemove(operation);
+      const { op } = operation;
+      if (op === "remove") {
+        return this.$patchRemove(operation);
+      }
+
+      if (op === "add") {
+        return this.$patchAdd(operation);
       }
     });
   }
