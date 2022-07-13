@@ -4,3 +4,7 @@ export function shallowEqual(left: unknown[], right: unknown[]) {
     left.every((item, index) => item === right[index])
   );
 }
+
+export function flatten<T>(input: T[][]): T[] {
+  return input.reduce((flattened, items) => [...flattened, ...items], []);
+}

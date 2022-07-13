@@ -13,6 +13,8 @@ import {
 } from "../../utils/types";
 import { Patch, RemoveOperation, toTokens } from "../json-patch";
 
+// @todo freeze data
+
 interface HashTableOptions<IndexKeys, StorageKeys> {
   // need a key to generate a hash against for quick access
   // when a key is omitted, the array index will be used.

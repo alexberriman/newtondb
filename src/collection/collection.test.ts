@@ -89,29 +89,42 @@ describe("find", () => {
     const $ = new Collection(wizards);
     expect($.find().data).toHaveLength(wizards.length);
   });
+
   it("filters using a basic query", () => {
     const $ = new Collection([extraWizards.cho, ...wizards]);
+
     const gryffindors = $.find({ house: "gryffindor" });
     expect(gryffindors.data).toHaveLength(3);
   });
+
   it("returns a single row when finding by primary key", () => {
     const $ = new Collection(wizards, { primaryKey: "id" });
+
     const result = $.find(3);
     expect(result.data).toHaveLength(1);
     expect(result.data[0]).toMatchObject({ id: 3, name: "ron" });
   });
+
   it("chains subsequent find operations", () => {
     const $ = new Collection(wizards);
 
     expect(
       $.find({ house: "gryffindor" }).find({ name: "draco" }).data
     ).toHaveLength(0);
+
     expect(
       $.find({ house: "gryffindor" }).find({ name: "hermione" }).data
     ).toHaveLength(1);
+
+    // data get's chained to subsequent operations
+    expect(
+      $.find({ house: "gryffindor" }).find({ house: "slytherin" }).data
+    ).toHaveLength(0);
   });
+
   it("finds by function", () => {
     const $ = new Collection(wizards);
+
     const gryffindors = $.find(
       ({ house }: Wizard) => house === "gryffindor"
     ).data;
@@ -122,8 +135,10 @@ describe("find", () => {
       { id: 3, name: "ron" },
     ]);
   });
+
   it("finds by advanced condition", () => {
     const $ = new Collection(wizards);
+
     const gryffindors = $.find({
       property: "house",
       operator: "equal",
@@ -136,14 +151,17 @@ describe("find", () => {
       { id: 3, name: "ron" },
     ]);
   });
+
   it("throws an error when trying find by a scalar without a primary key", () => {
     expect(() => {
       const $ = new Collection(wizards);
       $.find(4);
     }).toThrow(FindError);
   });
+
   it("finds using primary key", () => {
     const $ = new Collection(wizards, { primaryKey: ["house"] });
+
     const gryffindors = $.find({ house: "gryffindor" });
     expect(gryffindors.data).toHaveLength(3);
     expect(gryffindors.data).toMatchObject([
@@ -151,6 +169,7 @@ describe("find", () => {
       { id: 2, name: "hermione" },
       { id: 3, name: "ron" },
     ]);
+
     const slytherins = $.find("slytherin");
     expect(slytherins.data).toHaveLength(1);
     expect(slytherins.data).toMatchObject([{ id: 4, name: "draco" }]);
@@ -249,38 +268,32 @@ describe("offset", () => {
 //   });
 // });
 
-// describe("delete", () => {
-//   it("deletes a subset", () => {
-//     // const $ = new Collection(wizards, { primaryKey: ["id"] });
-//     // expect($.data).toHaveLength(4);
+describe("delete", () => {
+  it("deletes a subset but doesn't persist when change isn't committed", () => {
+    const $ = new Collection(wizards, { primaryKey: "id" });
+    expect($.data).toHaveLength(4);
 
-//     // $.find({ house: "gryffindor", married: false })
-//     //   .assert(({ count }) => count === 2)
-//     //   .set()
-//     //   .limit(100)
-//     //   .delete()
-//     //   .commit();
+    expect(() => {
+      $.find({ house: "gryffindor" })
+        .assert(
+          "returned gryffindor students",
+          ({ count, data }) =>
+            count === 3 && data.every(({ house }) => house === "gryffindor")
+        )
+        .delete()
+        .find()
+        .assert(
+          "no gryffindor students (have been deleted)",
+          ({ count, data }) =>
+            count === 1 && data.every(({ house }) => house !== "gryffindor")
+        );
+    }).not.toThrow(AssertionError);
 
-//     const $ = new Collection(wizards);
-//     expect($.data).toHaveLength(4);
+    // mutations haven't been committed, so gryffindor students should be queryable still
+    expect($.find({ house: "gryffindor" }).count).toBeGreaterThan(0);
+  });
 
-//     const actual = $.find({ married: false })
-//       .assert(({ count }) => count === 2)
-//       .limit(100)
-//       .delete()
-//       .find();
-
-//     // should only see married wizards
-//     // console.log("actual", actual.data);
-//     expect(actual.data).toHaveLength(2);
-//     expect(actual.data).toMatchObject([
-//       { id: 1, married: true },
-//       { id: 4, married: true },
-//     ]);
-
-//     // console.log($);
-
-//     // expect($.data).toHaveLength(3);
-//     expect(1).toBe(1);
-//   });
-// });
+  it("deletes a subset and persists the change on commit", () => {
+    expect(1).toBe(1);
+  });
+});

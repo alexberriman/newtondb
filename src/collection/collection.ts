@@ -18,10 +18,14 @@ import {
   isCondition as isAdvancedCondition,
 } from "../data/advanced-query";
 import { AssertionError } from "../errors/assertion-error";
-import { createHash, HashTable, HashTableItem } from "../data/hash-table";
+import { HashTable, type HashTableItem } from "../data/hash-table";
 import { Chain } from "./chain";
-import { KeyError } from "../errors/key-error";
-import { createPatch } from "rfc6902";
+import {
+  type Patch,
+  type RemoveOperation,
+  toPointer,
+} from "../data/json-patch";
+import { flatten } from "../utils/array";
 
 interface CollectionOptions<T, IndexKeys> {
   primaryKey?: IndexKeys | IndexKeys[];
@@ -83,8 +87,12 @@ export class Collection<
       exists: chain.exists,
 
       // collection methods to chain
-      assert: (assertion: AssertionFunction<T, IndexKeys, Index>) =>
-        this.assert(assertion, chain),
+      assert: (
+        assertionFnOrDescription:
+          | AssertionFunction<T, IndexKeys, Index>
+          | string,
+        assertionFn?: AssertionFunction<T, IndexKeys, Index>
+      ) => this.assert(chain, assertionFnOrDescription, assertionFn),
       commit: () => this.commit(chain),
       delete: () => {
         const result = this.delete(chain);
@@ -100,8 +108,7 @@ export class Collection<
       },
     };
   }
-
-  private assert(
+  private $assert(
     assertion: AssertionFunction<T, IndexKeys, Index>,
     chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
   ) {
@@ -109,6 +116,26 @@ export class Collection<
       throw new AssertionError();
     }
 
+    return this.chain(chain);
+  }
+
+  private assert(
+    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable),
+    assertionFnOrDescription: AssertionFunction<T, IndexKeys, Index> | string,
+    assertionFn?: AssertionFunction<T, IndexKeys, Index>
+  ) {
+    if (typeof assertionFnOrDescription === "function") {
+      return this.$assert(assertionFnOrDescription, chain);
+    }
+
+    if (
+      typeof assertionFnOrDescription === "string" &&
+      typeof assertionFn === "function"
+    ) {
+      return this.$assert(assertionFn, chain);
+    }
+
+    // invalid argument, just chain
     return this.chain(chain);
   }
 
@@ -202,17 +229,18 @@ export class Collection<
   }
 
   set(chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)) {
-    const mutation = [{ fn: "set" }, { example: "alamat" }];
+    const mutation: Patch = [];
     chain.mutate(mutation);
 
     return this.chain(chain);
   }
 
   delete(chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)) {
-    const mutations = createPatch(
-      chain.nodes.reduce((o, node) => ({ ...o, [node.hash]: null }), {}),
-      {}
-    );
+    const mutations = flatten(
+      chain.nodes.map(({ hash, $order }) => [
+        { op: "remove", path: toPointer(hash, $order) },
+      ])
+    ) as RemoveOperation[];
     chain.mutate(mutations);
 
     return this.chain(chain);

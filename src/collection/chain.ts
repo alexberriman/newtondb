@@ -1,9 +1,7 @@
-import { applyPatch } from "rfc6902";
 import { HashTable, type HashTableItem } from "../data/hash-table";
-import { asArray, FunctionKeys } from "../utils/types";
+import { type Patch } from "../data/json-patch";
+import { type FunctionKeys } from "../utils/types";
 import { type Collection } from "./collection";
-
-type Mutation = any; // @todo
 
 interface HistoryItem<DataType, IndexKeys extends keyof DataType, Index> {
   operation: FunctionKeys<Collection<DataType, IndexKeys, Index>>;
@@ -15,12 +13,12 @@ export class Chain<
   IndexKeys extends keyof DataType,
   Index = Pick<DataType, IndexKeys>
 > {
-  mutations: Mutation[] = [];
+  mutations: Patch = [];
   history: HistoryItem<DataType, IndexKeys, Index>[] = [];
 
   // used to make rolling changes (such as .find() etc.)
   // @todo rename
-  hashTable: HashTable<DataType, IndexKeys, keyof DataType, Index, DataType>;
+  // hashTable: HashTable<DataType, IndexKeys, keyof DataType, Index, DataType>;
 
   // the 'master' table is the source of truth that contains all of the data items
   // it is updated on mutatable chain calls (such as .delete() and .set()) so you can
@@ -36,10 +34,10 @@ export class Chain<
   //
   // in the above example, gryffindor students were deleted (and a new master hash table was generated)
   // however the chain wasn't committed so the original data source remains in tact.
-  master: HashTable<DataType, IndexKeys, keyof DataType, Index, DataType>;
+  masterTable: HashTable<DataType, IndexKeys, keyof DataType, Index, DataType>;
 
   constructor(
-    public original: HashTable<
+    public hashTable: HashTable<
       DataType,
       IndexKeys,
       keyof DataType,
@@ -47,8 +45,7 @@ export class Chain<
       DataType
     >
   ) {
-    this.hashTable = original.clone();
-    this.master = original.clone();
+    this.masterTable = hashTable;
   }
 
   get data() {
@@ -73,11 +70,17 @@ export class Chain<
       : null;
   }
 
-  mutate(mutations: Mutation | Mutation[]) {
-    // @todo: apply patches to a hash table
-    applyPatch(this.master.table, asArray(mutations));
-    this.hashTable = this.master.clone();
-    this.mutations = [...this.mutations, ...asArray(mutations)];
+  mutate(mutations: Patch) {
+    // when mutating the hash table, first need to clone it so the original
+    // table isn't changed. the original table should only be mutated
+    // when the chain mutations are committed.
+    this.masterTable = this.masterTable.clone();
+    this.masterTable.patch(mutations);
+
+    // reset the rolling hash table so can start querying on it again
+    this.hashTable = this.masterTable;
+
+    this.mutations = [...this.mutations, ...mutations];
   }
 
   // accepts as input a set of nodes and creates a new hash table
@@ -88,8 +91,8 @@ export class Chain<
     nodes: HashTableItem<Index, DataType>[],
     operation?: HistoryItem<DataType, IndexKeys, Index>
   ) {
-    this.hashTable = new HashTable(nodes);
-
+    // since not mutating can create a shallow clone
+    this.hashTable = new HashTable(nodes, this.hashTable.options);
     if (operation) {
       this.history = [...this.history, operation];
     }

@@ -1,4 +1,5 @@
-import { dot, objectSubset } from "./object";
+import { wizards } from "../test-data";
+import { dot, keyBy, objectSubset } from "./object";
 
 test("objectSubset", () => {
   expect(
@@ -22,4 +23,14 @@ test("dot", () => {
   expect(dot(obj, "lorem")).toBeUndefined();
   expect(dot(obj, "house.a.b.d.a.name")).toBeUndefined();
   expect(dot(obj, "0.a.b.d.a.name")).toBeUndefined();
+});
+
+test("keyBy", () => {
+  const $wizards = keyBy(wizards, "id");
+  expect($wizards).toMatchObject({
+    1: wizards[0],
+    2: wizards[1],
+    3: wizards[2],
+    4: wizards[3],
+  });
 });
