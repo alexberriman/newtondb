@@ -1,5 +1,5 @@
-import { extraWizards, wizards } from "../test-data";
-import { HashTable } from "./hash-table";
+import { extraWizards, wizards } from "../../test-data";
+import { HashTable } from "./table";
 
 it("initializes correctly with default options", () => {
   const $ = new HashTable(wizards);
@@ -221,4 +221,27 @@ it("deletes by predicate", () => {
     { id: 2, house: "gryffindor" },
     { id: 4, house: "slytherin" },
   ]);
+});
+
+it("re-orders on delete", () => {
+  const $ = new HashTable(wizards, { keyBy: ["house"] });
+  $.delete(wizards[1]);
+  expect($.table['{"house":"gryffindor"}']).toMatchObject([
+    { $order: 0 },
+    { $order: 1 },
+  ]);
+});
+
+test("delete patch", () => {
+  const $ = new HashTable([...wizards, ...Object.values(extraWizards)], {
+    keyBy: ["house"],
+  });
+
+  $.patch([
+    { op: "remove", path: '/{"house":"gryffindor"}/1' },
+    { op: "remove", path: '/{"house":"gryffindor"}/1' },
+    { op: "remove", path: '/{"house":"slytherin"}' },
+  ]);
+
+  expect($.data).toMatchObject([{ id: 1 }, { id: 100 }, { id: 101 }]);
 });

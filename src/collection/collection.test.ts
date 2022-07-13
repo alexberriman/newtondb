@@ -249,38 +249,38 @@ describe("offset", () => {
 //   });
 // });
 
-describe("delete", () => {
-  it("deletes a subset", () => {
-    // const $ = new Collection(wizards, { primaryKey: ["id"] });
-    // expect($.data).toHaveLength(4);
+// describe("delete", () => {
+//   it("deletes a subset", () => {
+//     // const $ = new Collection(wizards, { primaryKey: ["id"] });
+//     // expect($.data).toHaveLength(4);
 
-    // $.find({ house: "gryffindor", married: false })
-    //   .assert(({ count }) => count === 2)
-    //   .set()
-    //   .limit(100)
-    //   .delete()
-    //   .commit();
+//     // $.find({ house: "gryffindor", married: false })
+//     //   .assert(({ count }) => count === 2)
+//     //   .set()
+//     //   .limit(100)
+//     //   .delete()
+//     //   .commit();
 
-    const $ = new Collection(wizards);
-    expect($.data).toHaveLength(4);
+//     const $ = new Collection(wizards);
+//     expect($.data).toHaveLength(4);
 
-    const actual = $.find({ married: false })
-      .assert(({ count }) => count === 2)
-      .limit(100)
-      .delete()
-      .find();
+//     const actual = $.find({ married: false })
+//       .assert(({ count }) => count === 2)
+//       .limit(100)
+//       .delete()
+//       .find();
 
-    // should only see married wizards
-    console.log("actual", actual.data);
-    expect(actual.data).toHaveLength(2);
-    expect(actual.data).toMatchObject([
-      { id: 1, married: true },
-      { id: 4, married: true },
-    ]);
+//     // should only see married wizards
+//     // console.log("actual", actual.data);
+//     expect(actual.data).toHaveLength(2);
+//     expect(actual.data).toMatchObject([
+//       { id: 1, married: true },
+//       { id: 4, married: true },
+//     ]);
 
-    console.log($);
+//     // console.log($);
 
-    // expect($.data).toHaveLength(3);
-    expect(1).toBe(1);
-  });
-});
+//     // expect($.data).toHaveLength(3);
+//     expect(1).toBe(1);
+//   });
+// });

@@ -8,6 +8,20 @@ export function isDefined<T>(value: T | undefined): value is T {
   return value !== undefined;
 }
 
+export function isNull<T>(value: T | null): value is null {
+  return value === null;
+}
+
+export function isNotNull<T>(value: T | null): value is T {
+  return value !== null;
+}
+
+export function isNotNullOrUndefined<T>(
+  value: T | null | undefined
+): value is T {
+  return isDefined(value) && isNotNull(value);
+}
+
 export function isScalar(value: unknown): value is string | number | boolean {
   return ["number", "string", "boolean"].includes(typeof value);
 }
@@ -22,6 +36,13 @@ export function isPopulatedArray<T, Y>(value: T[] | Y): value is T[] {
 
 export function isNumber(value: unknown): value is number {
   return typeof value === "number";
+}
+
+export function isNumeric(value: unknown) {
+  return (
+    typeof value === "number" ||
+    (typeof value === "string" && parseInt(value, 10).toString() === value)
+  );
 }
 
 export function isObject(value: unknown): value is Record<string, unknown> {
@@ -48,7 +69,7 @@ export function isSingular<T>(value: unknown): value is T {
 }
 
 export function asArray<T>(value: T | T[] | null | undefined): T[] {
-  if (!value) {
+  if (!isNotNullOrUndefined(value)) {
     return [];
   }
 

@@ -1,14 +1,17 @@
 import cloneDeep from "lodash.clonedeep";
 import isEqual from "lodash.isequal";
-import { shallowEqual } from "../utils/array";
-import { objectSubset } from "../utils/object";
+import { PatchError } from "../../errors/patch-error";
+import { shallowEqual } from "../../utils/array";
+import { objectSubset } from "../../utils/object";
 import {
+  isNumeric,
   isObject,
   isPopulatedArray,
   isScalar,
   isSingleArray,
   objectOfProperties,
-} from "../utils/types";
+} from "../../utils/types";
+import { Patch, RemoveOperation, toTokens } from "../json-patch";
 
 interface HashTableOptions<IndexKeys, StorageKeys> {
   // need a key to generate a hash against for quick access
@@ -31,6 +34,16 @@ export interface HashTableItem<Index, DataItem> {
   data: DataItem;
   previous: HashTableItem<Index, DataItem> | null;
   next: HashTableItem<Index, DataItem> | null;
+
+  // order in the hash array. If using the primary key as the index,
+  // each hash table entry (which is an array) should only contain
+  // a single node, since the primary key should uniquely identify
+  // the record. However, if using a non-unique key as the index
+  // (e.g. creating a secondary key for faster reads), the hash array
+  // will contain multiple records. Storing the order within the array
+  // at write time will allow instant retrieval from the hash table
+  // during reads.
+  $order: number;
 }
 
 // @todo move to util
@@ -45,6 +58,7 @@ function isHashTableItem<Index, DataItem>(
       "data",
       "previous",
       "next",
+      "$order",
     ])
   );
 }
@@ -67,7 +81,10 @@ export class HashTable<
   tail: HashTableItem<Index, DataItem> | null = null;
   head: HashTableItem<Index, DataItem> | null = null;
 
-  constructor(items: HashTableItem<Index, DataItem>[]);
+  constructor(
+    items: HashTableItem<Index, DataItem>[],
+    options?: HashTableOptions<IndexKeys, StorageKeys>
+  );
   constructor(
     items: Data[],
     options?: HashTableOptions<IndexKeys, StorageKeys>
@@ -121,11 +138,20 @@ export class HashTable<
     return this.table[hash] ?? [];
   }
 
-  private deleteItem(
-    item: HashTableItem<Index, DataItem>,
-    hash: string,
-    index: number
-  ) {
+  // resizes a hash by re-setting the $order attribute after
+  // an item has been deleted
+  private resize(hash: string, from: number) {
+    const entry = this.table[hash];
+
+    if (entry && entry.length >= from) {
+      for (let index = from; index < entry.length; index++) {
+        this.table[hash][index].$order = index;
+      }
+    }
+  }
+
+  private deleteItem(item: HashTableItem<Index, DataItem>) {
+    const { hash, $order } = item;
     const { previous, next } = item;
 
     // update items to the left and right in the linked list to prepare for delete
@@ -148,8 +174,11 @@ export class HashTable<
       delete this.table[hash];
     } else {
       // delete a single item from the hash table
-      this.table[hash].splice(index, 1);
+      this.table[hash].splice($order, 1);
     }
+
+    // @todo re-order
+    this.resize(hash, $order);
 
     --this.size;
   }
@@ -161,26 +190,26 @@ export class HashTable<
     const hash = createHash(index);
     if (this.table[hash]) {
       if (!predicate) {
-        [...this.table[hash]].forEach((item, index) =>
-          this.deleteItem(item, hash, index)
-        );
+        [...this.table[hash]].forEach((item) => this.deleteItem(item));
       } else {
         [...this.table[hash]]
           .filter(({ data }) => predicate(data))
-          .map((item, index) => this.deleteItem(item, hash, index));
+          .forEach((item) => this.deleteItem(item));
       }
     }
   }
 
   private insertItem(data: DataItem, hash: string, index: string | Index) {
+    const currentValue = this.table[hash] ?? [];
     const node = {
       index,
       hash,
       data: data as unknown as DataItem,
       previous: this.head,
       next: null,
+      $order: currentValue.length,
     };
-    this.table[hash] = [...(this.table[hash] ?? []), node];
+    this.table[hash] = [...currentValue, node];
 
     if (this.head) {
       // update current head to point to newly created node
@@ -271,18 +300,62 @@ export class HashTable<
       isEqual(item.data, data)
     );
     if (index >= 0) {
-      this.deleteItem(this.table[hash][index], hash, index);
+      this.deleteItem(this.table[hash][index]);
     }
   }
 
   clone() {
     // @todo more efficient don't rely on cloneDeep
-    // create a clone of the hash table
-    const $nodes = cloneDeep(this.nodes);
-    return new HashTable($nodes);
+    const $nodes = this.nodes.map((node) => ({
+      ...node,
+      // clone data to break reference to original object
+      data: cloneDeep(node.data),
+      // reset the linked list references temporarily to `null`
+      previous: null,
+      next: null,
+    })) as typeof this.nodes;
+
+    // re-build the linked list references to the newly created objects
+    $nodes.forEach((node, index) => {
+      if (index > 0) {
+        node.previous = $nodes[index - 1];
+      }
+      if (index < $nodes.length - 1) {
+        node.next = $nodes[index + 1];
+      }
+    });
+
+    const cloned = new HashTable<Data, IndexKeys, StorageKeys, Index, DataItem>(
+      $nodes,
+      { ...this.options }
+    );
+
+    return cloned;
   }
 
-  patch() {
-    // @todo apply patches
+  private $patchRemove(operation: RemoveOperation) {
+    const { path } = operation;
+    const [hash, index] = toTokens(path);
+    if (isNumeric(index)) {
+      // delete a specific node
+      const $index = parseInt(index, 10);
+      const node = this.table[hash]?.[$index];
+      if (!node) {
+        throw new PatchError(operation, "Node does not exist");
+      }
+
+      return this.deleteItem(node);
+    }
+
+    // delete an entire hash
+    this.table[hash].forEach((node) => this.deleteItem(node));
+  }
+
+  patch(operations: Patch) {
+    operations.forEach((operation) => {
+      if (operation.op === "remove") {
+        this.$patchRemove(operation);
+      }
+    });
   }
 }
