@@ -8,6 +8,10 @@ interface HistoryItem<DataType, IndexKeys extends keyof DataType, Index> {
   args: unknown[];
 }
 
+interface CommitResult {
+  mutations: Patch;
+}
+
 export class Chain<
   DataType,
   IndexKeys extends keyof DataType,
@@ -20,21 +24,14 @@ export class Chain<
   // @todo rename
   // hashTable: HashTable<DataType, IndexKeys, keyof DataType, Index, DataType>;
 
-  // the 'master' table is the source of truth that contains all of the data items
-  // it is updated on mutatable chain calls (such as .delete() and .set()) so you can
-  // perform sequential mutatable/non-mutatable prior to committing.
-  //
-  // for example:
-  // $
-  //  .find({ house: "gryffindor" }) // find all gryffindor students from original data source
-  //  .assert(({ count }) => count > ) // will return `true` as there are students from gryffindor in the db
-  //  .delete() // will delete gryffindor students
-  //  .find({ house: "gryffindor" })
-  //  .assert(({ count }) => count === 0) // will return `true` since the above `delete` mutation has been applied to master
-  //
-  // in the above example, gryffindor students were deleted (and a new master hash table was generated)
-  // however the chain wasn't committed so the original data source remains in tact.
+  // the master table is the source of truth that contains all of the data items
+  // it is only updated when .commit() is called
   masterTable: HashTable<DataType, IndexKeys, keyof DataType, Index, DataType>;
+
+  // the mutable table is what is updated when mutable functions are executed
+  // (.delete(), .set(), .update()). Mutable table changes are committed to the
+  // master table when `.commit()` is called
+  mutableTable: HashTable<DataType, IndexKeys, keyof DataType, Index, DataType>;
 
   constructor(
     public hashTable: HashTable<
@@ -46,6 +43,7 @@ export class Chain<
     >
   ) {
     this.masterTable = hashTable;
+    this.mutableTable = hashTable;
   }
 
   get data() {
@@ -74,11 +72,11 @@ export class Chain<
     // when mutating the hash table, first need to clone it so the original
     // table isn't changed. the original table should only be mutated
     // when the chain mutations are committed.
-    this.masterTable = this.masterTable.clone();
-    this.masterTable.patch(mutations);
+    this.mutableTable = this.mutableTable.clone();
+    this.mutableTable.patch(mutations);
 
     // reset the rolling hash table so can start querying on it again
-    this.hashTable = this.masterTable;
+    this.hashTable = this.mutableTable;
 
     this.mutations = [...this.mutations, ...mutations];
   }
@@ -96,5 +94,11 @@ export class Chain<
     if (operation) {
       this.history = [...this.history, operation];
     }
+  }
+
+  commit(): CommitResult {
+    this.masterTable.patch(this.mutations);
+
+    return { mutations: this.mutations };
   }
 }

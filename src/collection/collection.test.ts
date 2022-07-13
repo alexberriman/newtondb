@@ -1,4 +1,3 @@
-// import { ConflictError } from "../errors/conflict-error";
 import { AssertionError } from "../errors/assertion-error";
 import { FindError } from "../errors/find-error";
 import { extraWizards, Wizard, wizards } from "../test-data";
@@ -232,42 +231,6 @@ describe("offset", () => {
   });
 });
 
-// describe("insert", () => {
-//   it("adds a record successfully", () => {
-//     const $ = new Collection(wizards);
-//     expect($.data).toHaveLength(4);
-//     $.insert({
-//       id: 5,
-//       name: "neville",
-//       house: "gryffindor",
-//       born: 1980,
-//       married: true,
-//     });
-//     expect($.data).toHaveLength(5);
-//   });
-
-//   it("returns an error when adding with the same id", () => {
-//     // const $ = new Collection(wizards);
-//     const $ = new Collection(wizards, { primaryKey: "id" });
-
-//     expect(() => {
-//       $.insert(wizards[0]);
-//     }).toThrow(ConflictError);
-//   });
-
-//   it("returns an error when data doesn't have valid id", () => {
-//     // const $ = new Collection(wizards);
-
-//     expect(1).toBe(1);
-//   });
-
-//   it("allows multiple values to be inserted", () => {
-//     // const $ = new Collection(wizards);
-
-//     expect(1).toBe(1);
-//   });
-// });
-
 describe("delete", () => {
   it("deletes a subset but doesn't persist when change isn't committed", () => {
     const $ = new Collection(wizards, { primaryKey: "id" });
@@ -294,6 +257,28 @@ describe("delete", () => {
   });
 
   it("deletes a subset and persists the change on commit", () => {
-    expect(1).toBe(1);
+    const $ = new Collection([...wizards, ...Object.values(extraWizards)], {
+      primaryKey: "id",
+    });
+    expect($.data).toHaveLength(6);
+
+    const result = $.find({ name: "cho" })
+      .delete()
+      .find({ married: false })
+      .delete()
+      .commit();
+    expect($.data).toMatchObject([
+      { id: 1, name: "harry" },
+      { id: 4, name: "draco" },
+    ]);
+
+    expect(result).toMatchObject({
+      mutations: [
+        { op: "remove", path: '/{"id":101}/0' },
+        { op: "remove", path: '/{"id":2}/0' },
+        { op: "remove", path: '/{"id":3}/0' },
+        { op: "remove", path: '/{"id":100}/0' },
+      ],
+    });
   });
 });

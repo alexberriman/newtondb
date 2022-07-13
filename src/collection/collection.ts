@@ -93,7 +93,7 @@ export class Collection<
           | string,
         assertionFn?: AssertionFunction<T, IndexKeys, Index>
       ) => this.assert(chain, assertionFnOrDescription, assertionFn),
-      commit: () => this.commit(chain),
+      commit: () => chain.commit(),
       delete: () => {
         const result = this.delete(chain);
         return result;
@@ -246,13 +246,7 @@ export class Collection<
     return this.chain(chain);
   }
 
-  private commit(
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
-  ) {
-    // @todo
-  }
-
-  insert(record: T) {
+  insert() {
     // @todo add to hash table
   }
 
