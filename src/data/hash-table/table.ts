@@ -1,10 +1,10 @@
 import cloneDeep from "lodash.clonedeep";
 import isEqual from "lodash.isequal";
+import set from "lodash.set";
 import { PatchError } from "../../errors/patch-error";
 import { shallowEqual } from "../../utils/array";
 import { objectSubset } from "../../utils/object";
 import {
-  isNumeric,
   isObject,
   isPopulatedArray,
   isScalar,
@@ -51,6 +51,11 @@ export interface HashTableItem<Index, DataItem> {
   // at write time will allow instant retrieval from the hash table
   // during reads.
   $order: number;
+
+  // each node needs an internal unique identifier (so using an auto
+  // incrementing number) to uniquely identify a node when generating
+  // and executing chained mutations.
+  $id: number;
 }
 
 // @todo move to util
@@ -65,6 +70,7 @@ function isHashTableItem<Index, DataItem>(
       "data",
       "previous",
       "next",
+      "$id",
       "$order",
     ])
   );
@@ -81,8 +87,10 @@ export class HashTable<
   Index = Pick<Data, IndexKeys>,
   DataItem = Pick<Data, StorageKeys>
 > {
+  latestId = 0;
   size = 0;
   table: Record<string, HashTableItem<Index, DataItem>[]> = {};
+  items: Record<string, HashTableItem<Index, DataItem>> = {}; // @todo make private
 
   // doubly linked list to be able to convert between array and hash map
   tail: HashTableItem<Index, DataItem> | null = null;
@@ -158,7 +166,7 @@ export class HashTable<
   }
 
   private deleteItem(item: HashTableItem<Index, DataItem>) {
-    const { hash, $order } = item;
+    const { hash, $id } = item;
     const { previous, next } = item;
 
     // update items to the left and right in the linked list to prepare for delete
@@ -176,16 +184,19 @@ export class HashTable<
       this.head = previous;
     }
 
-    if (this.table[hash].length === 1) {
-      // delete the entire hash when this is the only item
+    // fetch node from current table (node passed through may have been cloned with different options)
+    const $node = this.items[$id];
+
+    // delete a single item from the hash table
+    delete this.items[$id];
+    delete this.table[hash][$node.$order];
+    this.table[hash].splice($node.$order, 1);
+
+    if (this.table[hash].length === 0) {
       delete this.table[hash];
-    } else {
-      // delete a single item from the hash table
-      this.table[hash].splice($order, 1);
     }
 
-    // @todo re-order
-    this.resize(hash, $order);
+    this.resize(hash, $node.$order);
 
     --this.size;
   }
@@ -206,7 +217,12 @@ export class HashTable<
     }
   }
 
-  private insertItem(data: DataItem, hash: string, index: string | Index) {
+  private insertItem(
+    data: DataItem,
+    hash: string,
+    index: string | Index,
+    $id?: number
+  ) {
     const currentValue = this.table[hash] ?? [];
     const node = {
       index,
@@ -214,6 +230,7 @@ export class HashTable<
       data: data as unknown as DataItem,
       previous: this.head,
       next: null,
+      $id: $id ?? this.latestId,
       $order: currentValue.length,
     };
     this.table[hash] = [...currentValue, node];
@@ -229,14 +246,17 @@ export class HashTable<
     }
 
     this.head = node;
+    this.items[node.$id] = node;
+
+    ++this.latestId;
     ++this.size;
   }
 
   private $insert(item: Data | HashTableItem<Index, DataItem>) {
     if (isHashTableItem<Index, DataItem>(item)) {
       // insert hash table item
-      const { data, hash, index } = item;
-      return this.insertItem(data, hash, index); // @todo might need to deep clone
+      const { data, hash, index, $id } = item;
+      return this.insertItem(data, hash, index, $id); // @todo might need to deep clone
     }
 
     this.insert(item);
@@ -336,17 +356,17 @@ export class HashTable<
       $nodes,
       { ...this.options }
     );
+    cloned.latestId = this.latestId;
 
     return cloned;
   }
 
   private $patchRemove(operation: RemoveOperation) {
     const { path } = operation;
-    const [hash, index] = toTokens(path);
-    if (isNumeric(index)) {
+    const [hash, $id] = toTokens(path);
+    if ($id && this.items[$id]) {
       // delete a specific node
-      const $index = parseInt(index, 10);
-      const node = this.table[hash]?.[$index];
+      const node = this.items[$id];
       if (!node) {
         throw new PatchError(operation, "Node does not exist");
       }
@@ -355,16 +375,49 @@ export class HashTable<
     }
 
     // delete an entire hash
-    this.table[hash].forEach((node) => this.deleteItem(node));
-  }
-
-  private $patchAdd(operation: TestAddReplaceOperation) {
-    const { value } = operation;
-    if (!isObject(value)) {
-      throw new PatchError(operation, "Invalid data value");
+    if (hash && this.table[hash]) {
+      this.table[hash].forEach((node) => this.deleteItem(node));
+      return;
     }
 
-    this.insert(value as unknown as Data);
+    throw new PatchError(operation, "Invalid operation");
+  }
+
+  // could be adding a new node (entire object), or a new attribute to an existing node
+  private $patchAdd(operation: TestAddReplaceOperation) {
+    const { value } = operation;
+    const [, $id, ...path] = toTokens(operation.path);
+
+    if ($id && this.items[$id] && path.length > 0) {
+      // adding a new attribute to an existing node
+      set(
+        this.items[$id].data as unknown as object, // @todo use own
+        path.join("."),
+        value
+      );
+      return;
+    }
+
+    if (!$id && isObject(value)) {
+      return this.insert(value as unknown as Data);
+    }
+
+    throw new PatchError(operation, "Invalid data value");
+  }
+
+  private $patchReplace(operation: TestAddReplaceOperation) {
+    const [, $id, ...path] = toTokens(operation.path);
+    const node = this.items[$id];
+    if (!node) {
+      throw new PatchError(operation, "Node does not exist");
+    }
+
+    // use dot notation to set nested data structures
+    set<DataItem>(
+      node.data as unknown as object, // @todo use own
+      path.join("."),
+      operation.value
+    );
   }
 
   patch(operations: Patch) {
@@ -376,6 +429,10 @@ export class HashTable<
 
       if (op === "add") {
         return this.$patchAdd(operation);
+      }
+
+      if (op === "replace") {
+        return this.$patchReplace(operation);
       }
     });
   }

@@ -4,6 +4,7 @@ export interface Wizard {
   house: string;
   born: number;
   married: boolean;
+  wand?: string;
 }
 
 export interface House {

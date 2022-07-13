@@ -20,12 +20,6 @@ import {
 import { AssertionError } from "../errors/assertion-error";
 import { HashTable, type HashTableItem } from "../data/hash-table";
 import { Chain } from "./chain";
-import {
-  type Patch,
-  type RemoveOperation,
-  toPointer,
-} from "../data/json-patch";
-import { flatten } from "../utils/array";
 
 interface CollectionOptions<T, IndexKeys> {
   primaryKey?: IndexKeys | IndexKeys[];
@@ -103,10 +97,7 @@ export class Collection<
       find: (value?: unknown) => this.find(value, chain),
       limit: (amount: number) => this.limit(amount, chain),
       offset: (amount: number) => this.offset(amount, chain),
-      set: () => {
-        const result = this.set(chain);
-        return result;
-      },
+      set: (value: Partial<T>) => this.set(value, chain),
     };
   }
   private $assert(
@@ -229,20 +220,17 @@ export class Collection<
     return this.chain(chain);
   }
 
-  set(chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)) {
-    const mutation: Patch = [];
-    chain.mutate(mutation);
+  set(
+    value: Partial<T>,
+    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+  ) {
+    chain.set(value);
 
     return this.chain(chain);
   }
 
   delete(chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)) {
-    const mutations = flatten(
-      chain.nodes.map(({ hash, $order }) => [
-        { op: "remove", path: toPointer(hash, $order) },
-      ])
-    ) as RemoveOperation[];
-    chain.mutate(mutations);
+    chain.delete();
 
     return this.chain(chain);
   }

@@ -1,9 +1,12 @@
 import { HashTable, type HashTableItem } from "../data/hash-table";
 import {
+  createUpdateOperations,
+  RemoveOperation,
   TestAddReplaceOperation,
   toPointer,
   type Patch,
 } from "../data/json-patch";
+import { flatten } from "../utils/array";
 import { asArray, type FunctionKeys } from "../utils/types";
 import { type Collection } from "./collection";
 
@@ -94,10 +97,23 @@ export class Chain<
     operation?: HistoryItem<DataType, IndexKeys, Index>
   ) {
     // since not mutating can create a shallow clone
+    const { latestId } = this.hashTable; // @todo create shallowClone()
     this.hashTable = new HashTable(nodes, this.hashTable.options);
+    this.hashTable.latestId = latestId;
+
     if (operation) {
       this.history = [...this.history, operation];
     }
+  }
+
+  delete() {
+    const mutations = flatten(
+      this.hashTable.nodes.map(({ hash, $id }) => [
+        { op: "remove", path: toPointer(hash, $id) },
+      ])
+    ) as RemoveOperation[];
+
+    this.mutate(mutations);
   }
 
   insert(item: DataType | DataType[]) {
@@ -112,6 +128,20 @@ export class Chain<
     });
 
     this.mutate(mutations);
+  }
+
+  set(update: Partial<DataType>) {
+    const mutations = flatten(
+      this.hashTable.nodes
+        .map((node) =>
+          createUpdateOperations(node.data, update, [node.hash, node.$id])
+        )
+        .filter((operations) => operations.length > 0)
+    );
+
+    if (mutations.length > 0) {
+      this.mutate(mutations);
+    }
   }
 
   commit(): CommitResult {

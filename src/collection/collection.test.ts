@@ -274,10 +274,10 @@ describe("delete", () => {
 
     expect(result).toMatchObject({
       mutations: [
-        { op: "remove", path: '/{"id":101}/0' },
-        { op: "remove", path: '/{"id":2}/0' },
-        { op: "remove", path: '/{"id":3}/0' },
-        { op: "remove", path: '/{"id":100}/0' },
+        { op: "remove", path: '/{"id":101}/5' },
+        { op: "remove", path: '/{"id":2}/1' },
+        { op: "remove", path: '/{"id":3}/2' },
+        { op: "remove", path: '/{"id":100}/4' },
       ],
     });
   });
@@ -298,5 +298,72 @@ describe("insert", () => {
 
     $.insert(extraWizards.neville).commit();
     expect($.find({ name: "neville" }).count).toBeGreaterThan(0);
+  });
+});
+
+describe("set", () => {
+  it("sets using a basic object", () => {
+    const $ = new Collection(wizards, { primaryKey: "house" });
+    const condition = {
+      property: "name",
+      operator: "in",
+      value: ["ron", "hermione"],
+    };
+
+    expect(() => {
+      $.find(condition)
+        .assert("Neither are married", ({ data }) =>
+          data.every(({ married }) => married === false)
+        )
+        .set({ married: true })
+        .commit();
+    }).not.toThrow(AssertionError);
+
+    expect($.find(condition).data).toMatchObject([
+      { name: "hermione", married: true },
+      { name: "ron", married: true },
+    ]);
+  });
+
+  it("sets through complex chains", () => {
+    const $ = new Collection(wizards);
+    $.find({ name: "harry" })
+      .delete()
+      .find({ name: "draco" })
+      .set({ wand: "elder wand" })
+      .insert(extraWizards.neville)
+      .find({ name: "ron" })
+      .delete()
+      .find({ wand: "elder wand" })
+      .set({ name: "Draco Malfoy (with elder wand)" })
+      .find({ married: false })
+      .set({ married: true })
+      .insert(extraWizards.cho)
+      .commit();
+
+    expect($.data).toMatchObject([
+      { id: 2, name: "hermione", married: true },
+      {
+        id: 4,
+        name: "Draco Malfoy (with elder wand)",
+        married: true,
+        wand: "elder wand",
+      },
+      { id: 100, name: "neville", married: true },
+      { id: 101, name: "cho", married: true },
+    ]);
+
+    $.find({ house: "slytherin" })
+      .set({ wand: "Hawthorn wood", name: "Draco Malfoy (lost the elder wand" })
+      .commit();
+
+    expect($.get({ house: "slytherin" }).data).toMatchObject({
+      id: 4,
+      name: "Draco Malfoy (lost the elder wand",
+      house: "slytherin",
+      born: 1980,
+      married: true,
+      wand: "Hawthorn wood",
+    });
   });
 });

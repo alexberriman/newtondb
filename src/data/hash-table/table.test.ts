@@ -236,10 +236,9 @@ test("delete patch", () => {
   const $ = new HashTable([...wizards, ...Object.values(extraWizards)], {
     keyBy: ["house"],
   });
-
   $.patch([
     { op: "remove", path: '/{"house":"gryffindor"}/1' },
-    { op: "remove", path: '/{"house":"gryffindor"}/1' },
+    { op: "remove", path: '/{"house":"gryffindor"}/2' },
     { op: "remove", path: '/{"house":"slytherin"}' },
   ]);
 

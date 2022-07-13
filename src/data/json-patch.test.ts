@@ -1,4 +1,5 @@
-import { toPointer, toTokens } from "./json-patch";
+import { wizards } from "../test-data";
+import { createUpdateOperations, toPointer, toTokens } from "./json-patch";
 
 describe("toTokens", () => {
   test.each([
@@ -35,4 +36,47 @@ describe("toPointer", () => {
       expect(toPointer(input)).toEqual(expected);
     }
   );
+});
+
+describe("createUpdateOperations", () => {
+  it("creates successfully", () => {
+    const actual = createUpdateOperations(wizards[0], {
+      name: "sirius",
+      married: true,
+      wand: "phoenix feather",
+    });
+
+    expect(actual).toEqual([
+      { op: "replace", value: "sirius", path: "/name" },
+      { op: "add", value: "phoenix feather", path: "/wand" },
+    ]);
+  });
+
+  it("uses a prefix", () => {
+    const actual = createUpdateOperations(
+      wizards[0],
+      {
+        name: "sirius",
+      },
+      "lorem/~ipsum"
+    );
+
+    expect(actual).toEqual([
+      { op: "replace", value: "sirius", path: "/lorem~1~0ipsum/name" },
+    ]);
+  });
+
+  it("creates from a prefix array", () => {
+    const actual = createUpdateOperations(
+      wizards[0],
+      {
+        name: "sirius",
+      },
+      ["lor~em", "ipsu/m"]
+    );
+
+    expect(actual).toEqual([
+      { op: "replace", value: "sirius", path: "/lor~0em/ipsu~1m/name" },
+    ]);
+  });
 });

@@ -1,4 +1,4 @@
-import { asArray } from "../utils/types";
+import { asArray, isDefined } from "../utils/types";
 
 type BaseOperation = { path: string };
 
@@ -46,4 +46,20 @@ export function toPointer(
   const paths = [...asArray(path), ...extraPaths];
 
   return `/${paths.map((path) => escape(path.toString())).join("/")}`;
+}
+
+// compares a partial object to the original to determine which properties
+// need to be added and updated.
+export function createUpdateOperations<T>(
+  original: T,
+  update: Partial<T>,
+  prefix?: string | number | (string | number)[]
+) {
+  return Object.entries(update)
+    .filter(([key, value]) => original[key as keyof T] !== value)
+    .map(([key, value]) => ({
+      op: isDefined(original[key as keyof T]) ? "replace" : "add",
+      value,
+      path: `${prefix ? toPointer(prefix) : ""}${toPointer(key)}`,
+    })) as unknown as TestAddReplaceOperation[];
 }
