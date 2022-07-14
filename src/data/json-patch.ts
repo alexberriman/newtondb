@@ -1,4 +1,5 @@
-import { asArray, isDefined } from "../utils/types";
+import { createPatch as createRfcPatch } from "rfc6902";
+import { asArray } from "../utils/types";
 
 type BaseOperation = { path: string };
 
@@ -48,18 +49,40 @@ export function toPointer(
   return `/${paths.map((path) => escape(path.toString())).join("/")}`;
 }
 
-// compares a partial object to the original to determine which properties
-// need to be added and updated.
-export function createUpdateOperations<T>(
-  original: T,
-  update: Partial<T>,
+export function createPatch(
+  left: unknown,
+  right: unknown,
   prefix?: string | number | (string | number)[]
 ) {
-  return Object.entries(update)
-    .filter(([key, value]) => original[key as keyof T] !== value)
-    .map(([key, value]) => ({
-      op: isDefined(original[key as keyof T]) ? "replace" : "add",
-      value,
-      path: `${prefix ? toPointer(prefix) : ""}${toPointer(key)}`,
-    })) as unknown as TestAddReplaceOperation[];
+  return withPrefix(createRfcPatch(left, right), prefix) as Patch;
+}
+
+// compares a partial object to the original to determine which properties
+// need to be added and updated.
+export function createPartialPatch(
+  original: object,
+  update: object,
+  prefix?: string | number | (string | number)[]
+) {
+  return withPrefix(
+    createPatch(original, {
+      ...original,
+      ...update,
+    }),
+    prefix
+  ) as Patch;
+}
+
+export function withPrefix(
+  patch: Patch,
+  prefix?: string | number | (string | number)[]
+) {
+  if (!prefix) {
+    return patch;
+  }
+
+  return patch.map((operation) => ({
+    ...operation,
+    path: `${prefix ? toPointer(prefix) : ""}${operation.path}`,
+  }));
 }

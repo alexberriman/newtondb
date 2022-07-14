@@ -1,13 +1,14 @@
 import { HashTable, type HashTableItem } from "../data/hash-table";
 import {
-  createUpdateOperations,
+  createPartialPatch,
+  createPatch,
   RemoveOperation,
   TestAddReplaceOperation,
   toPointer,
   type Patch,
 } from "../data/json-patch";
 import { flatten } from "../utils/array";
-import { asArray, type FunctionKeys } from "../utils/types";
+import { asArray, isCallable, type FunctionKeys } from "../utils/types";
 import { type Collection } from "./collection";
 
 interface HistoryItem<DataType, IndexKeys extends keyof DataType, Index> {
@@ -130,26 +131,46 @@ export class Chain<
     this.mutate(mutations);
   }
 
-  set(
-    update:
+  private setOrReplace(
+    updateFnOrObject:
+      | DataType
       | Partial<DataType>
-      | ((item: DataType) => DataType | Partial<DataType>)
+      | ((item: DataType) => Partial<DataType>)
+      | ((item: DataType) => DataType),
+    patchFn: typeof createPartialPatch | typeof createPatch
   ) {
     const mutations = flatten(
       this.hashTable.nodes
-        .map((node) =>
-          createUpdateOperations(
-            node.data,
-            typeof update === "function" ? update(node.data) : update,
-            [node.hash, node.$id]
-          )
-        )
+        .map((node) => {
+          const updated = isCallable<
+            (arg0: DataType) => DataType | Partial<DataType>
+          >(updateFnOrObject)
+            ? updateFnOrObject(node.data)
+            : updateFnOrObject;
+
+          return patchFn(node.data as unknown as object, updated, [
+            node.hash,
+            node.$id,
+          ]);
+        })
         .filter((operations) => operations.length > 0)
     );
 
     if (mutations.length > 0) {
       this.mutate(mutations);
     }
+  }
+
+  set(
+    update:
+      | Partial<DataType>
+      | ((item: DataType) => DataType | Partial<DataType>)
+  ) {
+    return this.setOrReplace(update, createPartialPatch);
+  }
+
+  replace(document: DataType | ((item: DataType) => DataType)) {
+    return this.setOrReplace(document, createPatch);
   }
 
   commit(): CommitResult {

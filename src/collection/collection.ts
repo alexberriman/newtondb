@@ -43,7 +43,7 @@ export type FindPredicate<T, Y> = (
 
 export class Collection<
   T,
-  IndexKeys extends keyof T,
+  IndexKeys extends keyof T = keyof T,
   Index = Pick<T, IndexKeys>
 > {
   primaryKey: IndexKeys[];
@@ -97,6 +97,7 @@ export class Collection<
       find: (value?: unknown) => this.$find(value, chain),
       limit: (amount: number) => this.$limit(amount, chain),
       offset: (amount: number) => this.$offset(amount, chain),
+      replace: (value: T | ((item: T) => T)) => this.$replace(value, chain),
       set: (value: Partial<T> | ((item: T) => Partial<T> | T)) =>
         this.$set(value, chain),
     };
@@ -194,7 +195,7 @@ export class Collection<
   }
 
   private $get(
-    value:
+    value?:
       | FindPredicate<T, HashTableItem<Index, T>>
       | AdvancedCondition
       | Index
@@ -208,7 +209,7 @@ export class Collection<
   }
 
   get(
-    value:
+    value?:
       | FindPredicate<T, HashTableItem<Index, T>>
       | AdvancedCondition
       | Index
@@ -252,6 +253,19 @@ export class Collection<
 
   set(value: Partial<T> | ((item: T) => T | Partial<T>)) {
     return this.$set(value);
+  }
+
+  private $replace(
+    value: T | ((item: T) => T),
+    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+  ) {
+    chain.replace(value);
+
+    return this.chain(chain);
+  }
+
+  replace(value: T | ((item: T) => T)) {
+    return this.$replace(value);
   }
 
   private $delete(

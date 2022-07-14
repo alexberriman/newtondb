@@ -1,5 +1,5 @@
 import { wizards } from "../test-data";
-import { createUpdateOperations, toPointer, toTokens } from "./json-patch";
+import { createPartialPatch, toPointer, toTokens } from "./json-patch";
 
 describe("toTokens", () => {
   test.each([
@@ -38,22 +38,22 @@ describe("toPointer", () => {
   );
 });
 
-describe("createUpdateOperations", () => {
+describe("createPartialPatch", () => {
   it("creates successfully", () => {
-    const actual = createUpdateOperations(wizards[0], {
+    const actual = createPartialPatch(wizards[0], {
       name: "sirius",
       married: true,
       wand: "phoenix feather",
     });
 
     expect(actual).toEqual([
-      { op: "replace", value: "sirius", path: "/name" },
       { op: "add", value: "phoenix feather", path: "/wand" },
+      { op: "replace", value: "sirius", path: "/name" },
     ]);
   });
 
   it("uses a prefix", () => {
-    const actual = createUpdateOperations(
+    const actual = createPartialPatch(
       wizards[0],
       {
         name: "sirius",
@@ -67,7 +67,7 @@ describe("createUpdateOperations", () => {
   });
 
   it("creates from a prefix array", () => {
-    const actual = createUpdateOperations(
+    const actual = createPartialPatch(
       wizards[0],
       {
         name: "sirius",

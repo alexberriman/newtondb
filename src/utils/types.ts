@@ -108,3 +108,7 @@ export type FunctionKeys<T> = {
  * => { arg0: () => void; arg1: Function; }
  */
 export type FunctionProperties<T> = Pick<T, FunctionKeys<T>>;
+
+export function isCallable<T>(value: unknown): value is T {
+  return typeof value === "function";
+}

@@ -382,3 +382,45 @@ describe("set", () => {
     expect(1).toBe(1);
   });
 });
+
+describe("replace", () => {
+  it("updates using a new record", () => {
+    const $ = new Collection(wizards, { copy: true });
+    $.get({ id: 1 })
+      .replace({ ...extraWizards.neville, id: 1 })
+      .commit();
+
+    expect($.get({ id: 1 }).data).toMatchObject({ id: 1, name: "neville" });
+  });
+
+  it("removes attributes", () => {
+    const $ = new Collection<Wizard>([
+      { ...extraWizards.neville, wand: "cherry and unicorn hair" },
+    ]);
+
+    expect($.get().data).toMatchObject({
+      name: "neville",
+      wand: "cherry and unicorn hair",
+    });
+
+    $.get().replace(extraWizards.neville).commit();
+
+    expect($.get().data).not.toMatchObject({
+      wand: "cherry and unicorn hair",
+    });
+  });
+
+  it("updates using a function", () => {
+    const $ = new Collection(wizards, { copy: true });
+    $.find()
+      .replace((item) => ({ ...item, wand: "standard wand" }))
+      .commit();
+
+    expect($.find().data).toMatchObject([
+      { id: 1, wand: "standard wand" },
+      { id: 2, wand: "standard wand" },
+      { id: 3, wand: "standard wand" },
+      { id: 4, wand: "standard wand" },
+    ]);
+  });
+});

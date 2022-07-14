@@ -1,6 +1,7 @@
 import cloneDeep from "lodash.clonedeep";
 import isEqual from "lodash.isequal";
 import set from "lodash.set";
+import unset from "lodash.unset";
 import { PatchError } from "../../errors/patch-error";
 import { shallowEqual } from "../../utils/array";
 import { objectSubset } from "../../utils/object";
@@ -361,17 +362,23 @@ export class HashTable<
     return cloned;
   }
 
+  // could either be removing a single node attribute, or an entire node, or even
+  // an entire hash
   private $patchRemove(operation: RemoveOperation) {
-    const { path } = operation;
-    const [hash, $id] = toTokens(path);
-    if ($id && this.items[$id]) {
-      // delete a specific node
+    const [hash, $id, ...attributePath] = toTokens(operation.path);
+
+    if ($id) {
       const node = this.items[$id];
       if (!node) {
         throw new PatchError(operation, "Node does not exist");
       }
 
-      return this.deleteItem(node);
+      if (attributePath.length > 0) {
+        unset(this.items[$id].data, attributePath.join("."));
+      } else {
+        this.deleteItem(node);
+      }
+      return;
     }
 
     // delete an entire hash

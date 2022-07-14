@@ -101,7 +101,7 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.find](#find) ✅
   - [.insert](#insert) ✅
   - [.set](#set) ✅
-  - [.replace](#upsert) ❌
+  - [.replace](#upsert) ✅
   - [.delete](#delete) ✅
   - [.with](#expand) ❌
   - [.sort](#sort) ❌
