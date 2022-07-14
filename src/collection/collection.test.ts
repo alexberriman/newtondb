@@ -303,7 +303,7 @@ describe("insert", () => {
 
 describe("set", () => {
   it("sets using a basic object", () => {
-    const $ = new Collection(wizards, { primaryKey: "house" });
+    const $ = new Collection(wizards, { copy: true, primaryKey: "house" });
     const condition = {
       property: "name",
       operator: "in",
@@ -326,7 +326,7 @@ describe("set", () => {
   });
 
   it("sets through complex chains", () => {
-    const $ = new Collection(wizards);
+    const $ = new Collection(wizards, { copy: true });
     $.find({ name: "harry" })
       .delete()
       .find({ name: "draco" })
@@ -365,5 +365,20 @@ describe("set", () => {
       married: true,
       wand: "Hawthorn wood",
     });
+  });
+
+  it("sets using a callback function", () => {
+    const $ = new Collection(wizards, { copy: true });
+    $.find({ house: "gryffindor" })
+      .set((wizard) => ({ name: wizard.name.toUpperCase() }))
+      .commit();
+
+    expect($.data).toMatchObject([
+      { id: 1, name: "HARRY" },
+      { id: 2, name: "HERMIONE" },
+      { id: 3, name: "RON" },
+      { id: 4, name: "draco" },
+    ]);
+    expect(1).toBe(1);
   });
 });

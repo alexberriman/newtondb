@@ -130,11 +130,19 @@ export class Chain<
     this.mutate(mutations);
   }
 
-  set(update: Partial<DataType>) {
+  set(
+    update:
+      | Partial<DataType>
+      | ((item: DataType) => DataType | Partial<DataType>)
+  ) {
     const mutations = flatten(
       this.hashTable.nodes
         .map((node) =>
-          createUpdateOperations(node.data, update, [node.hash, node.$id])
+          createUpdateOperations(
+            node.data,
+            typeof update === "function" ? update(node.data) : update,
+            [node.hash, node.$id]
+          )
         )
         .filter((operations) => operations.length > 0)
     );

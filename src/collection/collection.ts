@@ -20,11 +20,15 @@ import {
 import { AssertionError } from "../errors/assertion-error";
 import { HashTable, type HashTableItem } from "../data/hash-table";
 import { Chain } from "./chain";
+import cloneDeep from "lodash.clonedeep";
 
-interface CollectionOptions<T, IndexKeys> {
+interface CollectionOptions<IndexKeys> {
   primaryKey?: IndexKeys | IndexKeys[];
-  validatePrimaryKey?: boolean;
-  indexes?: (keyof T)[][];
+
+  // by default, the data object that is initially passed in is mutated when
+  // changes are committed. Setting `copy` to `true` creates a deep clone of
+  // the data on instantiation so the original array of objects isn't mutated
+  copy?: boolean;
 }
 
 type AssertionFunction<DataType, IndexKeys extends keyof DataType, Index> = (
@@ -45,14 +49,13 @@ export class Collection<
   primaryKey: IndexKeys[];
   hashTable: HashTable<T, IndexKeys, keyof T, Index, T>;
 
-  constructor(
-    data: T[],
-    private options: CollectionOptions<T, IndexKeys> = {}
-  ) {
-    const { primaryKey } = options;
+  constructor(data: T[], private options: CollectionOptions<IndexKeys> = {}) {
+    const { copy, primaryKey } = options;
 
     this.primaryKey = primaryKey ? asArray(primaryKey) : [];
-    this.hashTable = new HashTable(data, { keyBy: this.primaryKey });
+    this.hashTable = new HashTable(copy ? cloneDeep(data) : data, {
+      keyBy: this.primaryKey,
+    });
   }
 
   get data(): T[] {
@@ -97,7 +100,8 @@ export class Collection<
       find: (value?: unknown) => this.find(value, chain),
       limit: (amount: number) => this.limit(amount, chain),
       offset: (amount: number) => this.offset(amount, chain),
-      set: (value: Partial<T>) => this.set(value, chain),
+      set: (value: Partial<T> | ((item: T) => Partial<T> | T)) =>
+        this.set(value, chain),
     };
   }
   private $assert(
@@ -221,7 +225,7 @@ export class Collection<
   }
 
   set(
-    value: Partial<T>,
+    value: Partial<T> | ((item: T) => T | Partial<T>),
     chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
   ) {
     chain.set(value);
