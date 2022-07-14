@@ -100,7 +100,7 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.get](#get) ✅
   - [.find](#find) ✅
   - [.insert](#insert) ✅
-  - [.set](#set) ❌
+  - [.set](#set) ✅
   - [.replace](#upsert) ❌
   - [.delete](#delete) ✅
   - [.with](#expand) ❌
@@ -143,8 +143,8 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [one to one](#one-to-one) ❌
   - [one to many](#one-to-many) ❌
   - [many to many](#many-to-many) ❌
-- [Indexing](#indexing) ❌
-  - [Primary key](#primary-key) ❌
+- [Indexing](#indexing) ✅
+  - [Primary key](#primary-key) ✅
   - [Secondary keys](#secondary-keys) ❌
 - [Asynchronous operations](#asynchronous-operations) ❌
 - [Extending](#extending-cleardb) ❌

@@ -19,7 +19,7 @@ import {
 } from "../data/advanced-query";
 import { AssertionError } from "../errors/assertion-error";
 import { HashTable, type HashTableItem } from "../data/hash-table";
-import { Chain } from "./chain";
+import { Chain, type CommitResult } from "./chain";
 import cloneDeep from "lodash.clonedeep";
 
 interface CollectionOptions<IndexKeys> {
@@ -90,7 +90,7 @@ export class Collection<
           | string,
         assertionFn?: AssertionFunction<T, IndexKeys, Index>
       ) => this.assert(chain, assertionFnOrDescription, assertionFn),
-      commit: () => chain.commit(),
+      commit: (): CommitResult => chain.commit(),
       delete: () => {
         const result = this.delete(chain);
         return result;

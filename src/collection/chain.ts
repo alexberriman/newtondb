@@ -15,7 +15,7 @@ interface HistoryItem<DataType, IndexKeys extends keyof DataType, Index> {
   args: unknown[];
 }
 
-interface CommitResult {
+export interface CommitResult {
   mutations: Patch;
 }
 
