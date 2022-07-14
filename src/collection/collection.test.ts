@@ -175,6 +175,25 @@ describe("find", () => {
   });
 });
 
+describe("attributes", () => {
+  it("returns selected attributes", () => {
+    const $ = new Collection(wizards);
+
+    expect($.find({ house: "gryffindor" }).select(["id", "name"]).data).toEqual(
+      [
+        { id: 1, name: "harry" },
+        { id: 2, name: "hermione" },
+        { id: 3, name: "ron" },
+      ]
+    );
+
+    expect($.get({ name: "hermione" }).select(["house", "name"]).data).toEqual({
+      house: "gryffindor",
+      name: "hermione",
+    });
+  });
+});
+
 describe("assertion", () => {
   const $ = new Collection(wizards);
 
@@ -327,7 +346,9 @@ describe("set", () => {
 
   it("sets through complex chains", () => {
     const $ = new Collection(wizards, { copy: true });
+
     $.find({ name: "harry" })
+      .select(["id", "house"])
       .delete()
       .find({ name: "draco" })
       .set({ wand: "elder wand" })

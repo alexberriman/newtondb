@@ -8,6 +8,7 @@ import {
   type Patch,
 } from "../data/json-patch";
 import { flatten } from "../utils/array";
+import { objectSubset } from "../utils/object";
 import { asArray, isCallable, type FunctionKeys } from "../utils/types";
 import { type Collection } from "./collection";
 
@@ -23,7 +24,9 @@ export interface CommitResult {
 export class Chain<
   DataType,
   IndexKeys extends keyof DataType,
-  Index = Pick<DataType, IndexKeys>
+  SelectKeys extends keyof DataType = keyof DataType,
+  Index = Pick<DataType, IndexKeys>,
+  SelectItem = Pick<DataType, SelectKeys>
 > {
   mutations: Patch = [];
   history: HistoryItem<DataType, IndexKeys, Index>[] = [];
@@ -48,14 +51,24 @@ export class Chain<
       keyof DataType,
       Index,
       DataType
-    >
+    >,
+    public options: { properties?: SelectKeys[] } = {}
   ) {
     this.masterTable = hashTable;
     this.mutableTable = hashTable;
   }
 
-  get data() {
-    return this.hashTable.data;
+  get data(): SelectItem[] {
+    const properties = asArray(this.options.properties);
+
+    const { data } = this.hashTable;
+    if (properties.length === 0) {
+      return data as unknown as SelectItem[];
+    }
+
+    return data.map((item) =>
+      objectSubset(item, properties)
+    ) as unknown as SelectItem[];
   }
 
   get nodes() {
@@ -177,5 +190,16 @@ export class Chain<
     this.masterTable.patch(this.mutations);
 
     return { mutations: this.mutations };
+  }
+
+  cloneForProperties<K extends keyof DataType>(properties: K[]) {
+    // @todo lol
+    const $chain = new Chain(this.hashTable, { properties });
+    $chain.history = this.history;
+    $chain.mutations = this.mutations;
+    $chain.masterTable = this.masterTable;
+    $chain.mutableTable = this.mutableTable;
+
+    return $chain;
   }
 }

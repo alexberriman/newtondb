@@ -1,4 +1,5 @@
-import { flatten, shallowEqual } from "./array";
+import { wizards } from "../test-data";
+import { findLast, flatten, shallowEqual } from "./array";
 
 test("shallowEqual", () => {
   expect(shallowEqual(["hello", "world"], ["hello", "world"])).toBe(true);
@@ -18,4 +19,14 @@ test("flatten", () => {
     { op: "remove", path: '/{"id":2}/0' },
     { op: "remove", path: '/{"id":3}/0' },
   ]);
+});
+
+test("findLast", () => {
+  expect(
+    findLast(wizards, (wizard) => wizard.house === "gryffindor")
+  ).toMatchObject({ name: "ron" });
+
+  expect(
+    findLast(wizards, (wizard) => wizard.house === "hufflepuff")
+  ).toBeUndefined();
 });

@@ -3,6 +3,7 @@ import {
   isScalar,
   isSingleArray,
   objectOfProperties,
+  Subset,
 } from "../utils/types";
 import {
   get as getByAdvancedCondition,
@@ -21,6 +22,7 @@ import { AssertionError } from "../errors/assertion-error";
 import { HashTable, type HashTableItem } from "../data/hash-table";
 import { Chain, type CommitResult } from "./chain";
 import cloneDeep from "lodash.clonedeep";
+import { findLast } from "../utils/array";
 
 interface CollectionOptions<IndexKeys> {
   primaryKey?: IndexKeys | IndexKeys[];
@@ -31,9 +33,12 @@ interface CollectionOptions<IndexKeys> {
   copy?: boolean;
 }
 
-type AssertionFunction<DataType, IndexKeys extends keyof DataType, Index> = (
-  arg0: Chain<DataType, IndexKeys, Index>
-) => boolean;
+type AssertionFunction<
+  DataType,
+  IndexKeys extends keyof DataType,
+  Properties extends keyof DataType,
+  Index
+> = (arg0: Chain<DataType, IndexKeys, Properties, Index>) => boolean;
 
 export type FindPredicate<T, Y> = (
   value: T,
@@ -66,57 +71,75 @@ export class Collection<
     return this.hashTable.nodes;
   }
 
-  private chain<C = T[]>(chain: Chain<T, IndexKeys, Index>) {
+  private chain<DataResponse, Properties extends keyof T>(
+    chain: Chain<T, IndexKeys, Properties, Index>
+  ) {
     return {
       // details of chain
-      get data() {
-        const { data, lastOperation } = chain;
+      get data(): DataResponse {
+        const { data, history } = chain;
+        const lastOperation = findLast(
+          history,
+          ({ operation }) => operation === "find" || operation === "get"
+        );
 
-        // if last operation was to `.get`, return a single node
-        return (lastOperation?.operation === "get"
-          ? data[0]
-          : data) as unknown as C;
+        if (lastOperation?.operation === "get") {
+          return data[0] as unknown as DataResponse;
+        }
+
+        return data as unknown as DataResponse;
       },
       get nodes() {
         return chain.nodes;
       },
       count: chain.count,
       exists: chain.exists,
+      chain,
 
       // collection methods to chain
       assert: (
         assertionFnOrDescription:
-          | AssertionFunction<T, IndexKeys, Index>
+          | AssertionFunction<T, IndexKeys, Properties, Index>
           | string,
-        assertionFn?: AssertionFunction<T, IndexKeys, Index>
+        assertionFn?: AssertionFunction<T, IndexKeys, Properties, Index>
       ) => this.assert(chain, assertionFnOrDescription, assertionFn),
       commit: (): CommitResult => chain.commit(),
       delete: () => this.$delete(chain),
       insert: (value: T | T[]) => this.$insert(value, chain),
-      get: (value: unknown) => this.$get(value, chain),
+      get: (value: unknown) => {
+        const $chain = this.$get(value, chain);
+        return $chain;
+      },
       find: (value?: unknown) => this.$find(value, chain),
       limit: (amount: number) => this.$limit(amount, chain),
       offset: (amount: number) => this.$offset(amount, chain),
       replace: (value: T | ((item: T) => T)) => this.$replace(value, chain),
+      select: <K extends keyof T>(properties: K[]) => {
+        const $chain = chain.cloneForProperties(properties);
+        return this.chain<Subset<DataResponse, T, K>, K>($chain);
+      },
       set: (value: Partial<T> | ((item: T) => Partial<T> | T)) =>
         this.$set(value, chain),
     };
   }
-  private $assert(
-    assertion: AssertionFunction<T, IndexKeys, Index>,
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+
+  private $assert<Properties extends keyof T = keyof T>(
+    assertion: AssertionFunction<T, IndexKeys, Properties, Index>,
+    chain: Chain<T, IndexKeys, Properties, Index>
   ) {
     if (!assertion(chain)) {
       throw new AssertionError();
     }
 
-    return this.chain(chain);
+    return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
-  private assert(
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable),
-    assertionFnOrDescription: AssertionFunction<T, IndexKeys, Index> | string,
-    assertionFn?: AssertionFunction<T, IndexKeys, Index>
+  private assert<Properties extends keyof T = keyof T>(
+    chain: Chain<T, IndexKeys, Properties, Index>,
+    assertionFnOrDescription:
+      | AssertionFunction<T, IndexKeys, Properties, Index>
+      | string,
+    assertionFn?: AssertionFunction<T, IndexKeys, Properties, Index>
   ) {
     if (typeof assertionFnOrDescription === "function") {
       return this.$assert(assertionFnOrDescription, chain);
@@ -130,17 +153,17 @@ export class Collection<
     }
 
     // invalid argument, just chain
-    return this.chain(chain);
+    return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
-  private search(
+  private search<Properties extends keyof T = keyof T>(
     value:
       | FindPredicate<T, HashTableItem<Index, T>>
       | AdvancedCondition
       | Index
       | unknown,
     { mode }: { mode: "find" | "get" },
-    chain: Chain<T, IndexKeys, Index>
+    chain: Chain<T, IndexKeys, Properties, Index>
   ): typeof this.hashTable.nodes {
     if (objectOfProperties<Index>(value, this.primaryKey as string[])) {
       // primary key was passed through - can pull directly from hash table
@@ -194,18 +217,18 @@ export class Collection<
     );
   }
 
-  private $get(
-    value?:
+  private $get<Properties extends keyof T = keyof T>(
+    value:
       | FindPredicate<T, HashTableItem<Index, T>>
       | AdvancedCondition
       | Index
       | unknown,
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+    chain: Chain<T, IndexKeys, Properties, Index>
   ) {
     const items = this.search(value, { mode: "get" }, chain);
     chain.update(items, { operation: "get", args: [value] });
 
-    return this.chain<T>(chain);
+    return this.chain<Pick<T, Properties>, Properties>(chain);
   }
 
   get(
@@ -215,21 +238,22 @@ export class Collection<
       | Index
       | unknown
   ) {
-    return this.$get(value);
+    const chain = new Chain(this.hashTable);
+    return this.$get(value, chain);
   }
 
-  private $find(
-    value?:
+  private $find<Properties extends keyof T = keyof T>(
+    value:
       | FindPredicate<T, HashTableItem<Index, T>>
       | AdvancedCondition
       | Index
       | unknown,
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+    chain: Chain<T, IndexKeys, Properties, Index>
   ) {
     const items = this.search(value, { mode: "find" }, chain);
     chain.update(items, { operation: "find", args: [value] });
 
-    return this.chain(chain);
+    return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
   find(
@@ -239,88 +263,107 @@ export class Collection<
       | Index
       | unknown
   ) {
-    return this.$find(value);
+    const chain = new Chain(this.hashTable);
+    return this.$find(value, chain);
   }
 
-  private $set(
+  private $select<DataResponse = T[], Properties extends keyof T = keyof T>(
+    properties: Properties[],
+    chain: Chain<T, IndexKeys, Properties, Index>
+  ) {
+    const $chain = chain.cloneForProperties(properties);
+
+    return this.chain<DataResponse, Properties>($chain);
+  }
+
+  select<K extends keyof T>(properties: K[]) {
+    return this.$select(properties, new Chain(this.hashTable));
+  }
+
+  private $set<Properties extends keyof T = keyof T>(
     value: Partial<T> | ((item: T) => T | Partial<T>),
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+    chain: Chain<T, IndexKeys, Properties, Index>
   ) {
     chain.set(value);
 
-    return this.chain(chain);
+    return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
   set(value: Partial<T> | ((item: T) => T | Partial<T>)) {
-    return this.$set(value);
+    const chain = new Chain(this.hashTable);
+    return this.$set(value, chain);
   }
 
-  private $replace(
+  private $replace<Properties extends keyof T = keyof T>(
     value: T | ((item: T) => T),
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+    chain: Chain<T, IndexKeys, Properties, Index>
   ) {
     chain.replace(value);
 
-    return this.chain(chain);
+    return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
   replace(value: T | ((item: T) => T)) {
-    return this.$replace(value);
+    const chain = new Chain(this.hashTable);
+    return this.$replace(value, chain);
   }
 
-  private $delete(
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+  private $delete<Properties extends keyof T = keyof T>(
+    chain: Chain<T, IndexKeys, Properties, Index>
   ) {
     chain.delete();
-
-    return this.chain(chain);
+    return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
   delete() {
-    return this.$delete();
+    const chain = new Chain(this.hashTable);
+    return this.$delete(chain);
   }
 
-  private $insert(
+  private $insert<Properties extends keyof T = keyof T>(
     items: T | T[],
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+    chain: Chain<T, IndexKeys, Properties, Index>
   ) {
     chain.insert(items);
 
-    return this.chain(chain);
+    return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
   insert(items: T | T[]) {
-    return this.$insert(items);
+    const chain = new Chain(this.hashTable);
+    return this.$insert(items, chain);
   }
 
-  private $limit(
+  private $limit<Properties extends keyof T = keyof T>(
     amount: number,
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+    chain: Chain<T, IndexKeys, Properties, Index>
   ) {
     chain.update(chain.nodes.slice(0, amount), {
       operation: "limit",
       args: [amount],
     });
-    return this.chain(chain);
+    return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
   limit(amount: number) {
-    return this.$limit(amount);
+    const chain = new Chain(this.hashTable);
+    return this.$limit(amount, chain);
   }
 
-  private $offset(
+  private $offset<Properties extends keyof T = keyof T>(
     amount: number,
-    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+    chain: Chain<T, IndexKeys, Properties, Index>
   ) {
     chain.update(chain.nodes.slice(amount), {
       operation: "offset",
       args: [amount],
     });
-    return this.chain(chain);
+    return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
   offset(amount: number) {
-    return this.$offset(amount);
+    const chain = new Chain(this.hashTable);
+    return this.$offset(amount, chain);
   }
 
   sort() {

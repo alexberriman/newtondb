@@ -95,10 +95,12 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.delete](#delete) ❌
   - [.observe](#observe) ❌
   - [.unobserve](#unobserve) ❌
+  - [.disconnect](#disconnect) ❌
 - [Collections](#collections)
   - [`new Collection(options)`](#collection-options) ✅
   - [.get](#get) ✅
   - [.find](#find) ✅
+  - [.select](#select) ✅
   - [.insert](#insert) ✅
   - [.set](#set) ✅
   - [.replace](#upsert) ✅

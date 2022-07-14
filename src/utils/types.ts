@@ -1,5 +1,15 @@
 import { shallowEqual } from "./array";
 
+export type Flatten<T> = T extends unknown[] ? T[number] : T;
+
+export type AsArray<T> = T extends unknown[] ? T : T[];
+
+export type ScalarOrArray<T> = T | T[];
+
+export type Subset<T, D, K extends keyof D> = T extends unknown[]
+  ? Pick<D, K>[]
+  : Pick<D, K>;
+
 export function isUndefined<T>(value: T | undefined): value is undefined {
   return value === undefined;
 }
