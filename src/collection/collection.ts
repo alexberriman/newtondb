@@ -91,17 +91,14 @@ export class Collection<
         assertionFn?: AssertionFunction<T, IndexKeys, Index>
       ) => this.assert(chain, assertionFnOrDescription, assertionFn),
       commit: (): CommitResult => chain.commit(),
-      delete: () => {
-        const result = this.delete(chain);
-        return result;
-      },
-      insert: (value: T | T[]) => this.insert(value, chain),
-      get: (value: unknown) => this.get(value, chain),
-      find: (value?: unknown) => this.find(value, chain),
-      limit: (amount: number) => this.limit(amount, chain),
-      offset: (amount: number) => this.offset(amount, chain),
+      delete: () => this.$delete(chain),
+      insert: (value: T | T[]) => this.$insert(value, chain),
+      get: (value: unknown) => this.$get(value, chain),
+      find: (value?: unknown) => this.$find(value, chain),
+      limit: (amount: number) => this.$limit(amount, chain),
+      offset: (amount: number) => this.$offset(amount, chain),
       set: (value: Partial<T> | ((item: T) => Partial<T> | T)) =>
-        this.set(value, chain),
+        this.$set(value, chain),
     };
   }
   private $assert(
@@ -135,7 +132,7 @@ export class Collection<
     return this.chain(chain);
   }
 
-  private $find(
+  private search(
     value:
       | FindPredicate<T, HashTableItem<Index, T>>
       | AdvancedCondition
@@ -196,7 +193,7 @@ export class Collection<
     );
   }
 
-  get(
+  private $get(
     value:
       | FindPredicate<T, HashTableItem<Index, T>>
       | AdvancedCondition
@@ -204,13 +201,23 @@ export class Collection<
       | unknown,
     chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
   ) {
-    const items = this.$find(value, { mode: "get" }, chain);
+    const items = this.search(value, { mode: "get" }, chain);
     chain.update(items, { operation: "get", args: [value] });
 
     return this.chain<T>(chain);
   }
 
-  find(
+  get(
+    value:
+      | FindPredicate<T, HashTableItem<Index, T>>
+      | AdvancedCondition
+      | Index
+      | unknown
+  ) {
+    return this.$get(value);
+  }
+
+  private $find(
     value?:
       | FindPredicate<T, HashTableItem<Index, T>>
       | AdvancedCondition
@@ -218,13 +225,23 @@ export class Collection<
       | unknown,
     chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
   ) {
-    const items = this.$find(value, { mode: "find" }, chain);
+    const items = this.search(value, { mode: "find" }, chain);
     chain.update(items, { operation: "find", args: [value] });
 
     return this.chain(chain);
   }
 
-  set(
+  find(
+    value?:
+      | FindPredicate<T, HashTableItem<Index, T>>
+      | AdvancedCondition
+      | Index
+      | unknown
+  ) {
+    return this.$find(value);
+  }
+
+  private $set(
     value: Partial<T> | ((item: T) => T | Partial<T>),
     chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
   ) {
@@ -233,13 +250,23 @@ export class Collection<
     return this.chain(chain);
   }
 
-  delete(chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)) {
+  set(value: Partial<T> | ((item: T) => T | Partial<T>)) {
+    return this.$set(value);
+  }
+
+  private $delete(
+    chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
+  ) {
     chain.delete();
 
     return this.chain(chain);
   }
 
-  insert(
+  delete() {
+    return this.$delete();
+  }
+
+  private $insert(
     items: T | T[],
     chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
   ) {
@@ -248,7 +275,11 @@ export class Collection<
     return this.chain(chain);
   }
 
-  limit(
+  insert(items: T | T[]) {
+    return this.$insert(items);
+  }
+
+  private $limit(
     amount: number,
     chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
   ) {
@@ -259,7 +290,11 @@ export class Collection<
     return this.chain(chain);
   }
 
-  offset(
+  limit(amount: number) {
+    return this.$limit(amount);
+  }
+
+  private $offset(
     amount: number,
     chain: Chain<T, IndexKeys, Index> = new Chain(this.hashTable)
   ) {
@@ -268,6 +303,10 @@ export class Collection<
       args: [amount],
     });
     return this.chain(chain);
+  }
+
+  offset(amount: number) {
+    return this.$offset(amount);
   }
 
   sort() {
