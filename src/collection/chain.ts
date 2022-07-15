@@ -1,25 +1,39 @@
 import { orderBy } from "lodash";
 import { HashTable, type HashTableItem } from "../data/hash-table";
+import { PatchResult } from "../data/hash-table/patch";
 import {
   createPartialPatch,
   createPatch,
+  PatchOperation,
   RemoveOperation,
   TestAddReplaceOperation,
   toPointer,
   type Patch,
 } from "../data/json-patch";
-import { flatten } from "../utils/array";
-import { objectSubset } from "../utils/object";
-import { asArray, isCallable, type FunctionKeys } from "../utils/types";
+import { flatten, keyArrayBy } from "../utils/array";
+import { keyBy, objectSubset } from "../utils/object";
+import {
+  asArray,
+  isCallable,
+  isPopulatedArray,
+  type FunctionKeys,
+} from "../utils/types";
 import { type Collection } from "./collection";
+import { createEvents, MutationEvent } from "./observer";
 
 interface HistoryItem<DataType, IndexKeys extends keyof DataType, Index> {
   operation: FunctionKeys<Collection<DataType, IndexKeys, Index>>;
   args: unknown[];
 }
 
-export interface CommitResult {
+export interface CommitResult<
+  DataType,
+  IndexKeys extends keyof DataType,
+  Index
+> {
+  history: HistoryItem<DataType, IndexKeys, Index>[];
   mutations: Patch;
+  events: MutationEvent<DataType>[];
 }
 
 export class Chain<
@@ -141,28 +155,33 @@ export class Chain<
   }
 
   delete() {
-    const mutations = flatten(
+    const mutations = flatten<RemoveOperation>(
       this.hashTable.nodes.map(({ hash, $id }) => [
         { op: "remove", path: toPointer(hash, $id) },
       ])
-    ) as RemoveOperation[];
+    );
 
     this.addToHistory({ operation: "delete", args: [] });
     this.mutate(mutations);
   }
 
-  insert(item: DataType | DataType[]) {
-    const mutations = asArray(item).map((item) => {
+  insert(items: DataType | DataType[]) {
+    const hasIndex = isPopulatedArray(this.hashTable.options.keyBy);
+    const mutations = asArray(items).map((item, index) => {
       const node = this.hashTable.toNode(item);
+
+      // if no index is set on the hash table, an auto incrementing id is used
+      // as the index. in this case, need to auto increment before committing
+      const path = hasIndex ? node.hash : this.hashTable.latestId + index;
 
       return {
         op: "add",
-        path: toPointer(node.hash),
+        path: toPointer(path),
         value: item as unknown as object,
       } as TestAddReplaceOperation;
     });
 
-    this.addToHistory({ operation: "insert", args: [item] });
+    this.addToHistory({ operation: "insert", args: [items] });
     this.mutate(mutations);
   }
 
@@ -174,7 +193,7 @@ export class Chain<
       | ((item: DataType) => DataType),
     patchFn: typeof createPartialPatch | typeof createPatch
   ) {
-    const mutations = flatten(
+    const mutations = flatten<PatchOperation>(
       this.hashTable.nodes
         .map((node) => {
           const updated = isCallable<
@@ -210,10 +229,18 @@ export class Chain<
     return this.setOrReplace(document, createPatch);
   }
 
-  commit(): CommitResult {
-    this.masterTable.patch(this.mutations);
+  commit(): CommitResult<DataType, IndexKeys, Index> {
+    const mutationResults = this.masterTable.patch(this.mutations);
+    const events = createEvents(
+      mutationResults,
+      ($id) => this.masterTable.items[$id].data
+    );
 
-    return { mutations: this.mutations };
+    return {
+      history: this.history,
+      mutations: this.mutations,
+      events,
+    };
   }
 
   cloneForProperties<K extends keyof DataType>(properties: K[]) {

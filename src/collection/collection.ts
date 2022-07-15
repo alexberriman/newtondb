@@ -1,5 +1,6 @@
 import {
   asArray,
+  isCallable,
   isScalar,
   isSingleArray,
   objectOfProperties,
@@ -23,6 +24,16 @@ import { HashTable, type HashTableItem } from "../data/hash-table";
 import { Chain, type CommitResult } from "./chain";
 import { cloneDeep } from "lodash";
 import { findLast } from "../utils/array";
+import type {
+  DeleteObserver,
+  GenericObserver,
+  InsertObserver,
+  UpdateObserver,
+  Observers,
+  MutationEvent,
+  ObserverEvent,
+} from "./observer";
+import { ObserverError } from "../errors/observer-error";
 
 interface CollectionOptions<IndexKeys> {
   primaryKey?: IndexKeys | IndexKeys[];
@@ -53,6 +64,8 @@ export class Collection<
 > {
   primaryKey: IndexKeys[];
   hashTable: HashTable<T, IndexKeys, keyof T, Index, T>;
+  observers: Observers<T> = { insert: [], update: [], delete: [], "*": [] };
+  observer = 0;
 
   constructor(data: T[], private options: CollectionOptions<IndexKeys> = {}) {
     const { copy, primaryKey } = options;
@@ -103,7 +116,7 @@ export class Collection<
           | string,
         assertionFn?: AssertionFunction<T, IndexKeys, Properties, Index>
       ) => this.assert(chain, assertionFnOrDescription, assertionFn),
-      commit: (): CommitResult => chain.commit(),
+      commit: (): CommitResult<T, IndexKeys, Index> => this.$commit(chain),
       delete: () => this.$delete(chain),
       insert: (value: T | T[]) => this.$insert(value, chain),
       get: (value: unknown) => {
@@ -379,5 +392,92 @@ export class Collection<
   orderBy(order: Partial<Record<keyof T, "asc" | "desc">>) {
     const chain = new Chain(this.hashTable);
     return this.$orderBy(order, chain);
+  }
+
+  unobserve(observerId: number) {
+    const result = ["insert", "delete", "update", "*"].find((event) => {
+      const $event = event as ObserverEvent;
+      const index = this.observers[$event].findIndex(
+        ({ id }) => id === observerId
+      );
+      if (index >= 0) {
+        this.observers[$event].splice(index, 1);
+        return true;
+      }
+    });
+
+    if (!result) {
+      throw new ObserverError("Unable to find observer to delete");
+    }
+  }
+
+  observe(operation: "insert", callback: InsertObserver<T>): number;
+  observe(operation: "update", callback: UpdateObserver<T>): number;
+  observe(operation: "delete", callback: DeleteObserver<T>): number;
+  observe(callback: GenericObserver<T>): number;
+  observe(
+    operationOrCallback: "insert" | "update" | "delete" | GenericObserver<T>,
+    callback?: InsertObserver<T> | DeleteObserver<T> | UpdateObserver<T>
+  ): number {
+    if (typeof operationOrCallback === "string" && isCallable(callback)) {
+      if (operationOrCallback === "insert") {
+        this.observers.insert.push({
+          id: ++this.observer,
+          callback: callback as InsertObserver<T>,
+        });
+      } else if (operationOrCallback === "update") {
+        this.observers.update.push({
+          id: ++this.observer,
+          callback: callback as UpdateObserver<T>,
+        });
+      } else if (operationOrCallback === "delete") {
+        this.observers.delete.push({
+          id: ++this.observer,
+          callback: callback as DeleteObserver<T>,
+        });
+      } else {
+        throw new ObserverError("Invalid operation");
+      }
+
+      return this.observer;
+    }
+
+    if (isCallable<GenericObserver<T>>(operationOrCallback)) {
+      this.observers["*"].push({
+        id: ++this.observer,
+        callback: operationOrCallback,
+      });
+
+      return this.observer;
+    }
+
+    throw new ObserverError("Unknown operation");
+  }
+
+  private raiseEvents(events: MutationEvent<T>[]) {
+    events.forEach((event) => {
+      const { data, event: type } = event;
+      this.observers["*"].forEach(({ callback }) => callback(event));
+
+      if (type === "insert") {
+        this.observers.insert.forEach(({ callback }) => callback(data));
+      } else if (type === "delete") {
+        this.observers.delete.forEach(({ callback }) => callback(data));
+      } else if (type === "updated") {
+        this.observers.update.forEach(({ callback }) =>
+          callback(data.new, { old: data.old, new: data.new })
+        );
+      }
+    });
+  }
+
+  private $commit<Properties extends keyof T = keyof T>(
+    chain: Chain<T, IndexKeys, Properties, Index>
+  ) {
+    const result = chain.commit();
+
+    this.raiseEvents(result.events);
+
+    return result;
   }
 }

@@ -1,3 +1,5 @@
+import { isArray, isDefined } from "./types";
+
 export function shallowEqual(left: unknown[], right: unknown[]) {
   return (
     left.length === right.length &&
@@ -5,8 +7,14 @@ export function shallowEqual(left: unknown[], right: unknown[]) {
   );
 }
 
-export function flatten<T>(input: T[][]): T[] {
-  return input.reduce((flattened, items) => [...flattened, ...items], []);
+export function flatten<T>(input: unknown[]): T[] {
+  return input.reduce((flat: T[], value) => {
+    if (!isArray(value)) {
+      return [...flat, value as T];
+    }
+
+    return [...flat, ...flatten(value)] as T[];
+  }, []);
 }
 
 export function findLast<T>(
@@ -18,4 +26,24 @@ export function findLast<T>(
       return items[index];
     }
   }
+}
+
+export function keyArrayBy<T>(
+  input: T[],
+  keyAttribute: string
+): Record<string, T[]> {
+  return input.reduce((obj: Record<string, T[]>, item) => {
+    const $item = item as Record<string, unknown>;
+    if (!isDefined($item[keyAttribute])) {
+      return obj;
+    }
+
+    const key = $item[keyAttribute] as unknown as string;
+    const existing = obj[key] ?? [];
+
+    return {
+      ...obj,
+      [key]: [...existing, item],
+    };
+  }, {});
 }

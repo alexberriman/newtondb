@@ -473,3 +473,162 @@ describe("orderBy", () => {
     ]);
   });
 });
+
+describe("observers", () => {
+  test("observe and unobserve", () => {
+    const $ = new Collection([wizards[1], wizards[2], wizards[3]], {
+      copy: true,
+    });
+
+    const observer = jest.fn();
+    const $insert = $.observe("insert", observer);
+
+    // get id of observer back
+    expect($insert).toBe(1);
+
+    // create a complex chain
+    $.insert(extraWizards.neville)
+      .find({ name: "hermione" })
+      .delete()
+      .insert([wizards[1], extraWizards.cho]) // insert cho and hermione
+      .find({ name: "cho" })
+      .set({ wand: "Test" }) // set chos wand to test
+      .find({ name: "cho" }) // @todo this errors without another find
+      .set({ wand: "Unknown", born: 1979, house: "ravenclaw" }) // set chos wand to unknown
+      .find({ name: "ron" })
+      .set({ wand: "Unicorn Hair" })
+      .find({ name: "ron" })
+      .replace(wizards[2])
+      .insert(wizards[0])
+      .find({ name: "harry" })
+      .delete()
+      .commit();
+
+    expect(observer).toHaveBeenCalledTimes(3);
+    expect(observer.mock.calls).toMatchObject([
+      [{ name: "neville" }],
+      [{ name: "hermione" }],
+      [{ name: "cho", wand: "Unknown", born: 1979 }],
+    ]);
+    observer.mockClear();
+
+    // insert another
+    $.insert(wizards[0]).commit();
+    expect(observer).toHaveBeenCalledTimes(1);
+    expect(observer).toHaveBeenCalledWith(wizards[0]);
+    observer.mockClear();
+
+    // unregister the observer
+    $.unobserve($insert);
+    $.insert(wizards[1]).commit();
+    expect(observer).not.toHaveBeenCalled();
+  });
+
+  test("insert observer with single insert", () => {
+    const $ = new Collection<Wizard>([], { copy: true });
+
+    const observer = jest.fn();
+    const $onInsert = $.observe("insert", observer);
+
+    $.insert(wizards[0]).commit();
+    expect(observer).toHaveBeenCalledTimes(1);
+    expect(observer).toHaveBeenCalledWith(wizards[0]);
+    $.unobserve($onInsert);
+  });
+
+  test("insert observer with multiple inserts", () => {
+    const $ = new Collection<Wizard>([], { copy: true });
+
+    const observer = jest.fn();
+    const $onInsert = $.observe("insert", observer);
+
+    $.insert(wizards).commit();
+    expect(observer).toHaveBeenCalledTimes(4);
+    expect(observer.mock.calls).toMatchObject([
+      [{ name: "harry" }],
+      [{ name: "hermione" }],
+      [{ name: "ron" }],
+      [{ name: "draco" }],
+    ]);
+    $.unobserve($onInsert);
+  });
+
+  test("update observer", () => {
+    const $ = new Collection(wizards, { copy: true });
+
+    const observer = jest.fn();
+    const $onUpdate = $.observe("update", observer);
+
+    $.find({ name: "harry" }).set({ wand: "Elder Wand" }).commit();
+    expect(observer).toHaveBeenCalledTimes(1);
+    expect(observer.mock.calls).toMatchObject([
+      [
+        { ...wizards[0], wand: "Elder Wand" },
+        { old: wizards[0], new: { ...wizards[0], wand: "Elder Wand" } },
+      ],
+    ]);
+
+    $.unobserve($onUpdate);
+  });
+
+  test("delete observer", () => {
+    const $ = new Collection(wizards, { copy: true });
+
+    const observer = jest.fn();
+    const $onDelete = $.observe("delete", observer);
+
+    $.find({ name: "ron" }).delete().commit();
+    expect(observer).toHaveBeenCalledTimes(1);
+    expect(observer.mock.calls).toMatchObject([[wizards[2]]]);
+
+    $.unobserve($onDelete);
+  });
+
+  test("wildcard observer", () => {
+    const $ = new Collection(wizards, { copy: true });
+
+    const observer = jest.fn();
+    const $onWildcard = $.observe(observer);
+
+    $.insert(extraWizards.neville)
+      .find({ name: "hermione" })
+      .delete()
+      .insert([wizards[1], extraWizards.cho]) // insert cho and hermione
+      .find({ name: "cho" })
+      .set({ wand: "Test" }) // set chos wand to test
+      .find({ name: "cho" }) // @todo this errors without another find
+      .set({ wand: "Unknown", born: 1979, house: "ravenclaw" }) // set chos wand to unknown
+      .find({ name: "ron" })
+      .set({ wand: "Unicorn Hair" })
+      .find({ name: "ron" })
+      .replace(wizards[2])
+      .insert(wizards[0])
+      .find({ name: "harry" })
+      .delete()
+      .commit();
+
+    expect(observer.mock.calls).toMatchObject([
+      [{ event: "delete", data: wizards[0] }],
+      [{ event: "delete", data: wizards[1] }],
+      [
+        {
+          event: "updated",
+          data: {
+            old: wizards[2],
+            new: wizards[2], // @todo no difference
+          },
+        },
+      ],
+      [{ event: "insert", data: extraWizards.neville }],
+      [{ event: "insert", data: wizards[1] }],
+      [
+        {
+          event: "insert",
+          data: { ...extraWizards.cho, born: 1979, wand: "Unknown" },
+        },
+      ],
+    ]);
+
+    $.unobserve($onWildcard);
+  });
+});

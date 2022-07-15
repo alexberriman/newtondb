@@ -44,6 +44,10 @@ export function isPopulatedArray<T, Y>(value: T[] | Y): value is T[] {
   return isArray(value) && value.length > 0;
 }
 
+export function isMultiDimensionalArray<T>(value: unknown): value is T[][] {
+  return isPopulatedArray(value) && isArray(value[0]);
+}
+
 export function isNumber(value: unknown): value is number {
   return typeof value === "number";
 }
