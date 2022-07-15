@@ -97,56 +97,55 @@ db.$.users.find({ name: "draco" }).with(['houses', 'house']);
   - [.unobserve](#unobserve) ❌
   - [.disconnect](#disconnect) ❌
 - [Collections](#collections)
-  - [`new Collection(options)`](#collection-options) ✅
-  - [.get](#get) ✅
-  - [.find](#find) ✅
-  - [.select](#select) ✅
-  - [.insert](#insert) ✅
-  - [.set](#set) ✅
-  - [.replace](#upsert) ✅
-  - [.delete](#delete) ✅
-  - [.with](#expand) ❌
-  - [.sort](#sort) ❌
-  - [.limit](#limit) ✅
-  - [.offset](#offset) ✅
-  - [.observe](#observe) ❌
-  - [.unobserve](#unobserve) ❌
-  - [.assert](#assert) ✅
-- [Querying](#querying) ✅
-  - [By primary key](#by-primary-key) ✅
-  - [Basic conditions](#basic-conditions) ✅
-  - [Advanced conditions](#advanced-conditions) ✅
-    - [`every` and `some`](#every-and-some) ✅
-    - [Operators](#operators) ✅
-      - [equal](#equal) ✅
-      - [notEqual](#toLower) ✅
-      - [lessThan](#toString) ✅
-      - [lessThanInclusive](#toNumber) ✅
-      - [greaterThan](#toLength) ✅
-      - [greaterThanInclusive](#toLength) ✅
-      - [in](#toLength) ✅
-      - [notIn](#toLength) ✅
-      - [contains](#toLength) ✅
-      - [notContains](#toLength) ✅
-      - [startsWith](#toLength) ✅
-      - [endsWith](#toLength) ✅
-      - [matchesRegex](#toLength) ✅
-      - [doesNotMatchRegex](#toLength) ✅
+  - [`new Collection(options)`](#collection-options)
+  - [.get](#get)
+  - [.find](#find)
+  - [.select](#select)
+  - [.insert](#insert)
+  - [.set](#set)
+  - [.replace](#upsert)
+  - [.delete](#delete)
+  - [.orderBy](#orderBy)
+  - [.limit](#limit)
+  - [.offset](#offset)
+  - [.observe](#observe)
+  - [.unobserve](#unobserve)
+  - [.assert](#assert)
+- [Querying](#querying)
+  - [By primary key](#by-primary-key)
+  - [Basic conditions](#basic-conditions)
+  - [Advanced conditions](#advanced-conditions)
+    - [`every` and `some`](#every-and-some)
+    - [Operators](#operators)
+      - [equal](#equal)
+      - [notEqual](#toLower)
+      - [lessThan](#toString)
+      - [lessThanInclusive](#toNumber)
+      - [greaterThan](#toLength)
+      - [greaterThanInclusive](#toLength)
+      - [in](#toLength)
+      - [notIn](#toLength)
+      - [contains](#toLength)
+      - [notContains](#toLength)
+      - [startsWith](#toLength)
+      - [endsWith](#toLength)
+      - [matchesRegex](#toLength)
+      - [doesNotMatchRegex](#toLength)
     - [Preprocessors](#preprocess)
-      - [toUpper](#toUpper) ✅
-      - [toLower](#toLower) ✅
-      - [toString](#toString) ✅
-      - [toNumber](#toNumber) ✅
-      - [toLength](#toLength) ✅
-      - [substring](#toLength) ✅
+      - [toUpper](#toUpper)
+      - [toLower](#toLower)
+      - [toString](#toString)
+      - [toNumber](#toNumber)
+      - [toLength](#toLength)
+      - [substring](#toLength)
       - [Custom](#custom-preprocessors)
-  - [By function](#by-functions) ✅
+  - [By function](#by-functions)
 - [Relationships](#relationships) ❌
   - [one to one](#one-to-one) ❌
   - [one to many](#one-to-many) ❌
   - [many to many](#many-to-many) ❌
-- [Indexing](#indexing) ✅
-  - [Primary key](#primary-key) ✅
+- [Indexing](#indexing)
+  - [Primary key](#primary-key)
   - [Secondary keys](#secondary-keys) ❌
 - [Asynchronous operations](#asynchronous-operations) ❌
 - [Extending](#extending-cleardb) ❌

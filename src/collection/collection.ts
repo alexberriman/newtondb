@@ -21,7 +21,7 @@ import {
 import { AssertionError } from "../errors/assertion-error";
 import { HashTable, type HashTableItem } from "../data/hash-table";
 import { Chain, type CommitResult } from "./chain";
-import cloneDeep from "lodash.clonedeep";
+import { cloneDeep } from "lodash";
 import { findLast } from "../utils/array";
 
 interface CollectionOptions<IndexKeys> {
@@ -113,6 +113,8 @@ export class Collection<
       find: (value?: unknown) => this.$find(value, chain),
       limit: (amount: number) => this.$limit(amount, chain),
       offset: (amount: number) => this.$offset(amount, chain),
+      orderBy: (order: Partial<Record<keyof T, "asc" | "desc">>) =>
+        this.$orderBy(order, chain),
       replace: (value: T | ((item: T) => T)) => this.$replace(value, chain),
       select: <K extends keyof T>(properties: K[]) => {
         const $chain = chain.cloneForProperties(properties);
@@ -366,11 +368,16 @@ export class Collection<
     return this.$offset(amount, chain);
   }
 
-  sort() {
-    // @todo
+  private $orderBy<Properties extends keyof T = keyof T>(
+    order: Partial<Record<keyof T, "asc" | "desc">>,
+    chain: Chain<T, IndexKeys, Properties, Index>
+  ) {
+    chain.orderBy(order);
+    return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
-  expand() {
-    // @todo
+  orderBy(order: Partial<Record<keyof T, "asc" | "desc">>) {
+    const chain = new Chain(this.hashTable);
+    return this.$orderBy(order, chain);
   }
 }

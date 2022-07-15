@@ -39,10 +39,7 @@
     "@tsconfig/node16": "^1.0.3",
     "@types/jest": "^28.1.4",
     "@types/json-logic-js": "^2.0.1",
-    "@types/lodash.clonedeep": "^4.5.7",
-    "@types/lodash.isequal": "^4.5.6",
-    "@types/lodash.set": "^4.3.7",
-    "@types/lodash.unset": "^4.5.7",
+    "@types/lodash": "^4.14.182",
     "@typescript-eslint/eslint-plugin": "^5.30.5",
     "@typescript-eslint/parser": "^5.30.5",
     "concurrently": "^7.2.2",
@@ -58,10 +55,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "lodash.clonedeep": "^4.5.0",
-    "lodash.isequal": "^4.5.0",
-    "lodash.set": "^4.3.2",
-    "lodash.unset": "^4.5.2",
+    "lodash": "^4.17.21",
     "rfc6902": "^5.0.1"
   }
 }

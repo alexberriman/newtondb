@@ -1,7 +1,4 @@
-import cloneDeep from "lodash.clonedeep";
-import isEqual from "lodash.isequal";
-import set from "lodash.set";
-import unset from "lodash.unset";
+import { cloneDeep, isEqual, set, unset } from "lodash";
 import { PatchError } from "../../errors/patch-error";
 import { shallowEqual } from "../../utils/array";
 import { objectSubset } from "../../utils/object";

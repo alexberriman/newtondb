@@ -445,3 +445,31 @@ describe("replace", () => {
     ]);
   });
 });
+
+describe("orderBy", () => {
+  it("orders by attributes", () => {
+    const $ = new Collection(wizards);
+
+    expect(
+      $.find({ house: "gryffindor" }).orderBy({ name: "desc" }).data
+    ).toMatchObject([{ name: "ron" }, { name: "hermione" }, { name: "harry" }]);
+
+    $.insert([
+      extraWizards.neville,
+      { ...extraWizards.neville, born: 2000 },
+      { ...extraWizards.neville, born: 1000 },
+    ]).commit();
+
+    expect(
+      $.find({ house: "gryffindor" }).orderBy({ name: "desc", born: "asc" })
+        .data
+    ).toMatchObject([
+      { name: "ron", born: 1980 },
+      { name: "neville", born: 1000 },
+      { name: "neville", born: 1980 },
+      { name: "neville", born: 2000 },
+      { name: "hermione", born: 1979 },
+      { name: "harry", born: 1980 },
+    ]);
+  });
+});

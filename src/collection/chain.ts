@@ -1,3 +1,4 @@
+import { orderBy } from "lodash";
 import { HashTable, type HashTableItem } from "../data/hash-table";
 import {
   createPartialPatch,
@@ -28,6 +29,7 @@ export class Chain<
   Index = Pick<DataType, IndexKeys>,
   SelectItem = Pick<DataType, SelectKeys>
 > {
+  order?: Partial<Record<keyof DataType, "asc" | "desc">>;
   mutations: Patch = [];
   history: HistoryItem<DataType, IndexKeys, Index>[] = [];
 
@@ -52,16 +54,30 @@ export class Chain<
       Index,
       DataType
     >,
-    public options: { properties?: SelectKeys[] } = {}
+    public options: {
+      properties?: SelectKeys[];
+      orderBy?: Partial<Record<keyof DataType, "asc" | "desc">>;
+    } = {}
   ) {
+    const { orderBy } = options;
     this.masterTable = hashTable;
     this.mutableTable = hashTable;
+
+    if (orderBy) {
+      this.order = orderBy;
+    }
   }
 
   get data(): SelectItem[] {
-    const properties = asArray(this.options.properties);
+    const data = this.order
+      ? orderBy(
+          this.hashTable.data,
+          Object.keys(this.order),
+          Object.values(this.order)
+        )
+      : this.hashTable.data;
 
-    const { data } = this.hashTable;
+    const properties = asArray(this.options.properties);
     if (properties.length === 0) {
       return data as unknown as SelectItem[];
     }
@@ -89,7 +105,13 @@ export class Chain<
       : null;
   }
 
-  mutate(mutations: Patch) {
+  private addToHistory(operation?: HistoryItem<DataType, IndexKeys, Index>) {
+    if (operation) {
+      this.history = [...this.history, operation];
+    }
+  }
+
+  private mutate(mutations: Patch) {
     // when mutating the hash table, first need to clone it so the original
     // table isn't changed. the original table should only be mutated
     // when the chain mutations are committed.
@@ -115,9 +137,7 @@ export class Chain<
     this.hashTable = new HashTable(nodes, this.hashTable.options);
     this.hashTable.latestId = latestId;
 
-    if (operation) {
-      this.history = [...this.history, operation];
-    }
+    this.addToHistory(operation);
   }
 
   delete() {
@@ -127,6 +147,7 @@ export class Chain<
       ])
     ) as RemoveOperation[];
 
+    this.addToHistory({ operation: "delete", args: [] });
     this.mutate(mutations);
   }
 
@@ -141,6 +162,7 @@ export class Chain<
       } as TestAddReplaceOperation;
     });
 
+    this.addToHistory({ operation: "insert", args: [item] });
     this.mutate(mutations);
   }
 
@@ -179,10 +201,12 @@ export class Chain<
       | Partial<DataType>
       | ((item: DataType) => DataType | Partial<DataType>)
   ) {
+    this.addToHistory({ operation: "set", args: [update] });
     return this.setOrReplace(update, createPartialPatch);
   }
 
   replace(document: DataType | ((item: DataType) => DataType)) {
+    this.addToHistory({ operation: "replace", args: [document] });
     return this.setOrReplace(document, createPatch);
   }
 
@@ -201,5 +225,10 @@ export class Chain<
     $chain.mutableTable = this.mutableTable;
 
     return $chain;
+  }
+
+  orderBy(order: Partial<Record<keyof DataType, "asc" | "desc">>) {
+    this.order = order;
+    this.addToHistory({ operation: "orderBy", args: [order] });
   }
 }
