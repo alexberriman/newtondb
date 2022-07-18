@@ -99,8 +99,9 @@ JSON data structures are at the heart of most Javascript/Typescript development.
 Although Newton doesn't aim to replace a traditional database, it does borrow some features to let you interact with your JSON data more effectively. It does this through implementing:
 
 - A serializable query language to query your data.
-- The concept of primary and secondary indexes to dramatically improve the efficiency of read operations.
+- Primary and secondary indexes to improve the efficiency of read operations.
 - Adapters to read and persist your data to common locations (e.g. the filesystem, an s3 bucket, etc.)
+- Configurable callbacks when that are triggered on mutations.
 
 ## Installation
 
@@ -277,6 +278,10 @@ $.scientists.find({ university: "University of Berlin" }).count;
 
 ## Collections
 
+### new Collection(options)
+
+Lorem
+
 ### `.get()`
 
 Returns a single record. Most commonly used when querying your collection by a unique identifier:
@@ -375,7 +380,7 @@ $.get({ name: "Isaac Newton" }).select(["university"]).data;
 // => { university: "Cambridge" }
 ```
 
-> :link: given the result of one operation is fed into another, the order of `select` doesn't matter. The above will produce the same output as:
+Given the result of one operation is fed into another, the order of `select` doesn't matter. The above will produce the same output as:
 
 ```ts
 $.select(["university"]).get({ name: "Isaac Newton" }).data;
@@ -511,9 +516,9 @@ This will produce the following:
 ]
 ```
 
-Given the order by which you sort is important, `orderBy()` will adhere to the order of the properties in the object passed through to sort.
+Given the order by which you sort is important, `orderBy()` will adhere to the order of the properties in the object passed through.
 
-For example, in the above example, `{ university: "desc", name: "asc" }` was passed through. `orderBy` would first sort by `university` and `descending` order, and then by `name` in ascending order.
+For example, in the above example, `{ university: "desc", name: "asc" }` was passed through. `orderBy` would first sort by `university` in `descending` order, and then by `name` in ascending order.
 
 If you were to instead pass through `{ name: "asc", university: "desc" }`, `orderBy` would first sort by name in `ascending` order and then by `university` in `descending` order. This would produce a different result:
 
@@ -531,40 +536,92 @@ If you were to instead pass through `{ name: "asc", university: "desc" }`, `orde
 
 ### `.limit()`
 
-Lorem
+You can use `limit` to only return the first `n` amount of records within your chain:
 
 ```ts
-//
+$.find({ university: "cambridge" }).limit(5).data;
 ```
+
+Will return the first 5 records with `university` set to `"cambridge"`.
+
+You can use `limit` with `offset` to implement an offset based pagination on your data.
 
 <div align="right"><a href="#top">Back to top</a></div>
 
 ### `.offset()`
 
-Lorem
+`offset` will skip the first `n` records from your query. For example, to skip the first 5 records:
 
 ```ts
-//
+$.find({ university: "cambridge" }).offset(5).data;
+```
+
+`offset` can be used with `limit` to implement an offset based pagination:
+
+```ts
+const pageSize = 10;
+const currentPage = 3;
+
+$.find()
+  .limit(pageSize)
+  .offset((currentPage - 1) * pageSize).data;
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
 ### `.commit()`
 
-Lorem
+The following operations can mutate (change) your data:
 
-```ts
-//
-```
+- [set()](#set)
+- [replace()](#replace)
+- [delete()](#delete)
+- [insert()](#insert)
+
+Mutations will only be persisted/committed to your collection when `.commit()` is called. This is useful as it allows you to:
+
+1. Perform temporary transformations on your data, and
+1. Create complex chains
+
+What's more, by requiring a call to `commit` Newton confirms your intent to mutate the original data source, reducing the risk for unintended side effects throughout your application.
 
 <div align="right"><a href="#top">Back to top</a></div>
 
 ### `.assert()`
 
-Lorem
+Runs an `assertion` on your chain, and continues the chain execution if the assertion passes and raises an `AssertionError` when it fails.
+
+Takes as input a function whose single argument is the chain instance and which returns a `boolean`:
 
 ```ts
-//
+try {
+  $.get({ name: "isaac newton" })
+    .assert(({ exists }) => exists)
+    .set({ university: "unknown" })
+    .commit();
+} catch (e: unknown) {
+  if (e instanceof AssertionError) {
+    // record does not exist
+  }
+}
+```
+
+To describe the assertion in code, you can also pass a `string` as the first argument and your `function` as the second:
+
+```ts
+try {
+  $.get({ name: "isaac newton" })
+    .assert(
+      "the record the user is attempting to update exists",
+      ({ exists }) => exists
+    )
+    .set({ university: "unknown" })
+    .commit();
+} catch (e: unknown) {
+  if (e instanceof AssertionError) {
+    // record does not exist
+  }
+}
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
