@@ -711,10 +711,75 @@ Cancels an observer set with the `.observe()` method. Takes as input a numeric I
 
 <div align="right"><a href="#top">Back to top</a></div>
 
+## Querying
+
+Newton allows you to query your data using through the following mechanisms:
+
+- [By primary key](#by-primary-key)
+- [By function](#by-function)
+- [By a simple condition](#simple-condition)
+- [By an advanced condition](#advanced-condition)
+
+The examples in this section will use the following as a data source:
+
+```json
+[
+  { "id": 1, "name": "isaac newton", "born": 1643, "alive": false },
+  { "id": 2, "name": "albert einstein", "born": 1879, "alive": false },
+  { "id": 3, "name": "galileo galilei", "born": 1564, "alive": false },
+  { "id": 4, "name": "marie curie", "born": 1867, "alive": false },
+  { "id": 5, "name": "roger penrose", "born": 1931, "alive": true },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
+### By primary key
+
+When you instantiate Newton you can optionally define a primary key:
+
+```ts
+const db = new newton(scientists, { primaryKey: "id" });
+```
+
+> :warning: if you intend to query your data by your primary key, it is highly recommended you instantiate your database with a primary key to optimize reads.
+
+If the value of your primary key is a scalar value (`string` or `number`), you can query your collection by the value directly:
+
+```ts
+$.get(2).data;
+// =>  { id: 3, name: 'galileo galilei', born: 1564, alive: false }
+```
+
+If you are using a composite primary key, you'll have to pass through an object:
+
+```ts
+const $ = new Collection(scientists, { primaryKey: ["name", "born"] });
+
+$.get({ name: "albert einstein", born: 1879 }).data;
+// => { "id": 2, "name": "albert einstein", "born": 1879, "alive": false }
+```
+
+### By function
+
+A function predicate can be passed to `get()` and `find()`, which takes as input a single argument with the record, and should return `true` if the record passes the predicate and `false` if not.
+
+For example, to return scientists who are currently alive:
+
+```ts
+$.find((record) => record.alive).data;
+```
+
+This will return the following:
+
+```json
+[
+  { "id": 5, "name": "roger penrose", "born": 1931, "alive": true },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
+> :warning: Newton will have to iterate over each item in your collection to test whether or not the predicate is truthy. Where possible, you should try and use a [basic](#basic-condition) or [advanced](#advanced-condition) condition with [secondary indexes](#secondary-indexes) to optimize common read operations.
+
 ## License
 
 [MIT](https://tldrlegal.com/license/mit-license)
-
-```
-
-```
