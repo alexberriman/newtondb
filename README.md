@@ -148,6 +148,14 @@ db.$.universities.get({ location: "Zurich, Switzerland" })
 
 ### Adapters
 
+An Adapter is what Newton uses to read and write to a data source. Put simply, an Adapter is a class with both a `read` and `write` method to be able to read from and write changes to your data source. Newton does its best to infer the adapter you're wanting to use based on the original argument passed to it. For example:
+
+- If a data object of a certain shape is passed to it, Newton will instantiate a new `MemoryAdapter` instance.
+- If a file path is passed to it, Newton will instantiate a new `FileAdapter` instance.
+- If a URL is passed to it, Newton will instantiate a new `UrlAdapter` instance.
+
+You can extend Newton by creating your own Adapters and passing instances of those adapters through when you instantiate your database. For more information, see [custom adapters](#custom-adapters).
+
 ### Input data
 
 When thinking of data sources expressed in JSON, you will often have arrays/lists of data objects of a given type:
@@ -225,7 +233,7 @@ This allows you to set up complex chains and transformations on your data.
 
 ### Committing mutations
 
-Mutations are only persisted to the original data source when `.commit()` is called on your chain:
+Mutations are only persisted to the original data source when `.commit` is called on your chain.
 
 ```ts
 $.scientists
@@ -235,14 +243,14 @@ $.scientists
 // => [ { "code": "isa", "name": "Isaac Newton", "university": "University of Berlin" } ]
 ```
 
-In the above example, the `university` attribute for all scientists studying at the `"berlin"` university is set to `"University of Berlin"`, and you can access that data through the `.data` property. However, if you were to then query for scientists attending the `"University of Berlin"` you wouldn't find any:
+In the above example, the `university` attribute for all scientists studying at the `"berlin"` university is set to `"University of Berlin"`, and you can access that data through the `.data` property. However, if you were to then query for scientists attending the `"University of Berlin"` you would receive an empty result:
 
 ```ts
 $.scientists.find({ university: "University of Berlin" }).data;
 // => []
 ```
 
-In order to persist mutations within your chain to the data source, you have to call `.commit`:
+In order to persist mutations within your chain to the original data source, you must call `.commit`:
 
 ```ts
 $.scientists
@@ -251,7 +259,7 @@ $.scientists
   .commit(); // commits the mutations defined in the chain
 ```
 
-You can then query for students in the new university:
+You can then query against the updated items:
 
 ```ts
 $.scientists.find({ university: "University of Berlin" }).count;
