@@ -94,8 +94,13 @@ JSON data structures are at the heart of most Javascript/Typescript development.
 - Safely executing data transformations.
 - Querying against large datasets where performance and optimization becomes important.
 - Observing changes to your data and executing callbacks.
+- Reading from and writing to a destination on changes.
 
-Although Newton doesn't aim to replace a traditional database, it does borrow some features to let you interact with your JSON data more effectively.
+Although Newton doesn't aim to replace a traditional database, it does borrow some features to let you interact with your JSON data more effectively. It does this through implementing:
+
+- A serializable query language to query your data.
+- The concept of primary and secondary indexes to dramatically improve the efficiency of read operations.
+- Adapters to read and persist your data to common locations (e.g. the filesystem, an s3 bucket, etc.)
 
 ## Installation
 
@@ -372,30 +377,74 @@ $.get({ name: "Isaac Newton" }).select(["university"]).data;
 
 ### `.insert()`
 
-Lorem
+Inserts one or more records into the database.
+
+Inserting a single record:
 
 ```ts
-//
+$.insert({
+  name: "Nicolaus Copernicus",
+  born: "1473-02-19T12:00:00.000Z",
+}).commit();
+```
+
+You can insert multiple records by passing through an array of objects to insert:
+
+```ts
+$.insert([
+  { name: "Nicolaus Copernicus", born: "1473-02-19T12:00:00.000Z" },
+  { name: "Edwin Hubble", born: "1989-11-10T12:00:00.000Z" },
+]).commit();
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
 ### `.set()`
 
-Lorem
+Updates a set of attributes on one or more records.
+
+> :warning: **note**: This differs from `replace()` in that it will only update/set the attributes passed through, whereas `replace()` will replace the entire document.
 
 ```ts
-//
+// update isaac newton's college to "n/a" and set isAlive to false
+$.find({ name: "Isaac Newton" })
+  .set({ college: "n/a", isAlive: false })
+  .commit();
+```
+
+`set` can also take as input a function whose first argument is the current value of the record, and which must return a subset of the record to update:
+
+```ts
+// uppercase all universities using .set
+$.set(({ university }) => ({
+  university: university.toUpperCase(),
+})).commit();
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
 ### `.replace()`
 
-Lorem
+Replaces an entire document with a new document:
 
 ```ts
-//
+const newNewton = {
+  name: "Isaac Newton",
+  isAlive: false,
+  diedOn: "1727-03-31T12:00:00.000Z",
+};
+
+$.get("Isaac Newton").replace(newNewton).commit();
+```
+
+`set` can also take as input a function whose first argument is the current value of the record, and which must return a complete new record:
+
+```ts
+// uppercase all universities using .replace
+$.replace((record) => ({
+  ...record,
+  university: university.toUpperCase(),
+})).commit();
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
