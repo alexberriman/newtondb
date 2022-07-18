@@ -57,6 +57,11 @@
   - [.assert()](#assert)
   - [.observe()](#observe)
   - [.unobserve()](#unobserve)
+  - [Events](#events)
+    - [insert](#insert)
+    - [delete](#delete)
+    - [updated](#updated)
+    - [\*](#wildcard)
 - [Querying](#querying)
   - [By primary key](#by-primary-key)
   - [By function](#by-functions)
@@ -606,7 +611,7 @@ try {
 }
 ```
 
-To describe the assertion in code, you can also pass a `string` as the first argument and your `function` as the second:
+You can optionally pass through a `string` as the first argument and a `function` as the second to describe your assertion:
 
 ```ts
 try {
@@ -628,21 +633,55 @@ try {
 
 ### `.observe()`
 
-Lorem
+When mutations to the data source are committed, one or more of the following events will be raised:
+
+- [insert](#insert): raised when a record is inserted into the collection
+- [delete](#delete): raised when a record is deleted from the collection
+- [updated](#updated): raised when a record is updated
+
+You can pass callbacks to the `observe` method that will be triggered when these events occur.
+
+On insert:
 
 ```ts
-//
+const onInsert = $.observe("insert", (record) => {
+  //
+});
 ```
+
+On delete:
+
+```ts
+const onDelete = $.observe("delete", (record) => {
+  //
+});
+```
+
+On update:
+
+```ts
+const onUpdate = $.observe("updated", (record, historical) => {
+  // historical.old = item before update
+  // historical.new = item after update
+});
+```
+
+You can also pass through a wildcard observer which will be triggered on every event:
+
+```ts
+const wildcardObserver = $.observe((event, data) => {
+  // event: "insert" | "delete" | "updated"
+  // data: event data
+});
+```
+
+Calls to `.observe()` will return an numeric id of the observer. This id should be passed to `unobserve()` to cancel the observer.
 
 <div align="right"><a href="#top">Back to top</a></div>
 
 ### `.unobserve()`
 
-Lorem
-
-```ts
-//
-```
+Cancels an observer set with the `.observe()` method. Takes as input a numeric ID (which should correspond to the output of the original `.observe` call).
 
 <div align="right"><a href="#top">Back to top</a></div>
 
