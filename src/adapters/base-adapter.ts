@@ -4,4 +4,5 @@ export interface Adapter<T> {
 
 export abstract class BaseAdapter<T> implements Adapter<T> {
   abstract read(): Promise<T>;
+  abstract write(data: T): Promise<boolean>;
 }

@@ -1,6 +1,5 @@
 import { orderBy } from "lodash";
 import { HashTable, type HashTableItem } from "../data/hash-table";
-import { PatchResult } from "../data/hash-table/patch";
 import {
   createPartialPatch,
   createPatch,
@@ -10,8 +9,8 @@ import {
   toPointer,
   type Patch,
 } from "../data/json-patch";
-import { flatten, keyArrayBy } from "../utils/array";
-import { keyBy, objectSubset } from "../utils/object";
+import { flatten } from "../utils/array";
+import { objectSubset } from "../utils/object";
 import {
   asArray,
   isCallable,

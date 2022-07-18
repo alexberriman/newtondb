@@ -3,30 +3,29 @@ import { MemoryAdapter } from "../adapters/memory-adapter";
 import { Collection } from "../collection/collection";
 import { AdapterError } from "../errors/adapter-error";
 import { NotReadyError } from "../errors/not-ready-error";
+import { WriteError } from "../errors/write-error";
 import { isArray, isObject } from "../utils/types";
-
-type Db<T> = {
-  [Property in keyof T]: T[Property] extends unknown[]
-    ? Collection<T[Property][number]>
-    : Collection<T[Property]>;
-};
-
-type Instance<T> = T extends unknown[] ? Collection<T[number]> : Db<T>;
-
-type AllowedData = unknown[] | Record<string, unknown[]>;
+import {
+  type Db,
+  isCollection,
+  isDatabase,
+  type AllowedData,
+  type Instance,
+  type DatabaseOptions,
+  type DatabaseCollectionOptions,
+} from "./types";
 
 export class Database<Shape extends AllowedData> {
   private instance?: Instance<Shape>;
   private adapter: BaseAdapter<Shape>;
 
-  constructor(data: Shape);
-  constructor(adapter: Adapter<Shape>);
-  constructor(dataOrAdapter: BaseAdapter<Shape> | Shape) {
-    function isAdapter<T>(value: unknown): value is T {
-      return value instanceof BaseAdapter;
-    }
-
-    if (isAdapter<BaseAdapter<Shape>>(dataOrAdapter)) {
+  constructor(data: Shape, options?: DatabaseOptions<Shape>);
+  constructor(adapter: Adapter<Shape>, options?: DatabaseOptions<Shape>);
+  constructor(
+    dataOrAdapter: BaseAdapter<Shape> | Shape,
+    private options: DatabaseOptions<Shape> = {}
+  ) {
+    if (dataOrAdapter instanceof BaseAdapter) {
       this.adapter = dataOrAdapter;
     } else {
       this.adapter = new MemoryAdapter<Shape>(dataOrAdapter);
@@ -45,14 +44,42 @@ export class Database<Shape extends AllowedData> {
     return this.instance;
   }
 
+  get data(): Shape {
+    const instance = this.$;
+
+    if (isCollection<Collection<Shape>>(instance)) {
+      return instance.data as Shape;
+    } else if (isDatabase<Db<Shape>>(instance)) {
+      return Object.keys(instance).reduce(
+        (data, collectionName) => ({
+          ...data,
+          [collectionName]: instance[collectionName as keyof Shape].data,
+        }),
+        {}
+      ) as Shape;
+    }
+
+    throw new WriteError("Unable to parse data");
+  }
+
   async read() {
     const data = await this.adapter.read();
     this.init(data);
   }
 
+  async write() {
+    const result = await this.adapter.write(this.data);
+    if (!result) {
+      throw new WriteError("An error occurred when writing to the data source");
+    }
+  }
+
   private init(data: Shape) {
+    const { collection = {} as DatabaseCollectionOptions<Shape> } =
+      this.options;
+
     if (isArray(data)) {
-      this.instance = new Collection(data) as Instance<Shape>;
+      this.instance = new Collection(data, collection) as Instance<Shape>;
       return;
     } else if (
       isObject(data) &&
@@ -60,7 +87,15 @@ export class Database<Shape extends AllowedData> {
     ) {
       // create dictionary db
       this.instance = Object.keys(data).reduce(
-        (obj, key) => ({ ...obj, [key]: new Collection(data[key]) }),
+        (obj: Partial<Instance<Shape>>, key: string) => ({
+          ...obj,
+          [key]: new Collection(
+            data[key],
+            collection[
+              key as unknown as keyof DatabaseCollectionOptions<Shape>
+            ] ?? {}
+          ),
+        }),
         {}
       ) as Instance<Shape>;
       return;
