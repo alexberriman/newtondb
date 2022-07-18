@@ -720,7 +720,7 @@ Newton allows you to query your data using through the following mechanisms:
 - [By a simple condition](#simple-condition)
 - [By an advanced condition](#advanced-condition)
 
-The examples in this section will use the following as a data source:
+The examples in this section will use the following dataset:
 
 ```json
 [
@@ -733,6 +733,8 @@ The examples in this section will use the following as a data source:
 ]
 ```
 
+<div align="right"><a href="#top">Back to top</a></div>
+
 ### By primary key
 
 When you instantiate Newton you can optionally define a primary key:
@@ -741,7 +743,7 @@ When you instantiate Newton you can optionally define a primary key:
 const db = new newton(scientists, { primaryKey: "id" });
 ```
 
-> :warning: if you intend to query your data by your primary key, it is highly recommended you instantiate your database with a primary key to optimize reads.
+> :warning: **Performance warning**: while `primaryKey` is optional, it is highly recommended you set this when you instantiate Newton in order to optimize read performance.
 
 If the value of your primary key is a scalar value (`string` or `number`), you can query your collection by the value directly:
 
@@ -758,6 +760,8 @@ const $ = new Collection(scientists, { primaryKey: ["name", "born"] });
 $.get({ name: "albert einstein", born: 1879 }).data;
 // => { "id": 2, "name": "albert einstein", "born": 1879, "alive": false }
 ```
+
+<div align="right"><a href="#top">Back to top</a></div>
 
 ### By function
 
@@ -778,7 +782,35 @@ This will return the following:
 ]
 ```
 
-> :warning: Newton will have to iterate over each item in your collection to test whether or not the predicate is truthy. Where possible, you should try and use a [basic](#basic-condition) or [advanced](#advanced-condition) condition with [secondary indexes](#secondary-indexes) to optimize common read operations.
+> :warning: **Optimization warning**: Newton will have to iterate over each item in your collection to test whether or not the predicate is truthy. Where possible, you should try and use a [basic](#basic-condition) or [advanced](#advanced-condition) condition with [secondary indexes](#secondary-indexes) to optimize read operations.
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### By simple condition
+
+You can pass a simple key-value query to perform an exact match on items in your collection:
+
+```ts
+$.find({ alive: true }).data;
+```
+
+Which returns:
+
+```json
+[
+  { "id": 5, "name": "roger penrose", "born": 1931, "alive": true },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
+You can pass multiple properties through:
+
+```ts
+$.find({ alive: true, born: 1920 }).data;
+// => [ { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true } ]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
 
 ## License
 
