@@ -1,4 +1,4 @@
-<h1 align="center">
+<h1 align="center" id="top">
   <a href="https://github.com/alexberriman/newtondb"><img src="./logo.svg" alt="newtondb" height="190"></a>
   <br>
   Newton
@@ -40,19 +40,22 @@
   - [.unobserve](#unobserve)
 - [Collections](#collections)
   - [`new Collection(options)`](#collection-options)
-  - [.get](#get)
-  - [.find](#find)
-  - [.select](#select)
-  - [.insert](#insert)
-  - [.set](#set)
-  - [.replace](#upsert)
-  - [.delete](#delete)
-  - [.orderBy](#orderBy)
-  - [.limit](#limit)
-  - [.offset](#offset)
-  - [.assert](#assert)
-  - [.observe](#observe)
-  - [.unobserve](#unobserve)
+  - [.get()](#get)
+  - [.find()](#find)
+  - [.data](#data)
+  - [.count](#count)
+  - [.exists](#exists)
+  - [.select()](#select)
+  - [.insert()](#insert)
+  - [.set()](#set)
+  - [.replace()](#upsert)
+  - [.delete()](#delete)
+  - [.orderBy()](#orderBy)
+  - [.limit()](#limit)
+  - [.offset()](#offset)
+  - [.assert()](#assert)
+  - [.observe()](#observe)
+  - [.unobserve()](#unobserve)
 - [Querying](#querying)
   - [By primary key](#by-primary-key)
   - [By function](#by-functions)
@@ -266,13 +269,105 @@ $.scientists.find({ university: "University of Berlin" }).count;
 // => 1
 ```
 
-## Comparison
+## Collections
 
-#### lowdb
+### `.get()`
 
-#### couchdb
+Returns a single record. Most commonly used when querying your collection by a unique identifier:
 
-#### lokijs
+```ts
+$.get({ code: "isa" }).data;
+// => { "code": "isa", "name": "Isaac Newton", "university": "berlin" }
+```
+
+When your collection has been instantiated with a primary key, and your primary key is a single property whose value is a scalar (e.g. a `string` or a `number`), you can call `.get` with that scalar value and Newton will infer the fact that you're querying against your primary key:
+
+```ts
+$.get("isa").data;
+// => { "code": "isa", "name": "Isaac Newton", "university": "berlin" }
+```
+
+You can also query using a [primary key](#by-primary-key), a [basic condition](#basic-condition), an [advanced condition](#advanced-condition) or a [function](#by-function).
+
+<div align="right">[Back to top](#top)</div>
+
+### `.find()`
+
+Returns multiple records:
+
+```ts
+$.find({ university: "cambridge" }).data;
+// => [ { "code": "alb", "name": "Albert Einstein", "university": "cambridge" } ]
+```
+
+You can also query using a [primary key](#by-primary-key), a [basic condition](#basic-condition), an [advanced condition](#advanced-condition) or a [function](#by-function).
+
+<div align="right">[Back to top](#top)</div>
+
+### `.data`
+
+The `data` property returns an array of data as it currently exists within your chain. For example, referencing `.data` on the root collection will return an array of all data in your collection:
+
+```ts
+$.data;
+// => [ { "name": "Isaac Newton", "born": "1643-01-04T12:00:00.000Z" }, ... ]
+```
+
+When you start chaining operations, `.data` will return an array of data as it currently exists within your chain:
+
+```ts
+$.find({ name: "Isaac Newton" }).data;
+// => [ { "name": "Isaac Newton", "born": "1643-01-04T12:00:00.000Z" } ]
+```
+
+<div align="right">[Back to top](#top)</div>
+
+### `.count`
+
+The `count` property returns the amount of records currently within your chain. When executed from the base collection, it will return the total amount of records within your collection:
+
+```ts
+$.count;
+// => 100
+```
+
+When you start chaining operations, `.count` will return the amount of records that currently exist within your chain:
+
+```ts
+$.find({ name: "Isaac Newton" }).count;
+// => 1
+```
+
+<div align="right">[Back to top](#top)</div>
+
+### `.exists`
+
+The `exists` property is a shorthand for `.count > 0` and simply returns `true` or `false` if there is a non-zero amount of items currently within your chain:
+
+```ts
+$.get("isa").exists;
+// => true
+```
+
+Or when doesn't exist:
+
+```ts
+$.get("not isaac newton").exists;
+// => false
+```
+
+<div align="right">[Back to top](#top)</div>
+
+### `.select()`
+
+By default, when a query returns records, the result includes all of those records' attributes. To only return a specific set of properties, call `.select` with an array of properties to return:
+
+```ts
+$.get({ name: "Isaac Newton" }).select(["university"]).data;
+// => { university: "Cambridge" }
+```
+
+<div align="right">[Back to top](#top)</div>
 
 ## Changelog
 
