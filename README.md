@@ -215,7 +215,7 @@ $.get("isa").data;
 // => { "code": "isa", "name": "Isaac Newton", "university": "berlin" }
 ```
 
-You can also configure one or more secondary indexes to maintain hashmaps for attributes that are commonly queried. For example, if you had a data source of 20,000 scientists, and you often queried against universities, you may want to create a secondary index for the `university` attribute. When you then executed the following query:
+You can configure one or more secondary indexes to maintain hashmaps for attributes that are commonly queried. For example, if you had a data source of 20,000 scientists, and you often queried against universities, you may want to create a secondary index for the `university` attribute. When you then executed the following query:
 
 ```ts
 $.find({ university: "berlin", isAlive: true });
@@ -287,9 +287,9 @@ $.get("isa").data;
 // => { "code": "isa", "name": "Isaac Newton", "university": "berlin" }
 ```
 
-You can also query using a [primary key](#by-primary-key), a [basic condition](#basic-condition), an [advanced condition](#advanced-condition) or a [function](#by-function).
+You can query using a [primary key](#by-primary-key), a [basic condition](#basic-condition), an [advanced condition](#advanced-condition) or a [function](#by-function).
 
-<div align="right">[Back to top](#top)</div>
+<div align="right"><a href="#top">Back to top</a></div>
 
 ### `.find()`
 
@@ -300,9 +300,9 @@ $.find({ university: "cambridge" }).data;
 // => [ { "code": "alb", "name": "Albert Einstein", "university": "cambridge" } ]
 ```
 
-You can also query using a [primary key](#by-primary-key), a [basic condition](#basic-condition), an [advanced condition](#advanced-condition) or a [function](#by-function).
+You can query using a [primary key](#by-primary-key), a [basic condition](#basic-condition), an [advanced condition](#advanced-condition) or a [function](#by-function).
 
-<div align="right">[Back to top](#top)</div>
+<div align="right"><a href="#top">Back to top</a></div>
 
 ### `.data`
 
@@ -320,7 +320,7 @@ $.find({ name: "Isaac Newton" }).data;
 // => [ { "name": "Isaac Newton", "born": "1643-01-04T12:00:00.000Z" } ]
 ```
 
-<div align="right">[Back to top](#top)</div>
+<div align="right"><a href="#top">Back to top</a></div>
 
 ### `.count`
 
@@ -338,7 +338,7 @@ $.find({ name: "Isaac Newton" }).count;
 // => 1
 ```
 
-<div align="right">[Back to top](#top)</div>
+<div align="right"><a href="#top">Back to top</a></div>
 
 ### `.exists`
 
@@ -356,7 +356,7 @@ $.get("not isaac newton").exists;
 // => false
 ```
 
-<div align="right">[Back to top](#top)</div>
+<div align="right"><a href="#top">Back to top</a></div>
 
 ### `.select()`
 
@@ -367,7 +367,7 @@ $.get({ name: "Isaac Newton" }).select(["university"]).data;
 // => { university: "Cambridge" }
 ```
 
-<div align="right">[Back to top](#top)</div>
+<div align="right"><a href="#top">Back to top</a></div>
 
 ## Changelog
 
