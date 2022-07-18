@@ -306,6 +306,8 @@ $.find({ university: "cambridge" }).data;
 // => [ { "code": "alb", "name": "Albert Einstein", "university": "cambridge" } ]
 ```
 
+Will return an empty array when no results are found.
+
 You can query using a [primary key](#by-primary-key), a [basic condition](#basic-condition), an [advanced condition](#advanced-condition) or a [function](#by-function).
 
 <div align="right"><a href="#top">Back to top</a></div>
@@ -330,7 +332,7 @@ $.find({ name: "Isaac Newton" }).data;
 
 ### `.count`
 
-The `count` property returns the amount of records currently within your chain. When executed from the base collection, it will return the total amount of records within your collection:
+The `count` property returns the amount of records currently within your chain. When executed from the base collection, it will return the total amount of records in your collection:
 
 ```ts
 $.count;
@@ -355,7 +357,7 @@ $.get("isa").exists;
 // => true
 ```
 
-Or when doesn't exist:
+Or when it doesn't exist:
 
 ```ts
 $.get("not isaac newton").exists;
@@ -366,10 +368,17 @@ $.get("not isaac newton").exists;
 
 ### `.select()`
 
-By default, when a query returns records, the result includes all of those records' attributes. To only return a specific set of properties, call `.select` with an array of properties to return:
+By default, when a query returns records, the result includes all of those records' attributes. To only return a subset of an object's properties, call `.select` with an array of properties to return:
 
 ```ts
 $.get({ name: "Isaac Newton" }).select(["university"]).data;
+// => { university: "Cambridge" }
+```
+
+> :link: given the result of one operation is fed into another, the order of `select` doesn't matter. The above will produce the same output as:
+
+```ts
+$.select(["university"]).get({ name: "Isaac Newton" }).data;
 // => { university: "Cambridge" }
 ```
 
@@ -403,8 +412,6 @@ $.insert([
 
 Updates a set of attributes on one or more records.
 
-> :warning: **note**: This differs from `replace()` in that it will only update/set the attributes passed through, whereas `replace()` will replace the entire document.
-
 ```ts
 // update isaac newton's college to "n/a" and set isAlive to false
 $.find({ name: "Isaac Newton" })
@@ -420,6 +427,8 @@ $.set(({ university }) => ({
   university: university.toUpperCase(),
 })).commit();
 ```
+
+> :warning: this differs from `replace()` in that it will only update/set the attributes passed through, whereas `replace()` will replace the entire document.
 
 <div align="right"><a href="#top">Back to top</a></div>
 
@@ -437,7 +446,7 @@ const newNewton = {
 $.get("Isaac Newton").replace(newNewton).commit();
 ```
 
-`set` can also take as input a function whose first argument is the current value of the record, and which must return a complete new record:
+`replace` can also take as input a function whose first argument is the current value of the record, and which must return a complete new record:
 
 ```ts
 // uppercase all universities using .replace
@@ -451,20 +460,71 @@ $.replace((record) => ({
 
 ### `.delete()`
 
-Lorem
+Deletes one or more records from the collection.
+
+`delete()` doesn't take any arguments. Rather, it deletes the records that currently exist within the chain at the time that it's called. For example:
 
 ```ts
-//
+// delete all records from a collection
+$.delete().commit();
+
+// delete all scientists from cambridge university
+$.find({ university: "cambridge" }).delete().commit();
+
+// delete a single record
+$.get("isaac newton").delete().commit();
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
 ### `.orderBy()`
 
-Lorem
+`orderBy` can be used to sort records by one or more properties. It takes as input a single object whose properties are a key of your collection's properties, and whose value is either `asc` (for ascending) or `desc` (for descending).
+
+For example, using the below dataset:
 
 ```ts
-//
+const students = [
+  { name: "roger galilei", university: "mit" },
+  { name: "kip tesla", university: "harvard" },
+  { name: "rosalind faraday", university: "harvard" },
+  { name: "thomas franklin", university: "mit" },
+  { name: "albert currie", university: "harvard" },
+];
+```
+
+To sort by university in descending order and name in ascending order:
+
+```ts
+$.orderBy({ university: "desc", name: "asc" }).data;
+```
+
+This will produce the following:
+
+```json
+[
+  { "name": "roger galilei", "university": "mit" },
+  { "name": "thomas franklin", "university": "mit" },
+  { "name": "albert currie", "university": "harvard" },
+  { "name": "kip tesla", "university": "harvard" },
+  { "name": "rosalind faraday", "university": "harvard" }
+]
+```
+
+Given the order by which you sort is important, `orderBy()` will adhere to the order of the properties in the object passed through to sort.
+
+For example, in the above example, `{ university: "desc", name: "asc" }` was passed through. `orderBy` would first sort by `university` and `descending` order, and then by `name` in ascending order.
+
+If you were to instead pass through `{ name: "asc", university: "desc" }`, `orderBy` would first sort by name in `ascending` order and then by `university` in `descending` order. This would produce a different result:
+
+```json
+[
+  { "name": "albert currie", "university": "harvard" },
+  { "name": "kip tesla", "university": "harvard" },
+  { "name": "roger galilei", "university": "mit" },
+  { "name": "rosalind faraday", "university": "harvard" },
+  { "name": "thomas franklin", "university": "mit" }
+]
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
