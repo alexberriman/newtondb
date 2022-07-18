@@ -32,7 +32,6 @@
 - [Adapters](#adapters)
   - [Memory adapter](#memory-adapter)
   - [File adapter](#file-adapter)
-  - [URL adapter](#url-adapter)
 - [Database](#database)
   - [`new newton(options)`](#options)
   - [.read](#read)
@@ -176,7 +175,6 @@ When instantiating Newton, you can either pass through an explicit instance of a
 
 - If an array of objects, or an object whose properties are all arrays is passed through, Newton will instantiate a new `MemoryAdapter` instance.
 - If a file path is passed through, Newton will instantiate a new `FileAdapter` instance.
-- If a URL is passed through, Newton will instantiate a new `UrlAdapter` instance.
 
 You can extend Newton by creating your own Adapters and passing instances of those adapters through when you instantiate Newton. For more information, see [using custom adapters](#using-custom-adapters).
 
@@ -342,26 +340,6 @@ Reads a JSON file from the local filesystem.
 import newton, { FileAdapter } from "newtondb";
 
 const adapter = new FileAdapter("./db.json");
-const db = new newton(adapter);
-await db.read();
-
-db.$.scientists.find({ code: "isa" });
-
-// => { code: "isa", name: "Isaac Newton", university: "berlin" }
-```
-
-<div align="right"><a href="#top">Back to top</a></div>
-
-### UrlAdapter
-
-Reads a JSON file from a remote web URL.
-
-**Usage:**
-
-```ts
-import newton, { UrlAdapter } from "newtondb";
-
-const adapter = new UrlAdapter("https://example.com/db.json");
 const db = new newton(adapter);
 await db.read();
 
