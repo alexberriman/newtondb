@@ -57,11 +57,6 @@
   - [.assert()](#assert)
   - [.observe()](#observe)
   - [.unobserve()](#unobserve)
-  - [Events](#events)
-    - [insert](#insert)
-    - [delete](#delete)
-    - [updated](#updated)
-    - [\*](#wildcard)
 - [Querying](#querying)
   - [By primary key](#by-primary-key)
   - [By function](#by-functions)
@@ -106,7 +101,9 @@ Although Newton doesn't aim to replace a traditional database, it does borrow so
 - A serializable query language to query your data.
 - Primary and secondary indexes to improve the efficiency of read operations.
 - Adapters to read and persist your data to common locations (e.g. the filesystem, an s3 bucket, etc.)
-- Configurable callbacks when that are triggered on mutations.
+- Configurable callbacks that are triggered on mutations.
+
+Newton's primary focus is on ease of use, performance and extendibility. Subsequent updates will include additional performance optimizations, including: sort keys, query caching, security, relational data and eager/lazy loading.
 
 ## Installation
 
@@ -285,7 +282,12 @@ $.scientists.find({ university: "University of Berlin" }).count;
 
 ### new Collection(options)
 
-Lorem
+Instantiates a new collection instance. The following options are supported:
+
+| Option       | Type                 | Required | Default value | Description                                                                                                                                                                                                                                                     |
+| ------------ | -------------------- | -------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `primaryKey` | `string \| string[]` | `false`  | `undefined`   | A single property (or an array of properties for a composite key) that is used to uniquely identify a record. (`id` is commonly used). Not required, but will dramatically speed up read operations when querying by primary key.                               |
+| `copy`       | `boolean`            | `false`  | `false`       | When mutations are committed using `commit`, the original data object will be updated. This can sometimes lead to unintended side effects (when using the `MemoryAdapter`). Set `copy` to `true` to create a deep copy of the collection data on instantiation. |
 
 ### `.get()`
 
