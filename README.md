@@ -109,6 +109,8 @@ Although Newton doesn't aim to replace a traditional database, it does borrow on
 
 Newton prioritizes performance and extendibility. Pending updates before an initial `1.0` release will include additional performance optimizations, including: sort keys, query caching, relational data and eager/lazy loading.
 
+<div align="right"><a href="#top">Back to top</a></div>
+
 ## Installation
 
 Using npm:
@@ -122,6 +124,8 @@ Or with yarn:
 ```bash
 $ yarn add newtondb
 ```
+
+<div align="right"><a href="#top">Back to top</a></div>
 
 ## Basic usage
 
@@ -160,6 +164,8 @@ db.$.universities.get({ location: "Zurich, Switzerland" }).data
 // => { name: "University of Zurich", location: "Zurich, Switzerland" }
 ```
 
+<div align="right"><a href="#top">Back to top</a></div>
+
 ## Basic principles
 
 ### Adapters
@@ -173,6 +179,8 @@ When instantiating Newton, you can either pass through an explicit instance of a
 - If a URL is passed through, Newton will instantiate a new `UrlAdapter` instance.
 
 You can extend Newton by creating your own Adapters and passing instances of those adapters through when you instantiate Newton. For more information, see [using custom adapters](#using-custom-adapters).
+
+<div align="right"><a href="#top">Back to top</a></div>
 
 ### Input data
 
@@ -208,6 +216,8 @@ We define this as a `Database` which contains two collections:
 
 Newton will take as input either a single `Collection` or a `Database` with one or more collections.
 
+<div align="right"><a href="#top">Back to top</a></div>
+
 ### Indexing
 
 Newton operates on arrays/lists of data. However, there are performance implications when operating on arrays that starts to become more troublesome as the size of your dataset grows. Namely, when given a query or a predicate, internally you have to iterate over the entire list to determine which objects match your predicate.
@@ -238,6 +248,8 @@ $.find({ university: "berlin", isAlive: true });
 
 Rather than iterating over all 20,000 records, newton would instead iterate over the records in the hashmap with `university` as the hash (in which there might only be 100 records). You can set up multiple secondary indexes to increase performance even more as your dataset grows.
 
+<div align="right"><a href="#top">Back to top</a></div>
+
 ### Chaining
 
 Newton functions using a concept of operation chaining, where the data output from one operation feeds in as input to the subsequent operation. For example, when updating a record, Newton's update function doesn't take as input a query of records to update against. Rather, if you wanted to update a set of records that matched a particular query, you would first `find` those records and then call `set`:
@@ -248,6 +260,8 @@ $.find({ university: "berlin" }).set({ university: "University of Berlin" });
 ```
 
 This allows you to set up complex chains and transformations on your data.
+
+<div align="right"><a href="#top">Back to top</a></div>
 
 ### Committing mutations
 
@@ -284,6 +298,8 @@ $.scientists.find({ university: "University of Berlin" }).count;
 // => 1
 ```
 
+<div align="right"><a href="#top">Back to top</a></div>
+
 ## Collections
 
 ### new Collection(options)
@@ -294,6 +310,8 @@ Instantiates a new collection instance. The following options are supported:
 | ------------ | -------------------- | -------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `primaryKey` | `string \| string[]` | `false`  | `undefined`   | A single property (or an array of properties for a composite key) that is used to uniquely identify a record. (`id` is commonly used). Not required, but will dramatically speed up read operations when querying by primary key.                               |
 | `copy`       | `boolean`            | `false`  | `false`       | When mutations are committed using `commit`, the original data object will be updated. This can sometimes lead to unintended side effects (when using the `MemoryAdapter`). Set `copy` to `true` to create a deep copy of the collection data on instantiation. |
+
+<div align="right"><a href="#top">Back to top</a></div>
 
 ### `.get()`
 
