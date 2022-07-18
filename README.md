@@ -1307,72 +1307,171 @@ $.find({
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-##### toUpper
+##### `toUpper`
 
-Lorem
+Converts the property to all uppercase before evaluating the condition.
 
 ```ts
-//
+$.find({
+  property: { name: "name", preProcess: ["toUpper"] },
+  operator: "equal",
+  value: "ISAAC",
+}).data;
+
+// => [ { id: 1, name: 'isaac newton', born: 1643, alive: false } ]
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-##### toLower
+##### `toLower`
 
-Lorem
+Converts the property to all lowercase before evaluating the condition.
 
 ```ts
-//
+$.find({
+  property: { name: "name", preProcess: ["toLower"] },
+  operator: "equal",
+  value: "isaac",
+}).data;
+
+// => [ { id: 1, name: 'isaac newton', born: 1643, alive: false } ]
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-##### toString
+##### `toString`
 
-Lorem
+Converts the property to a string before evaluating the condition.
+
+The below example won't return any data since `born` is of type `number` on the original object and we are doing a comparison of type `string` (remembering that the `equal` operators perform a strict equality (`===`) check):
 
 ```ts
-//
+$.find({ property: "born", operator: "equal", value: "1867" }).data;
+
+// => []
+```
+
+If you want to compare a `number` against a `string` value, you can coerce the original value to a `string` using the `toString` preprocessor:
+
+```ts
+$.find({
+  property: { name: "born", preProcess: ["toString"] },
+  operator: "equal",
+  value: "1867",
+}).data;
+
+// => [ { id: 4, name: 'marie curie', born: 1867, alive: false } ]
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-##### toNumber
+##### `toNumber`
 
-Lorem
+Converts the property to a number before evaluating the condition.
+
+Using the following dataset:
+
+```json
+[
+  { "element": "hydrogen", "atomicNumber": "1" },
+  { "element": "helium", "atomicNumber": "2" },
+  { "element": "lithium", "atomicNumber": "3" },
+  { "element": "beryllium", "atomicNumber": "4" },
+  { "element": "boron", "atomicNumber": "5" }
+]
+```
+
+Executing the following query will return an empty result, as we are trying to perform an `equal` operation (`===`) on data of type `string` with a `number`:
 
 ```ts
-//
+$.find({ property: "atomicNumber", operator: "equal", value: 2 }).data;
+
+// => []
+```
+
+If we want to perform an equality match on different data types, we can first coerce the value to a number:
+
+If you want to compare a `number` against a `string` value, you can coerce the original value to a `string` using the `toString` preprocessor:
+
+```ts
+$.find({
+  property: { name: "atomicNumber", preProcess: ["toNumber"] },
+  operator: "equal",
+  value: 2,
+}).data;
+
+// => [ { element: 'helium', atomicNumber: '2' } ]
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-##### toLength
+##### `toLength`
 
-Lorem
+Returns the length of a string or the amount of items in an array. Can be used to check for non-empty values:
 
 ```ts
-//
+$.find({
+  property: { name: "name", preProcess: ["toLength"] },
+  operator: "greaterThan",
+  value: 0,
+}).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 1, "name": "isaac newton", "born": 1643, "alive": false },
+  { "id": 2, "name": "albert einstein", "born": 1879, "alive": false },
+  { "id": 3, "name": "galileo galilei", "born": 1564, "alive": false },
+  { "id": 4, "name": "marie curie", "born": 1867, "alive": false },
+  { "id": 5, "name": "roger penrose", "born": 1931, "alive": true },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
+Can also be used on arrays:
+
+```ts
+const schedule = new newton([
+  { department: "it", subjects: ["data structures and algorithms"] },
+  { department: "physics", subjects: ["newtonian mechanics"] },
+  { department: "maths", subjects: [] },
+]);
+
+schedule.$.find({
+  property: { name: "subjects", preProcess: ["toLength"] },
+  operator: "greaterThan",
+  value: 0,
+}).data;
+```
+
+Returns records with a non-empty `subjects` property:
+
+```json
+[
+  { "department": "it", "subjects": ["data structures and algorithms"] },
+  { "department": "physics", "subjects": ["newtonian mechanics"] }
+]
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-##### substring
+##### `substring`
 
-Lorem
-
-```ts
-//
-```
-
-<div align="right"><a href="#top">Back to top</a></div>
-
-##### concat
-
-Lorem
+Returns the part of the string between the `start` and `end` indexes, or to the end of the string:
 
 ```ts
-//
+$.find({
+  property: {
+    name: "name",
+    preProcess: [{ fn: "substring", args: [1, 4] }],
+  },
+  operator: "equal",
+  value: "oge",
+}).data;
+
+// => [ { id: 5, name: 'roger penrose', born: 1931, alive: true } ]
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
