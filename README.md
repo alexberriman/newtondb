@@ -20,6 +20,8 @@
 ## Table of contents
 
 - [Introduction](#introduction)
+  - [Why?](#why)
+  - [Key features](#key-features)
 - [Installation](#installation)
 - [Basic usage](#basic-usage)
 - [Basic principles](#basic-principles)
@@ -85,8 +87,11 @@
       - [toNumber](#toNumber)
       - [toLength](#toLength)
       - [substring](#toLength)
+- [License](#license)
 
 ## Introduction
+
+### Why?
 
 JSON data structures are at the heart of most Javascript/Typescript development. Manipulating arrays and objects programatically can be accomplished easily enough using Javascript's Array and Object prototype methods, however there are times when one may want to interact with a JSON data source as they might a more traditional database. Common use cases include:
 
@@ -96,6 +101,8 @@ JSON data structures are at the heart of most Javascript/Typescript development.
 - Observing changes to your data and executing callbacks.
 - Reading from and writing to a destination on changes.
 
+### Key features
+
 Although Newton doesn't aim to replace a traditional database, it does borrow some features to let you interact with your JSON data more effectively. It does this through implementing:
 
 - A serializable query language to query your data.
@@ -103,7 +110,7 @@ Although Newton doesn't aim to replace a traditional database, it does borrow so
 - Adapters to read and persist your data to common locations (e.g. the filesystem, an s3 bucket, etc.)
 - Configurable callbacks that are triggered on mutations.
 
-Newton's primary focus is on ease of use, performance and extendibility. Subsequent updates will include additional performance optimizations, including: sort keys, query caching, security, relational data and eager/lazy loading.
+Newton prioritizes performance and extendibility. Pending updates before an initial `1.0` release will include additional performance optimizations, including: sort keys, query caching, relational data and eager/lazy loading.
 
 ## Installation
 
@@ -686,10 +693,6 @@ Calls to `.observe()` will return an numeric id of the observer. This id should 
 Cancels an observer set with the `.observe()` method. Takes as input a numeric ID (which should correspond to the output of the original `.observe` call).
 
 <div align="right"><a href="#top">Back to top</a></div>
-
-## Changelog
-
-View the changelog at [CHANGELOG.md](CHANGELOG.md)
 
 ## License
 
