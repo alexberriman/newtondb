@@ -20,7 +20,6 @@
 ## Table of contents
 
 - [Introduction](#introduction)
-  - [Why?](#why)
   - [Key features](#key-features)
 - [Installation](#installation)
 - [Basic usage](#basic-usage)
@@ -91,9 +90,7 @@
 
 ## Introduction
 
-### Why?
-
-JSON data structures are at the heart of most Javascript/Typescript development. Manipulating arrays and objects programatically can be accomplished easily enough using Javascript's Array and Object prototype methods, however there are times when one may want to interact with a JSON data source as they might a more traditional database. Common use cases include:
+JSON data structures are at the heart of all Javascript/Typescript development. Manipulating arrays and objects programatically can be accomplished easily enough using Javascript's Array and Object prototype methods, however there are times when one may want to interact with a JSON data source as they might a more traditional database. Common use cases include:
 
 - Safely executing serializable queries.
 - Safely executing data transformations.
@@ -103,7 +100,7 @@ JSON data structures are at the heart of most Javascript/Typescript development.
 
 ### Key features
 
-Although Newton doesn't aim to replace a traditional database, it does borrow some features to let you interact with your JSON data more effectively. It does this through implementing:
+Although Newton doesn't aim to replace a traditional database, it does borrow on common features to let you interact with your JSON data more effectively. It does this through implementing:
 
 - A serializable query language to query your data.
 - Primary and secondary indexes to improve the efficiency of read operations.
@@ -139,7 +136,7 @@ const scientists = [
 ];
 const db = new newton(scientists);
 
-db.$.get({ name: "Isaac Newton" });
+db.$.get({ name: "Isaac Newton" }).data;
 // => { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" }
 ```
 
@@ -159,7 +156,7 @@ const db = {
 ];
 const db = new newton(db);
 
-db.$.universities.get({ location: "Zurich, Switzerland" })
+db.$.universities.get({ location: "Zurich, Switzerland" }).data
 // => { name: "University of Zurich", location: "Zurich, Switzerland" }
 ```
 
@@ -167,13 +164,15 @@ db.$.universities.get({ location: "Zurich, Switzerland" })
 
 ### Adapters
 
-An Adapter is what Newton uses to read and write to a data source. Put simply, an Adapter is a class with both a `read` and `write` method to be able to read from and write changes to your data source. Newton does its best to infer the adapter you're wanting to use based on the original argument passed to it. For example:
+An Adapter is what Newton uses to read and write to a data source. In simple terms, an Adapter is merely an instance of class with both a `read` and `write` method to be able to read from and write changes to your data source.
 
-- If a data object of a certain shape is passed to it, Newton will instantiate a new `MemoryAdapter` instance.
-- If a file path is passed to it, Newton will instantiate a new `FileAdapter` instance.
-- If a URL is passed to it, Newton will instantiate a new `UrlAdapter` instance.
+When instantiating Newton, you can either pass through an explicit instance of an Adapter, or you can pass through your data directly and Newton will attempt to infer and instantiate an adapter on your behalf using the following rules:
 
-You can extend Newton by creating your own Adapters and passing instances of those adapters through when you instantiate your database. For more information, see [custom adapters](#custom-adapters).
+- If an array of objects, or an object whose properties are all arrays is passed through, Newton will instantiate a new `MemoryAdapter` instance.
+- If a file path is passed through, Newton will instantiate a new `FileAdapter` instance.
+- If a URL is passed through, Newton will instantiate a new `UrlAdapter` instance.
+
+You can extend Newton by creating your own Adapters and passing instances of those adapters through when you instantiate Newton. For more information, see [using custom adapters](#using-custom-adapters).
 
 ### Input data
 
