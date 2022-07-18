@@ -74,7 +74,7 @@
       - [in](#toLength)
       - [notIn](#toLength)
       - [contains](#toLength)
-      - [notContains](#toLength)
+      - [doesNotContain](#toLength)
       - [startsWith](#toLength)
       - [endsWith](#toLength)
       - [matchesRegex](#toLength)
@@ -915,10 +915,361 @@ This query will return all scientists where:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
+### Operators
+
+Conditions require one of the following operators:
+
+#### `equal`
+
+Performs a strict equality (`===`) match:
+
+```ts
+$.find({ property: "born", operator: "equal", value: 1643 }).data;
+```
+
+Returns the following:
+
+```json
+[{ "id": 1, "name": "isaac newton", "born": 1643, "alive": false }]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `notEqual`
+
+Performs a strict inequality (`!==`) match:
+
+```ts
+$.find({ property: "alive", operator: "notEqual", value: true }).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 1, "name": "isaac newton", "born": 1643, "alive": false },
+  { "id": 2, "name": "albert einstein", "born": 1879, "alive": false },
+  { "id": 3, "name": "galileo galilei", "born": 1564, "alive": false },
+  { "id": 4, "name": "marie curie", "born": 1867, "alive": false }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `startsWith`
+
+Checks if a string starts with a given value.
+
+```ts
+$.find({ property: "name", operator: "startsWith", value: "ro" }).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 5, "name": "roger penrose", "born": 1931, "alive": true },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `endsWith`
+
+Checks if a string ends with a given value.
+
+```ts
+$.find({ property: "name", operator: "endsWith", value: "n" }).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 1, "name": "isaac newton", "born": 1643, "alive": false },
+  { "id": 2, "name": "albert einstein", "born": 1879, "alive": false },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `greaterThan`
+
+Checks if a **numeric value** is greater than a given value:
+
+```ts
+$.find({ property: "born", operator: "greaterThan", value: 1879 }).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 5, "name": "roger penrose", "born": 1931, "alive": true },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `greaterThanInclusive`
+
+Checks if a **numeric value** is greater than or equal to a given value:
+
+```ts
+$.find({ property: "born", operator: "greaterThanInclusive", value: 1879 })
+  .data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 2, "name": "albert einstein", "born": 1879, "alive": false },
+  { "id": 5, "name": "roger penrose", "born": 1931, "alive": true },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `lessThan`
+
+Checks if a **numeric value** is less than than a given value:
+
+```ts
+$.find({
+  property: "born",
+  operator: "lessThan",
+  value: 1867,
+}).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 1, "name": "isaac newton", "born": 1643, "alive": false },
+  { "id": 3, "name": "galileo galilei", "born": 1564, "alive": false }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `lessThanInclusive`
+
+Checks if a **numeric value** is less than than or equal to a given value:
+
+```ts
+$.find({
+  property: "born",
+  operator: "lessThanInclusive",
+  value: 1867,
+}).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 1, "name": "isaac newton", "born": 1643, "alive": false },
+  { "id": 3, "name": "galileo galilei", "born": 1564, "alive": false },
+  { "id": 4, "name": "marie curie", "born": 1867, "alive": false }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `in`
+
+Checks if a value exists within an array of allowed values:
+
+```ts
+$.find({ property: "born", operator: "in", value: [1867, 1920] }).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 4, "name": "marie curie", "born": 1867, "alive": false },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `notIn`
+
+Checks if a value does not exist within an array of values:
+
+```ts
+$.find({ property: "born", operator: "notIn", value: [1867, 1920] }).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 1, "name": "isaac newton", "born": 1643, "alive": false },
+  { "id": 2, "name": "albert einstein", "born": 1879, "alive": false },
+  { "id": 3, "name": "galileo galilei", "born": 1564, "alive": false },
+  { "id": 5, "name": "roger penrose", "born": 1931, "alive": true }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `contains`
+
+We'll use the following dataset for this example (as well as the examples in `doesNotContain`):
+
+```json
+[
+  {
+    "name": "lise meitner",
+    "awards": ["leibniz medal", "liebenn prize", "ellen richards prize"]
+  },
+  {
+    "name": "vera rubin",
+    "awards": [
+      "gruber international cosmology prize",
+      "richtmyer memorial award"
+    ]
+  },
+  {
+    "name": "chien-shiung wu",
+    "awards": ["john price wetherill medal"]
+  }
+]
+```
+
+Checks if an array or string **contains** a value:
+
+```ts
+$.find({ property: "name", operator: "contains", value: "-" }).data;
+```
+
+Returns the following:
+
+```json
+[{ "name": "chien-shiung wu", "awards": ["john price wetherill medal"] }]
+```
+
+`contains` can also be used to check if an array contains a given value:
+
+```ts
+$.find({
+  property: "awards",
+  operator: "contains",
+  value: "richtmyer memorial award",
+}).data;
+```
+
+Returns the following:
+
+```json
+[
+  {
+    "name": "vera rubin",
+    "awards": [
+      "gruber international cosmology prize",
+      "richtmyer memorial award"
+    ]
+  }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `doesNotContain`
+
+Checks if an array or string **does not contain** a value:
+
+```ts
+$.find({ property: "name", operator: "doesNotContain", value: "r" }).data;
+```
+
+Returns the following:
+
+```json
+[{ "name": "chien-shiung wu", "awards": ["john price wetherill medal"] }]
+```
+
+`doesNotContain` can also be used to check if an array does not contain a given value:
+
+```ts
+$.find({
+  property: "awards",
+  operator: "doesNotContain",
+  value: "richtmyer memorial award",
+}).data;
+```
+
+Returns the following:
+
+```json
+[
+  {
+    "name": "lise meitner",
+    "awards": ["leibniz medal", "liebenn prize", "ellen richards prize"]
+  },
+  { "name": "chien-shiung wu", "awards": ["john price wetherill medal"] }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `matchesRegex`
+
+Checks if a string matches a regular expression:
+
+```ts
+$.find({
+  property: "name",
+  operator: "matchesRegex",
+  value: "^ro(g|s)",
+}).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 5, "name": "roger penrose", "born": 1931, "alive": true },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### `doesNotMatchRegex`
+
+Checks if a string does not match a regular expression:
+
+```ts
+$.find({
+  property: "name",
+  operator: "doesNotMatchRegex",
+  value: "^ro(g|s)",
+}).data;
+```
+
+Returns the following:
+
+```json
+[
+  { "id": 1, "name": "isaac newton", "born": 1643, "alive": false },
+  { "id": 2, "name": "albert einstein", "born": 1879, "alive": false },
+  { "id": 3, "name": "galileo galilei", "born": 1564, "alive": false },
+  { "id": 4, "name": "marie curie", "born": 1867, "alive": false }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
 ## License
 
 [MIT](https://tldrlegal.com/license/mit-license)
-
-```
-
-```
