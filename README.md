@@ -822,12 +822,17 @@ $.find({
   operator: "greaterThan",
   value: 1900,
 }).select(["name", "born"]).data;
+
 // => [ {"name":"roger penrose","born":1931}, {"name":"rosalind franklin","born":1920} ]
 ```
 
-#### `.every` and `.some`
+#### `every` and `some`
 
 You can create complex conditions by using a combination of `some` and `every`. Both properties accept an array of conditions. `some` will evaluate as `true` if **any** condition within the array evaluates as `true`, whereas `every` will evaluate to `true` only when **all** conditions within the array evaluate as `true`.
+
+##### `every`
+
+You can use `every` to return all records that meet **all** of the conditions:
 
 ```ts
 $.find({
@@ -838,7 +843,7 @@ $.find({
 }).select(["name", "born"]).data;
 ```
 
-The above query will return all scientists who were born after the year 1800 and whose name starts with the letter r:
+This query will return all scientists who were born after the year 1800 and whose name starts with the letter r:
 
 ```json
 [
@@ -847,7 +852,9 @@ The above query will return all scientists who were born after the year 1800 and
 ]
 ```
 
-You can use `some` to return all records that meet one of the conditions:
+##### `some`
+
+You can use `some` to return all records that meet **any** of the conditions:
 
 ```ts
 $.find({
@@ -858,7 +865,7 @@ $.find({
 }).select(["name", "born"]).data;
 ```
 
-The above query will return all scientists who were born after the year 1800 or whose name starts with the letter a:
+This query will return all scientists who were born after the year 1800 or whose name starts with the letter a:
 
 ```json
 [
@@ -868,6 +875,8 @@ The above query will return all scientists who were born after the year 1800 or 
   { "name": "rosalind franklin", "born": 1920 }
 ]
 ```
+
+##### Nesting conditions
 
 You can nest conditions to create complex rules:
 
