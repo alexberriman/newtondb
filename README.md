@@ -812,6 +812,104 @@ $.find({ alive: true, born: 1920 }).data;
 
 <div align="right"><a href="#top">Back to top</a></div>
 
+### By advanced condition
+
+An advanced condition is an object with contains a `property`, an `operator` and a `value`:
+
+```ts
+$.find({
+  property: "born",
+  operator: "greaterThan",
+  value: 1900,
+}).select(["name", "born"]).data;
+// => [ {"name":"roger penrose","born":1931}, {"name":"rosalind franklin","born":1920} ]
+```
+
+#### `.every` and `.some`
+
+You can create complex conditions by using a combination of `some` and `every`. Both properties accept an array of conditions. `some` will evaluate as `true` if **any** condition within the array evaluates as `true`, whereas `every` will evaluate to `true` only when **all** conditions within the array evaluate as `true`.
+
+```ts
+$.find({
+  every: [
+    { property: "born", operator: "greaterThan", value: 1800 },
+    { property: "name", operator: "startsWith", value: "r" },
+  ],
+}).select(["name", "born"]).data;
+```
+
+The above query will return all scientists who were born after the year 1800 and whose name starts with the letter r:
+
+```json
+[
+  { "name": "roger penrose", "born": 1931 },
+  { "name": "rosalind franklin", "born": 1920 }
+]
+```
+
+You can use `some` to return all records that meet one of the conditions:
+
+```ts
+$.find({
+  some: [
+    { property: "born", operator: "greaterThan", value: 1800 },
+    { property: "name", operator: "startsWith", value: "a" },
+  ],
+}).select(["name", "born"]).data;
+```
+
+The above query will return all scientists who were born after the year 1800 or whose name starts with the letter a:
+
+```json
+[
+  { "name": "albert einstein", "born": 1879 },
+  { "name": "marie curie", "born": 1867 },
+  { "name": "roger penrose", "born": 1931 },
+  { "name": "rosalind franklin", "born": 1920 }
+]
+```
+
+You can nest conditions to create complex rules:
+
+```ts
+$.find({
+  some: [
+    {
+      every: [
+        { property: "born", operator: "greaterThan", value: 1800 },
+        { property: "alive", operator: "equal", value: true },
+      ],
+    },
+    {
+      some: [
+        { property: "name", operator: "startsWith", value: "albert" },
+        { property: "name", operator: "endsWith", value: "newton" },
+      ],
+    },
+  ],
+}).select(["name", "born"]).data;
+```
+
+This query will return all scientists where:
+
+1. They were born after the year 1800 and are alive, or
+1. Whose first name starts with "albert" or ends with "newton":
+
+```json
+[
+  { "name": "isaac newton", "born": 1643 },
+  { "name": "albert einstein", "born": 1879 },
+  { "name": "roger penrose", "born": 1931 },
+  { "name": "rosalind franklin", "born": 1920 }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
 ## License
 
 [MIT](https://tldrlegal.com/license/mit-license)
+
+```
+
+```
