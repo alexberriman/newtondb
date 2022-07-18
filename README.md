@@ -1,6 +1,5 @@
 <h1 align="center">
-  <br>
-  <a href="https://github.com/alexberriman/newtondb"><img src="./logo.svg" alt="newtondb" height="160"></a>
+  <a href="https://github.com/alexberriman/newtondb"><img src="./logo.svg" alt="newtondb" height="190"></a>
   <br>
   Newton
   <br>
@@ -21,17 +20,18 @@
 ## Table of contents
 
 - [Introduction](#introduction)
-- [Basic principles](#basic-principles)
-  - [Input data](#input-data)
 - [Installation](#installation)
 - [Basic usage](#basic-usage)
+- [Basic principles](#basic-principles)
+  - [Adapters](#adapters)
+  - [Input data](#input-data)
+  - [Indexing](#indexing)
+  - [Chaining](#chaining)
+  - [Committing mutations](#committing-mutations)
 - [Adapters](#adapters)
   - [Memory adapter](#memory-adapter)
   - [File adapter](#file-adapter)
   - [URL adapter](#url-adapter)
-- [Indexing](#indexing)
-  - [Primary key](#primary-key)
-  - [Secondary keys](#secondary-keys)
 - [Database](#database)
   - [`new newton(options)`](#options)
   - [.read](#read)
@@ -93,7 +93,60 @@ JSON data structures are at the heart of most Javascript/Typescript development.
 
 Although Newton doesn't aim to replace a traditional database, it does borrow some features to let you interact with your JSON data more effectively.
 
+## Installation
+
+Using npm:
+
+```bash
+$ npm install newtondb
+```
+
+Or with yarn:
+
+```bash
+$ yarn add newtondb
+```
+
+## Basic usage
+
+#### Using a single collection:
+
+```ts
+import newton from "newtondb";
+
+const scientists = [
+  { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" },
+  { name: "Albert Einstein", born: "1879-03-14T12:00:00.000Z" },
+];
+const db = new newton(scientists);
+
+db.$.get({ name: "Isaac Newton" });
+// => { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" }
+```
+
+#### Using multiple collections:
+
+```ts
+import newton from "newtondb";
+
+const db = {
+  scientists: [
+    { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" },
+    { name: "Albert Einstein", born: "1879-03-14T12:00:00.000Z" }
+  ],
+  universities: [
+    { name: "University of Zurich", location: "Zurich, Switzerland" }
+  ]
+];
+const db = new newton(db);
+
+db.$.universities.get({ location: "Zurich, Switzerland" })
+// => { name: "University of Zurich", location: "Zurich, Switzerland" }
+```
+
 ## Basic principles
+
+### Adapters
 
 ### Input data
 
@@ -159,51 +212,50 @@ $.find({ university: "berlin", isAlive: true });
 
 Rather than iterating over all 20,000 records, newton would instead iterate over the records in the hashmap with `university` as the hash (in which there might only be 100 records). You can set up multiple secondary indexes to increase performance even more as your dataset grows.
 
-## Installation
+### Chaining
 
-```bash
-$ npm install newtondb    #npm
-$ yarn add newtondb       #yarn
-```
-
-## Basic usage
-
-#### Using a single collection:
+Newton functions using a concept of operation chaining, where the data output from one operation feeds in as input to the subsequent operation. For example, when updating a record, Newton's update function doesn't take as input a query of records to update against. Rather, if you wanted to update a set of records that matched a particular query, you would first `find` those records and then call `set`:
 
 ```ts
-import newton from "newtondb";
-
-const users = [
-  { id: 1, name: "harry", house: "gryffindor", born: 1980, married: true },
-  { id: 4, name: "draco", house: "slytherin", born: 1980, married: true },
-];
-const db = new newton(users);
-
-db.$.get({ name: "draco" });
-// => { id: 4, name: "draco", house: "slytherin", born: 1980 }
+// update all records where "university" = 'berlin' to "university" = 'University of Berlin'
+$.find({ university: "berlin" }).set({ university: "University of Berlin" });
 ```
 
-#### Using multiple collections:
+This allows you to set up complex chains and transformations on your data.
+
+### Committing mutations
+
+Mutations are only persisted to the original data source when `.commit()` is called on your chain:
 
 ```ts
-import newton from "newtondb";
+$.scientists
+  .find({ university: "berlin" })
+  .set({ university: "University of Berlin" }).data;
 
-const db = {
-  houses: [
-    { id: 'gryffindor', emblem: 'lion' },
-    { id: 'hufflepuff', emblem: 'badger' },
-    { id: 'ravenclaw', emblem: 'eagle' },
-    { id: 'slytherin', emblem: 'serpent' }
-  ],
-  users: [
-    { id: 1, name: "harry", house: "gryffindor", born: 1980, married: true },
-    { id: 4, name: "draco", house: "slytherin", born: 1980, married: true }
-  ]
-];
-const db = new newton(db);
+// => [ { "code": "isa", "name": "Isaac Newton", "university": "University of Berlin" } ]
+```
 
-db.$.houses.get({ emblem: "lion" })
-// => { id: "gryffindor", emblem: "lion" }
+In the above example, the `university` attribute for all scientists studying at the `"berlin"` university is set to `"University of Berlin"`, and you can access that data through the `.data` property. However, if you were to then query for scientists attending the `"University of Berlin"` you wouldn't find any:
+
+```ts
+$.scientists.find({ university: "University of Berlin" }).data;
+// => []
+```
+
+In order to persist mutations within your chain to the data source, you have to call `.commit`:
+
+```ts
+$.scientists
+  .find({ university: "berlin" })
+  .set({ university: "University of Berlin" })
+  .commit(); // commits the mutations defined in the chain
+```
+
+You can then query for students in the new university:
+
+```ts
+$.scientists.find({ university: "University of Berlin" }).count;
+// => 1
 ```
 
 ## Comparison
@@ -221,3 +273,7 @@ View the changelog at [CHANGELOG.md](CHANGELOG.md)
 ## License
 
 [MIT](https://tldrlegal.com/license/mit-license)
+
+```
+
+```
