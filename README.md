@@ -48,11 +48,12 @@
   - [.select()](#select)
   - [.insert()](#insert)
   - [.set()](#set)
-  - [.replace()](#upsert)
+  - [.replace()](#replace)
   - [.delete()](#delete)
-  - [.orderBy()](#orderBy)
+  - [.orderBy()](#orderby)
   - [.limit()](#limit)
   - [.offset()](#offset)
+  - [.commit()](#commit)
   - [.assert()](#assert)
   - [.observe()](#observe)
   - [.unobserve()](#unobserve)
@@ -365,6 +366,116 @@ By default, when a query returns records, the result includes all of those recor
 ```ts
 $.get({ name: "Isaac Newton" }).select(["university"]).data;
 // => { university: "Cambridge" }
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.insert()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.set()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.replace()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.delete()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.orderBy()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.limit()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.offset()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.commit()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.assert()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.observe()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.unobserve()`
+
+Lorem
+
+```ts
+//
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
