@@ -915,11 +915,11 @@ This query will return all scientists where:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-### Operators
+#### Operators
 
 Conditions require one of the following operators:
 
-#### `equal`
+##### `equal`
 
 Performs a strict equality (`===`) match:
 
@@ -935,7 +935,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `notEqual`
+##### `notEqual`
 
 Performs a strict inequality (`!==`) match:
 
@@ -956,7 +956,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `startsWith`
+##### `startsWith`
 
 Checks if a string starts with a given value.
 
@@ -975,7 +975,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `endsWith`
+##### `endsWith`
 
 Checks if a string ends with a given value.
 
@@ -995,7 +995,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `greaterThan`
+##### `greaterThan`
 
 Checks if a **numeric value** is greater than a given value:
 
@@ -1014,7 +1014,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `greaterThanInclusive`
+##### `greaterThanInclusive`
 
 Checks if a **numeric value** is greater than or equal to a given value:
 
@@ -1035,7 +1035,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `lessThan`
+##### `lessThan`
 
 Checks if a **numeric value** is less than than a given value:
 
@@ -1058,7 +1058,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `lessThanInclusive`
+##### `lessThanInclusive`
 
 Checks if a **numeric value** is less than than or equal to a given value:
 
@@ -1082,7 +1082,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `in`
+##### `in`
 
 Checks if a value exists within an array of allowed values:
 
@@ -1101,7 +1101,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `notIn`
+##### `notIn`
 
 Checks if a value does not exist within an array of values:
 
@@ -1122,7 +1122,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `contains`
+##### `contains`
 
 We'll use the following dataset for this example (as well as the examples in `doesNotContain`):
 
@@ -1184,7 +1184,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `doesNotContain`
+##### `doesNotContain`
 
 Checks if an array or string **does not contain** a value:
 
@@ -1222,7 +1222,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `matchesRegex`
+##### `matchesRegex`
 
 Checks if a string matches a regular expression:
 
@@ -1245,7 +1245,7 @@ Returns the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-#### `doesNotMatchRegex`
+##### `doesNotMatchRegex`
 
 Checks if a string does not match a regular expression:
 
@@ -1266,6 +1266,113 @@ Returns the following:
   { "id": 3, "name": "galileo galilei", "born": 1564, "alive": false },
   { "id": 4, "name": "marie curie", "born": 1867, "alive": false }
 ]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+#### Preprocessors
+
+Preprocessor functions can optionally be applied to the values you're evaluating against in your condition. They can be used to check for:
+
+- case insensitivity
+- empty/non-empty checks
+- type coercion
+
+To apply a preprocessor to a property, instead of passing a `property` through as a `string`, pass an `object` through with a `name` and `preProcess` property:
+
+```ts
+$.find({
+  property: { name: "name", preProcess: ["toUpper"] },
+  operator: "contains",
+  value: "ISAAC",
+}).data;
+
+// => [ { id: 1, name: 'isaac newton', born: 1643, alive: false } ]
+```
+
+`preProcess` is an array which can contain one or more preprocessors. When a preprocessor doesn't require any arguments (`toUpper`, `toLower`, `toString`, `toNumber`, `toLength`) you can pass the preprocessor through as a string (as shown in the above example). For functions that require one or more arguments (`substring`, `concat`), pass through an `object` where `fn` is the name of the preprocessor and `args` is an array of arguments:
+
+```ts
+$.find({
+  property: {
+    name: "name",
+    preProcess: ["toUpper", { fn: "substring", args: [0, 3] }],
+  },
+  operator: "equal",
+  value: "ISA",
+}).data;
+
+// => [ { id: 1, name: 'isaac newton', born: 1643, alive: false } ]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+##### toUpper
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+##### toLower
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+##### toString
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+##### toNumber
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+##### toLength
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+##### substring
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+##### concat
+
+Lorem
+
+```ts
+//
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
