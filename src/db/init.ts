@@ -80,7 +80,6 @@ export class Database<Shape extends AllowedData> {
 
     if (isArray(data)) {
       this.instance = new Collection(data, collection) as Instance<Shape>;
-      return;
     } else if (
       isObject(data) &&
       Object.keys(data).every((key) => isArray(data[key]))
@@ -98,9 +97,26 @@ export class Database<Shape extends AllowedData> {
         }),
         {}
       ) as Instance<Shape>;
-      return;
+    } else {
+      throw new AdapterError("Invalid format received from data source");
     }
 
-    throw new AdapterError("Invalid format received from data source");
+    const { writeOnCommit = true } = this.options;
+    if (writeOnCommit) {
+      this.setUpAutoWrite();
+    }
+  }
+
+  private setUpAutoWrite() {
+    const instance = this.$;
+    const collections = isCollection<Collection<Shape>>(instance)
+      ? [this.instance]
+      : Object.values(instance);
+
+    collections.map((collection) =>
+      (collection as Collection<unknown>).observe(() => {
+        this.write();
+      })
+    );
   }
 }

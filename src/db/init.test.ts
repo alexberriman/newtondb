@@ -1,7 +1,6 @@
 import { FileAdapter } from "../adapters/file-adapter";
 import { MemoryAdapter } from "../adapters/memory-adapter";
 import { Collection } from "../collection/collection";
-import { WriteError } from "../errors/write-error";
 import { House, Wizard, houses, wizards } from "../test-data";
 import { Database } from "./init";
 
@@ -61,27 +60,6 @@ it("instantiates a dictionary db from file", async () => {
     id: "ravenclaw",
     emblem: "eagle",
   });
-});
-
-it("throws an error when attempting to write a collection db memory", async () => {
-  const db = new Database(wizards, {
-    collection: { copy: true },
-  });
-
-  db.$.find({ name: "harry" }).set({ name: "Harry" }).commit();
-
-  await expect(async () => db.write()).rejects.toThrow(WriteError);
-});
-
-it("throws an error when attempting to write a database db memory", async () => {
-  const db = new Database(
-    { wizards },
-    { collection: { wizards: { copy: true } } }
-  );
-
-  db.$.wizards.find({ name: "harry" }).set({ name: "Harry" }).commit();
-
-  await expect(async () => db.write()).rejects.toThrow(WriteError);
 });
 
 it("lets you set collection options for a collection db", () => {
