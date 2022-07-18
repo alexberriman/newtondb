@@ -300,6 +300,130 @@ $.scientists.find({ university: "University of Berlin" }).count;
 
 <div align="right"><a href="#top">Back to top</a></div>
 
+## Adapters
+
+### MemoryAdapter
+
+Reads an object directly from memory.
+
+**Usage:**
+
+```ts
+import newton, { MemoryAdapter } from "newtondb";
+
+const adapter = new MemoryAdapter({
+  scientists: [
+    { code: "isa", name: "Isaac Newton", university: "berlin" },
+    { code: "alb", name: "Albert Einstein", university: "cambridge" },
+  ],
+  universities: [
+    { id: "berlin", name: "University of Berlin" },
+    { id: "cambridge", name: "University of Cambridge" },
+  ],
+});
+
+const db = new newton(adapter);
+await db.read();
+
+db.$.scientists.find({ code: "isa" });
+
+// => { code: "isa", name: "Isaac Newton", university: "berlin" }
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### FileAdapter
+
+Reads a JSON file from the local filesystem.
+
+**Usage:**
+
+```ts
+import newton, { FileAdapter } from "newtondb";
+
+const adapter = new FileAdapter("./db.json");
+const db = new newton(adapter);
+await db.read();
+
+db.$.scientists.find({ code: "isa" });
+
+// => { code: "isa", name: "Isaac Newton", university: "berlin" }
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### UrlAdapter
+
+Reads a JSON file from a remote web URL.
+
+**Usage:**
+
+```ts
+import newton, { UrlAdapter } from "newtondb";
+
+const adapter = new UrlAdapter("https://example.com/db.json");
+const db = new newton(adapter);
+await db.read();
+
+db.$.scientists.find({ code: "isa" });
+
+// => { code: "isa", name: "Isaac Newton", university: "berlin" }
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+## Database
+
+### `new newton(options)`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.read()`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.write`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.unobserve`
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### new newton(options)
+
+Lorem
+
+```ts
+//
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
 ## Collections
 
 ### new Collection(options)
