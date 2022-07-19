@@ -11,7 +11,7 @@
 
 <div align="center">
 
-[![Build status](https://github.com/alexberriman/json-rules-engine-to-json-logic/actions/workflows/build.yml/badge.svg)](https://github.com/alexberriman/json-rules-engine-to-json-logic/actions) [![Version](https://img.shields.io/npm/v/json-rules-engine-to-json-logic?label=version)](https://www.npmjs.com/package/json-rules-engine-to-json-logic/) [![Minzipped Size](https://img.shields.io/bundlephobia/minzip/json-rules-engine-to-json-logic)](https://www.npmjs.com/package/json-rules-engine-to-json-logic/) [![License](https://img.shields.io/npm/l/json-rules-engine-to-json-logic)](https://github.com/alexberriman/json-rules-engine-to-json-logic/blob/main/LICENSE)
+[![Build status](https://github.com/alexberriman/newtondb/actions/workflows/build.yml/badge.svg)](https://github.com/alexberriman/newtondb/actions) [![Version](https://img.shields.io/npm/v/newtondb?label=version)](https://www.npmjs.com/package/newtondb/) [![Minzipped Size](https://img.shields.io/bundlephobia/minzip/newtondb)](https://www.npmjs.com/package/newtondb/) [![License](https://img.shields.io/npm/l/newtondb)](https://github.com/alexberriman/newtondb/blob/main/LICENSE)
 
 [![twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/bezz) [![github](https://img.shields.io/badge/GitHub-100000?logo=github&logoColor=white)](https://github.com/alexberriman/) [![youtube](https://res.cloudinary.com/practicaldev/image/fetch/s--cumRvkw3--/c_limit%2Cf_auto%2Cfl_progressive%2Cq_auto%2Cw_880/https://img.shields.io/badge/YouTube-FF0000%3Flogo%3Dyoutube%26logoColor%3Dwhite)](https://www.youtube.com/channel/UCji7mkyJ6T5X_D9qlWlPczw) [![linkedin](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/alex-berriman/)
 
@@ -25,24 +25,26 @@
 - [Basic usage](#basic-usage)
 - [Basic principles](#basic-principles)
   - [Adapters](#adapters)
-  - [Input data](#input-data)
+  - [Collections](#collections)
   - [Indexing](#indexing)
   - [Chaining](#chaining)
   - [Committing mutations](#committing-mutations)
-- [Adapters](#adapters)
-  - [Memory adapter](#memory-adapter)
-  - [File adapter](#file-adapter)
+- [Adapters](#adapters-1)
+  - [MemoryAdapter](#memoryadapter)
+  - [FileAdapter](#fileadapter)
 - [Database](#database)
-  - [`new newton(options)`](#options)
-  - [.read](#read)
-  - [.write](#write)
-  - [.observe](#observe)
-  - [.unobserve](#unobserve)
-- [Collections](#collections)
-  - [`new Collection(options)`](#collection-options)
+  - [`new newton(options)`](#new-newtonadapter-options)
+  - [.read()](#read)
+  - [.write()](#write)
+  - [.$](#dollar)
+  - [.data](#data)
+  - [.observe()](#observe)
+  - [.unobserve()](#unobserve)
+- [Collections](#collections-1)
+  - [`new Collection(options)`](#new-collectionoptions)
   - [.get()](#get)
   - [.find()](#find)
-  - [.data](#data)
+  - [.data](#data-1)
   - [.count](#count)
   - [.exists](#exists)
   - [.select()](#select)
@@ -55,36 +57,36 @@
   - [.offset()](#offset)
   - [.commit()](#commit)
   - [.assert()](#assert)
-  - [.observe()](#observe)
-  - [.unobserve()](#unobserve)
+  - [.observe()](#observe-1)
+  - [.unobserve()](#unobserve-1)
 - [Querying](#querying)
   - [By primary key](#by-primary-key)
-  - [By function](#by-functions)
-  - [Basic conditions](#basic-conditions)
-  - [Advanced conditions](#advanced-conditions)
+  - [By function](#by-function)
+  - [Basic conditions](#by-basic-condition)
+  - [Advanced conditions](#by-advanced-condition)
     - [`every` and `some`](#every-and-some)
     - [Operators](#operators)
       - [equal](#equal)
-      - [notEqual](#toLower)
-      - [lessThan](#toString)
-      - [lessThanInclusive](#toNumber)
-      - [greaterThan](#toLength)
-      - [greaterThanInclusive](#toLength)
-      - [in](#toLength)
-      - [notIn](#toLength)
-      - [contains](#toLength)
-      - [doesNotContain](#toLength)
-      - [startsWith](#toLength)
-      - [endsWith](#toLength)
-      - [matchesRegex](#toLength)
-      - [doesNotMatchRegex](#toLength)
-    - [Preprocessors](#preprocess)
-      - [toUpper](#toUpper)
-      - [toLower](#toLower)
-      - [toString](#toString)
-      - [toNumber](#toNumber)
-      - [toLength](#toLength)
-      - [substring](#toLength)
+      - [notEqual](#notequal)
+      - [lessThan](#lessthan)
+      - [lessThanInclusive](#lessthaninclusive)
+      - [greaterThan](#greaterthan)
+      - [greaterThanInclusive](#greaterthaninclusive)
+      - [in](#in)
+      - [notIn](#notin)
+      - [contains](#contains)
+      - [doesNotContain](#doesnotcontain)
+      - [startsWith](#startswith)
+      - [endsWith](#endswith)
+      - [matchesRegex](#matchesregex)
+      - [doesNotMatchRegex](#doesnotmatchregex)
+    - [Preprocessors](#preprocessors)
+      - [toUpper](#toupper)
+      - [toLower](#tolower)
+      - [toString](#tostring)
+      - [toNumber](#tonumber)
+      - [toLength](#tolength)
+      - [substring](#substring)
 - [Guides and concepts](#guides-and-concepts)
   - [Type inference](#type-inference)
 - [License](#license)
@@ -178,11 +180,11 @@ When instantiating Newton, you can either pass through an explicit instance of a
 - If an array of objects, or an object whose properties are all arrays is passed through, Newton will instantiate a new `MemoryAdapter` instance.
 - If a file path is passed through, Newton will instantiate a new `FileAdapter` instance.
 
-You can extend Newton by creating your own Adapters and passing instances of those adapters through when you instantiate Newton. For more information, see [using custom adapters](#using-custom-adapters).
+You can extend Newton by creating your own Adapters and passing instances of those adapters through when you instantiate Newton.
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-### Input data
+### Collections
 
 When thinking of data sources expressed in JSON, you will often have arrays/lists of data objects of a given type:
 
@@ -502,6 +504,8 @@ db.find({ name: "isaac newton" }).set({ alive: false }).commit();
 
 <div align="right"><a href="#top">Back to top</a></div>
 
+<span id="dollar"></span>
+
 ### `.$`
 
 When newton is instantiated with a single collection, `$` will return that collection instance:
@@ -527,7 +531,6 @@ db.$.universities.find({ name: "university of berlin" });
 ### `.data`
 
 Returns the data of the entire database.
-lection\*\*:
 
 ```ts
 const scientists = [
@@ -650,7 +653,7 @@ $.get("isa").data;
 // => { "code": "isa", "name": "Isaac Newton", "university": "berlin" }
 ```
 
-You can query using a [primary key](#by-primary-key), a [basic condition](#basic-condition), an [advanced condition](#advanced-condition) or a [function](#by-function).
+You can query using a [primary key](#by-primary-key), a [basic condition](#by-basic-condition), an [advanced condition](#by-advanced-condition) or a [function](#by-function).
 
 <div align="right"><a href="#top">Back to top</a></div>
 
@@ -665,7 +668,7 @@ $.find({ university: "cambridge" }).data;
 
 Will return an empty array when no results are found.
 
-You can query using a [primary key](#by-primary-key), a [basic condition](#basic-condition), an [advanced condition](#advanced-condition) or a [function](#by-function).
+You can query using a [primary key](#by-primary-key), a [basic condition](#by-basic-condition), an [advanced condition](#by-advanced-condition) or a [function](#by-function).
 
 <div align="right"><a href="#top">Back to top</a></div>
 
@@ -1107,7 +1110,7 @@ This will return the following:
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-### By simple condition
+### By basic condition
 
 You can pass a simple key-value query to perform an exact match on items in your collection:
 
@@ -1840,6 +1843,8 @@ const db = new Newton<{ scientists: Scientist[]; universities: University[] }>(
   adapter
 );
 ```
+
+<div align="right"><a href="#top">Back to top</a></div>
 
 ## License
 
