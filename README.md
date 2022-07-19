@@ -1,5 +1,5 @@
 <h1 align="center" id="top">
-  <a href="https://github.com/alexberriman/newtondb"><img src="./logo.svg" alt="newtondb" height="190"></a>
+  <a href="https://github.com/alexberriman/newtondb"><img src="./logo.png" alt="newtondb" height="190"></a>
   <br>
   Newton
   <br>
@@ -7,7 +7,7 @@
 
 > :warning: **This package is under active development**: Compatibility and APIs may change.
 
-<h4 align="center">A zero-dependency local JSON database written in Typescript.</h4>
+<h4 align="center">A simple, easy to use <strong>JSON</strong> database with a focus on <strong>performance</strong> and <strong>extendability</strong>.</h4>
 
 <div align="center">
 
@@ -85,6 +85,8 @@
       - [toNumber](#toNumber)
       - [toLength](#toLength)
       - [substring](#toLength)
+- [Guides and concepts](#guides-and-concepts)
+  - [Type inference](#type-inference)
 - [License](#license)
 
 ## Introduction
@@ -475,7 +477,7 @@ db.$.find({ name: "isaac newton" }); // will throw a NotReadyError exception
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-### `.write`
+### `.write()`
 
 Will write the current state of your database to its source by triggering the `write()` method in the `Adapter` you instantiated the database with. Returns a `Promise` which will resolve to `true` when the write operation was successful and `false` when it was unsuccessful.
 
@@ -500,23 +502,122 @@ db.find({ name: "isaac newton" }).set({ alive: false }).commit();
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-### `.observe`
+### `.$`
 
-Lorem
+When newton is instantiated with a single collection, `$` will return that collection instance:
+
+**Instantiating with a single collection**:
 
 ```ts
-//
+const db = new newton(scientists);
+db.$.find({ name: "isaac newton" });
+```
+
+When instantiated with multiple collections, `$` will return an object whose values are collection instances:
+
+```ts
+const db = new newton({ scientists, universities });
+
+db.$.scientists.find({ name: "isaac newton" });
+db.$.universities.find({ name: "university of berlin" });
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
-### `.unobserve`
+### `.data`
 
-Lorem
+Returns the data of the entire database.
+lection\*\*:
 
 ```ts
-//
+const scientists = [
+  { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" },
+  { name: "Albert Einstein", born: "1879-03-14T12:00:00.000Z" },
+];
+
+const db = new newton(scientists);
+db.$.find({ name: "Isaac Newton" })
+  .set({ name: "Isaac Newton (deceased)" })
+  .commit();
+
+db.data;
 ```
+
+Which returns:
+
+```json
+[
+  { "name": "Isaac Newton (deceased)", "born": "1643-01-04T12:00:00.000Z" },
+  { "name": "Albert Einstein", "born": "1879-03-14T12:00:00.000Z" }
+]
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.observe()`
+
+Sets up an observer which is triggered whenever CRUD operations occur on the database.
+
+> :warning: **Note:** when configuring an observer at the database level, it is triggered each time **any** collection is updated. You can also configure observers on [individual collections](#observe-1).
+
+When instantiating a database with a single collection, the `observe()` method expects a function with a single argument of type `MutationEvent`:
+
+**MutationEvent**:
+
+```ts
+type MutationEvent<T> = InsertEvent<T> | DeleteEvent<T> | UpdateEvent<T>;
+```
+
+`MutationEvent` is either an instance of `InsertEvent`, `DeleteEvent` or `UpdateEvent`:
+
+```ts
+type InsertEvent<T> = { event: "insert"; data: T };
+type DeleteEvent<T> = { event: "delete"; data: T };
+type UpdateEvent<T> = { event: "updated"; data: { old: T; new: T } };
+```
+
+When using typescript, you can narrow in on the data using the event name:
+
+```ts
+const db = new newton(scientists);
+db.observe(({ event, data }) => {
+  if (event === "insert") {
+    // data will be of type `T` (`Scientist` in our case)
+  }
+});
+```
+
+When instantiating a database with multiple collections, `observe()` expects a function with two arguments, the first being the collection name and the second a `MutationEvent` argument:
+
+```ts
+const db = new newton({ scientists, universities });
+
+db.observe((collection, event) => {
+  console.log(`collection ${collection} triggered an event`);
+});
+```
+
+#### Return
+
+`observe()` returns a numeric ID of the observer. You can pass this ID to [`unobserve()`](#unobserve) to cancel the observer.
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.unobserve()`
+
+Takes as input a numeric ID (the output from [`observe()`](#observe)) and cancels an observer.
+
+```ts
+const db = new newton({ scientists, universities });
+
+const observer = db.observe((collection, event) => {
+  console.log(`collection ${collection} triggered an event`);
+
+  db.unobserve(observer); // cancel after the first event
+});
+```
+
+Throws an `ObserverError` exception when the observer is not found.
 
 <div align="right"><a href="#top">Back to top</a></div>
 
@@ -1695,6 +1796,50 @@ $.find({
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
+
+## Guides and concepts
+
+### Type inference
+
+When using the `MemoryAdapter`, newton will automatically infer the shape of your data based on the value passed in:
+
+**Using a single collection:**
+
+```ts
+const db = new newton([
+  { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" },
+  { name: "Albert Einstein", born: "1879-03-14T12:00:00.000Z" },
+]);
+```
+
+<img src="./docs/images/01-type-inference-single-collection.png" alt="type inference using a single collection" />
+
+**Using multiple collections:**
+
+```ts
+const db = new newton({
+  scientists: [
+    { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" },
+    { name: "Albert Einstein", born: "1879-03-14T12:00:00.000Z" },
+  ],
+  universities: [
+    { name: "University of Zurich", location: "Zurich, Switzerland" },
+  ],
+});
+```
+
+<img src="./docs/images/02-type-inference-multiple-collections.png" alt="type inference using a single collection" />
+
+When the shape of the data can't be inferred automatically, you can pass through the shape of the data when instantiating your database:
+
+**Instantiating with the shape of your database:**
+
+```ts
+const adapter = new FileAdapter("./db.json");
+const db = new Newton<{ scientists: Scientist[]; universities: University[] }>(
+  adapter
+);
+```
 
 ## License
 
