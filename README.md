@@ -7,11 +7,11 @@
 
 > :warning: **This package is under active development**: Compatibility and APIs may change.
 
-<h4 align="center">A simple, easy to use <strong>JSON</strong> database with a focus on <strong>performance</strong> and <strong>extendability</strong>.</h4>
+<h4 align="center">A simple, easy to use and extendible JSON database.</h4>
 
 <div align="center">
 
-[![Build status](https://github.com/alexberriman/newtondb/actions/workflows/build.yml/badge.svg)](https://github.com/alexberriman/newtondb/actions) [![Version](https://img.shields.io/npm/v/newtondb?label=version)](https://www.npmjs.com/package/newtondb/) [![Minzipped Size](https://img.shields.io/bundlephobia/minzip/newtondb)](https://www.npmjs.com/package/newtondb/) [![License](https://img.shields.io/npm/l/newtondb)](https://github.com/alexberriman/newtondb/blob/main/LICENSE)
+[![Build status](https://github.com/alexberriman/newtondb/actions/workflows/build-test-deploy.yml/badge.svg)](https://github.com/alexberriman/newtondb/actions) [![Version](https://img.shields.io/npm/v/newtondb?label=version)](https://www.npmjs.com/package/newtondb/) [![Minzipped Size](https://img.shields.io/bundlephobia/minzip/newtondb)](https://www.npmjs.com/package/newtondb/) [![License](https://img.shields.io/npm/l/newtondb)](https://github.com/alexberriman/newtondb/blob/main/LICENSE)
 
 [![twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/bezz) [![github](https://img.shields.io/badge/GitHub-100000?logo=github&logoColor=white)](https://github.com/alexberriman/) [![youtube](https://res.cloudinary.com/practicaldev/image/fetch/s--cumRvkw3--/c_limit%2Cf_auto%2Cfl_progressive%2Cq_auto%2Cw_880/https://img.shields.io/badge/YouTube-FF0000%3Flogo%3Dyoutube%26logoColor%3Dwhite)](https://www.youtube.com/channel/UCji7mkyJ6T5X_D9qlWlPczw) [![linkedin](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/alex-berriman/)
 

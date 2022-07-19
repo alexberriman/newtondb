@@ -1,7 +1,7 @@
 {
   "name": "newtondb",
   "version": "0.1.0",
-  "description": "A zero-dependency local JSON database written in Typescript.",
+  "description": "A simple, easy to use and extendible JSON database.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
