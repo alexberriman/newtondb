@@ -33,7 +33,7 @@
   - [MemoryAdapter](#memoryadapter)
   - [FileAdapter](#fileadapter)
 - [Database](#database)
-  - [`new newton(options)`](#new-newtonadapter-options)
+  - [`new Database(options)`](#new-databaseadapter-options)
   - [.read()](#read)
   - [.write()](#write)
   - [.$](#dollar)
@@ -135,22 +135,23 @@ $ yarn add newtondb
 #### Using a single collection:
 
 ```ts
-import newton from "newtondb";
+import { Database } from "newtondb";
 
 const scientists = [
   { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" },
   { name: "Albert Einstein", born: "1879-03-14T12:00:00.000Z" },
 ];
-const db = new newton(scientists);
+const db = new Database(scientists);
 
 db.$.get({ name: "Isaac Newton" }).data;
+
 // => { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" }
 ```
 
 #### Using multiple collections:
 
 ```ts
-import newton from "newtondb";
+import { Database } from "newtondb";
 
 const db = {
   scientists: [
@@ -161,9 +162,10 @@ const db = {
     { name: "University of Zurich", location: "Zurich, Switzerland" }
   ]
 ];
-const db = new newton(db);
+const db = new Database(db);
 
-db.$.universities.get({ location: "Zurich, Switzerland" }).data
+db.$.universities.get({ location: "Zurich, Switzerland" }).data;
+
 // => { name: "University of Zurich", location: "Zurich, Switzerland" }
 ```
 
@@ -239,6 +241,7 @@ When instantiating newton, if you set the `primaryKey` configuration option to `
 
 ```ts
 $.get("isa").data;
+
 // => { "code": "isa", "name": "Isaac Newton", "university": "berlin" }
 ```
 
@@ -281,6 +284,7 @@ In the above example, the `university` attribute for all scientists studying at 
 
 ```ts
 $.scientists.find({ university: "University of Berlin" }).data;
+
 // => []
 ```
 
@@ -297,6 +301,7 @@ You can then query against the updated items:
 
 ```ts
 $.scientists.find({ university: "University of Berlin" }).count;
+
 // => 1
 ```
 
@@ -311,7 +316,8 @@ Reads an object directly from memory.
 **Usage:**
 
 ```ts
-import newton, { MemoryAdapter } from "newtondb";
+import { Database } from "newtondb";
+import { MemoryAdapter } from "newtondb/adapters/memory-adapter";
 
 const adapter = new MemoryAdapter({
   scientists: [
@@ -324,7 +330,7 @@ const adapter = new MemoryAdapter({
   ],
 });
 
-const db = new newton(adapter);
+const db = new Database(adapter);
 await db.read();
 
 db.$.scientists.find({ code: "isa" });
@@ -341,10 +347,11 @@ Reads a JSON file from the local filesystem.
 **Usage:**
 
 ```ts
-import newton, { FileAdapter } from "newtondb";
+import { Database } from "newtondb";
+import { FileAdapter } from "newtondb/adapters/file-adapter";
 
 const adapter = new FileAdapter("./db.json");
-const db = new newton(adapter);
+const db = new Database(adapter);
 await db.read();
 
 db.$.scientists.find({ code: "isa" });
@@ -356,26 +363,27 @@ db.$.scientists.find({ code: "isa" });
 
 ## Database
 
-### `new newton(adapter, options)`
+### `new Database(adapter, options)`
 
 Instantiates a new collection newton instance. The first argument takes either an `Adapter` instance, or a data object (in which case newton will instantiate a `MemoryAdapter` on your behalf).
 
 **Instantiating with an adapter:**
 
 ```ts
-import newton, { FileAdapter } from "newtondb";
+import { Database } from "newtondb";
+import { FileAdapter } from "newtondb/adapters/file-adapter";
 
 const adapter = new FileAdapter("./db.json");
-const db = new newton(adapter);
+const db = new Database(adapter);
 await db.load();
 ```
 
 **Instantiating with a data object:**
 
 ```ts
-import newton from "newton";
+import { Database } from "newton";
 
-const db = new newton({
+const db = new Database({
   scientists: [
     // ...
   ]
@@ -408,7 +416,7 @@ const scientists = [
   { code: "alb", name: "Albert Einstein", university: "cambridge" },
 ];
 
-const db = new newton(scientists, {
+const db = new Database(scientists, {
   collection: {
     primaryKey: "code",
   },
@@ -429,7 +437,7 @@ const universities = [
   { name: "University of Zurich", location: "Zurich, Switzerland" },
 ];
 
-const db = new newton(scientists, {
+const db = new Database(scientists, {
   collection: {
     scientists: {
       primaryKey: "code",
@@ -441,7 +449,7 @@ const db = new newton(scientists, {
 You can configure as many collections as you like. When omitted from your options, each collection uses the default settings (`{}`):
 
 ```ts
-const db = new newton(scientists, {
+const db = new Database(scientists, {
   collection: {
     scientists: {
       primaryKey: "code",
@@ -460,9 +468,10 @@ const db = new newton(scientists, {
 When reading your data from any source other than memory, you must call `.read()` before you can interact with your database. `read()` is an asynchronous function that returns a `Promise` when complete:
 
 ```ts
-import newton, { FileAdapter } from "newtondb";
+import { Database } from "newtondb";
+import { FileAdapter } from "newtondb/adapters/file-adapter";
 
-const db = new newton(new FileAdapter("./db.json"));
+const db = new Database(new FileAdapter("./db.json"));
 await db.read();
 
 // can now interact with your db
@@ -471,9 +480,10 @@ await db.read();
 In addition to loading your data, `read()` triggers some basic bootstrapping of your collections. If you try to interact with your database prior to calling read, a `NotReadyError` exception will be thrown:
 
 ```ts
-import newton, { FileAdapter } from "newtondb";
+import { Database } from "newtondb";
+import { FileAdapter } from "newtondb/adapters/file-adapter";
 
-const db = new newton(new FileAdapter("./db.json"));
+const db = new Database(new FileAdapter("./db.json"));
 db.$.find({ name: "isaac newton" }); // will throw a NotReadyError exception
 ```
 
@@ -484,7 +494,7 @@ db.$.find({ name: "isaac newton" }); // will throw a NotReadyError exception
 Will write the current state of your database to its source by triggering the `write()` method in the `Adapter` you instantiated the database with. Returns a `Promise` which will resolve to `true` when the write operation was successful and `false` when it was unsuccessful.
 
 ```ts
-const db = new newton(new FileAdapter("./db.json"));
+const db = new Database(new FileAdapter("./db.json"));
 await db.read();
 
 db.find({ name: "isaac newton" }).set({ alive: false }).commit();
@@ -494,7 +504,7 @@ await db.write();
 When newton is instantiated with `writeOnCommit` set to `true` (the default option), commits will automatically be written:
 
 ```ts
-const db = new newton(new FileAdapter("./db.json"), { writeOnCommit: true });
+const db = new Database(new FileAdapter("./db.json"), { writeOnCommit: true });
 await db.read();
 
 db.find({ name: "isaac newton" }).set({ alive: false }).commit();
@@ -513,14 +523,14 @@ When newton is instantiated with a single collection, `$` will return that colle
 **Instantiating with a single collection**:
 
 ```ts
-const db = new newton(scientists);
+const db = new Database(scientists);
 db.$.find({ name: "isaac newton" });
 ```
 
 When instantiated with multiple collections, `$` will return an object whose values are collection instances:
 
 ```ts
-const db = new newton({ scientists, universities });
+const db = new Database({ scientists, universities });
 
 db.$.scientists.find({ name: "isaac newton" });
 db.$.universities.find({ name: "university of berlin" });
@@ -538,7 +548,7 @@ const scientists = [
   { name: "Albert Einstein", born: "1879-03-14T12:00:00.000Z" },
 ];
 
-const db = new newton(scientists);
+const db = new Database(scientists);
 db.$.find({ name: "Isaac Newton" })
   .set({ name: "Isaac Newton (deceased)" })
   .commit();
@@ -582,7 +592,7 @@ type UpdateEvent<T> = { event: "updated"; data: { old: T; new: T } };
 When using typescript, you can narrow in on the data using the event name:
 
 ```ts
-const db = new newton(scientists);
+const db = new Database(scientists);
 db.observe(({ event, data }) => {
   if (event === "insert") {
     // data will be of type `T` (`Scientist` in our case)
@@ -593,7 +603,7 @@ db.observe(({ event, data }) => {
 When instantiating a database with multiple collections, `observe()` expects a function with two arguments, the first being the collection name and the second a `MutationEvent` argument:
 
 ```ts
-const db = new newton({ scientists, universities });
+const db = new Database({ scientists, universities });
 
 db.observe((collection, event) => {
   console.log(`collection ${collection} triggered an event`);
@@ -611,7 +621,7 @@ db.observe((collection, event) => {
 Takes as input a numeric ID (the output from [`observe()`](#observe)) and cancels an observer.
 
 ```ts
-const db = new newton({ scientists, universities });
+const db = new Database({ scientists, universities });
 
 const observer = db.observe((collection, event) => {
   console.log(`collection ${collection} triggered an event`);
@@ -643,6 +653,7 @@ Returns a single record. Most commonly used when querying your collection by a u
 
 ```ts
 $.get({ code: "isa" }).data;
+
 // => { "code": "isa", "name": "Isaac Newton", "university": "berlin" }
 ```
 
@@ -650,6 +661,7 @@ When your collection has been instantiated with a primary key, and your primary 
 
 ```ts
 $.get("isa").data;
+
 // => { "code": "isa", "name": "Isaac Newton", "university": "berlin" }
 ```
 
@@ -663,6 +675,7 @@ Returns multiple records:
 
 ```ts
 $.find({ university: "cambridge" }).data;
+
 // => [ { "code": "alb", "name": "Albert Einstein", "university": "cambridge" } ]
 ```
 
@@ -678,6 +691,7 @@ The `data` property returns an array of data as it currently exists within your 
 
 ```ts
 $.data;
+
 // => [ { "name": "Isaac Newton", "born": "1643-01-04T12:00:00.000Z" }, ... ]
 ```
 
@@ -685,6 +699,7 @@ When you start chaining operations, `.data` will return an array of data as it c
 
 ```ts
 $.find({ name: "Isaac Newton" }).data;
+
 // => [ { "name": "Isaac Newton", "born": "1643-01-04T12:00:00.000Z" } ]
 ```
 
@@ -696,6 +711,7 @@ The `count` property returns the amount of records currently within your chain. 
 
 ```ts
 $.count;
+
 // => 100
 ```
 
@@ -703,6 +719,7 @@ When you start chaining operations, `.count` will return the amount of records t
 
 ```ts
 $.find({ name: "Isaac Newton" }).count;
+
 // => 1
 ```
 
@@ -714,6 +731,7 @@ The `exists` property is a shorthand for `.count > 0` and simply returns `true` 
 
 ```ts
 $.get("isa").exists;
+
 // => true
 ```
 
@@ -721,6 +739,7 @@ Or when it doesn't exist:
 
 ```ts
 $.get("not isaac newton").exists;
+
 // => false
 ```
 
@@ -732,6 +751,7 @@ By default, when a query returns records, the result includes all of those recor
 
 ```ts
 $.get({ name: "Isaac Newton" }).select(["university"]).data;
+
 // => { university: "Cambridge" }
 ```
 
@@ -739,6 +759,7 @@ Given the result of one operation is fed into another, the order of `select` doe
 
 ```ts
 $.select(["university"]).get({ name: "Isaac Newton" }).data;
+
 // => { university: "Cambridge" }
 ```
 
@@ -949,6 +970,8 @@ Runs an `assertion` on your chain, and continues the chain execution if the asse
 Takes as input a function whose single argument is the chain instance and which returns a `boolean`:
 
 ```ts
+import { AssertionError } from "newtondb";
+
 try {
   $.get({ name: "isaac newton" })
     .assert(({ exists }) => exists)
@@ -964,6 +987,8 @@ try {
 You can optionally pass through a `string` as the first argument and a `function` as the second to describe your assertion:
 
 ```ts
+import { AssertionError } from "newtondb";
+
 try {
   $.get({ name: "isaac newton" })
     .assert(
@@ -1064,7 +1089,7 @@ The examples in this section will use the following dataset:
 When you instantiate Newton you can optionally define a primary key:
 
 ```ts
-const db = new newton(scientists, { primaryKey: "id" });
+const db = new Database(scientists, { primaryKey: "id" });
 ```
 
 > :warning: **Performance warning**: while `primaryKey` is optional, it is highly recommended you set this when you instantiate Newton in order to optimize read performance.
@@ -1073,6 +1098,7 @@ If the value of your primary key is a scalar value (`string` or `number`), you c
 
 ```ts
 $.get(2).data;
+
 // =>  { id: 3, name: 'galileo galilei', born: 1564, alive: false }
 ```
 
@@ -1082,6 +1108,7 @@ If you are using a composite primary key, you'll have to pass through an object:
 const $ = new Collection(scientists, { primaryKey: ["name", "born"] });
 
 $.get({ name: "albert einstein", born: 1879 }).data;
+
 // => { "id": 2, "name": "albert einstein", "born": 1879, "alive": false }
 ```
 
@@ -1131,6 +1158,7 @@ You can pass multiple properties through:
 
 ```ts
 $.find({ alive: true, born: 1920 }).data;
+
 // => [ { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true } ]
 ```
 
@@ -1757,7 +1785,7 @@ Returns the following:
 Can also be used on arrays:
 
 ```ts
-const schedule = new newton([
+const schedule = new Database([
   { department: "it", subjects: ["data structures and algorithms"] },
   { department: "physics", subjects: ["newtonian mechanics"] },
   { department: "maths", subjects: [] },
@@ -1809,7 +1837,7 @@ When using the `MemoryAdapter`, newton will automatically infer the shape of you
 **Using a single collection:**
 
 ```ts
-const db = new newton([
+const db = new Database([
   { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" },
   { name: "Albert Einstein", born: "1879-03-14T12:00:00.000Z" },
 ]);
@@ -1820,7 +1848,7 @@ const db = new newton([
 **Using multiple collections:**
 
 ```ts
-const db = new newton({
+const db = new Database({
   scientists: [
     { name: "Isaac Newton", born: "1643-01-04T12:00:00.000Z" },
     { name: "Albert Einstein", born: "1879-03-14T12:00:00.000Z" },
@@ -1839,9 +1867,10 @@ When the shape of the data can't be inferred automatically, you can pass through
 
 ```ts
 const adapter = new FileAdapter("./db.json");
-const db = new Newton<{ scientists: Scientist[]; universities: University[] }>(
-  adapter
-);
+const db = new Database<{
+  scientists: Scientist[];
+  universities: University[];
+}>(adapter);
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
