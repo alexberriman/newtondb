@@ -4,5 +4,5 @@
     "noImplicitAny": true
   },
   "include": ["src"],
-  "exclude": ["dist"]
+  "exclude": [".build"]
 }

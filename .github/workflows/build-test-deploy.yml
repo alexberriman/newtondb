@@ -4,6 +4,17 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy? (y/N)"
+        required: true
+        default: "N"
+        type: choice
+        options:
+          - "y"
+          - "N"
+
 jobs:
   build:
     name: Build
@@ -15,4 +26,31 @@ jobs:
           node-version: 16
       - uses: bahmutov/npm-install@v1
       - run: npm run ci
-      - run: npm run build
+      - run: npm run deploy
+      - uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: .build/
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.deploy == 'y' }}
+    concurrency:
+      group: deploy
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - uses: bahmutov/npm-install@v1
+      - uses: actions/download-artifact@v3
+        with:
+          name: build
+          path: .build/
+      - uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: ./.build/package.json

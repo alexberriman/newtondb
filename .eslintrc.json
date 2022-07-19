@@ -12,7 +12,7 @@
   "rules": {
     "@typescript-eslint/no-empty-interface": "off"
   },
-  "ignorePatterns": ["dist"],
+  "ignorePatterns": [".build"],
   "overrides": [
     {
       "files": ["*.test.ts"],
