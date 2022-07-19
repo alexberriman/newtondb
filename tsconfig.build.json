@@ -1,9 +1,11 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": ".build/dist",
+    "outDir": ".build",
     "declaration": true,
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "target": "ES2015",
+    "lib": ["es2019", "dom", "ESNext"]
   },
   "exclude": [".build", "src/**/*.test.ts"]
 }
