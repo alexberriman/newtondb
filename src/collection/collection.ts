@@ -22,7 +22,6 @@ import { createCondition, isFindPredicate } from "./utils";
 import { AssertionError } from "../errors/assertion-error";
 import { HashTable, type HashTableItem } from "../data/hash-table/table";
 import { Chain, type CommitResult } from "./chain";
-import { cloneDeep } from "lodash";
 import { findLast } from "../utils/array";
 import type {
   DeleteObserver,
@@ -34,6 +33,7 @@ import type {
   ObserverEvent,
 } from "./observer";
 import { ObserverError } from "../errors/observer-error";
+import { cloneDeep } from "../utils/object";
 
 export interface CollectionOptions<IndexKeys> {
   primaryKey?: IndexKeys | IndexKeys[];

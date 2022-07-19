@@ -8,8 +8,8 @@
     "build": "rm -rf .build && tsc --project tsconfig.build.json",
     "ci": "concurrently \"npm:lint\" \"npm:test\"",
     "deploy": "./deploy.sh",
-    "docs": "typedoc src/index.ts",
-    "docs:dev": "typedoc src/index.ts --watch",
+    "docs": "typedoc --plugin typedoc-plugin-markdown src/index.ts",
+    "docs:dev": "typedoc --plugin typedoc-plugin-markdown src/index.ts --watch",
     "jest": "jest",
     "lint": "eslint src/",
     "prepare": "husky install",
@@ -56,6 +56,7 @@
     "prettier": "^2.7.1",
     "ts-jest": "^28.0.7",
     "typedoc": "^0.23.8",
+    "typedoc-plugin-markdown": "^3.13.3",
     "typescript": "^4.7.4"
   },
   "dependencies": {

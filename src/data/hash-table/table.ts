@@ -1,7 +1,7 @@
-import { cloneDeep, isEqual, set, unset } from "lodash";
+import { isEqual } from "lodash";
 import { PatchError } from "../../errors/patch-error";
 import { flatten, shallowEqual } from "../../utils/array";
-import { dot, objectSubset } from "../../utils/object";
+import { cloneDeep, dot, objectSubset, set, unset } from "../../utils/object";
 import {
   isObject,
   isPopulatedArray,
@@ -433,11 +433,8 @@ export class HashTable<
       // adding a new attribute to an existing node
       const attribute = path.join(".");
       const original = cloneDeep(node.data);
-      set(
-        this.items[$id].data as unknown as object, // @todo use own
-        attribute,
-        value
-      );
+      set(this.items[$id].data as unknown as object, attribute, value);
+
       return {
         operation: "addAttribute",
         $id: Number($id),
@@ -473,7 +470,7 @@ export class HashTable<
     const original = cloneDeep(node.data);
     const attribute = path.join(".");
     const oldValue = dot(node.data as Record<string, unknown>, attribute);
-    set<DataItem>(node.data as unknown as object, attribute, operation.value);
+    set(node.data, attribute, operation.value);
 
     return {
       operation: "replaceAttribute",

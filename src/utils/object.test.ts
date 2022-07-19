@@ -1,5 +1,5 @@
 import { wizards } from "../test-data";
-import { dot, keyBy, objectSubset } from "./object";
+import { dot, keyBy, objectSubset, set, unset } from "./object";
 
 test("objectSubset", () => {
   expect(
@@ -32,5 +32,15 @@ test("keyBy", () => {
     2: wizards[1],
     3: wizards[2],
     4: wizards[3],
+  });
+});
+
+test("set", () => {
+  expect(set({}, "a.b.c", "hello")).toEqual({ a: { b: { c: "hello" } } });
+});
+
+test("unset", () => {
+  expect(unset({ a: { b: { c: "hello", d: {} } } }, "a.b.c")).toEqual({
+    a: { b: { d: {} } },
   });
 });
