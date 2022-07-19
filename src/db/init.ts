@@ -21,6 +21,9 @@ import {
   type DbObserverEvent,
 } from "./types";
 
+/**
+ * @category Data
+ */
 export class Database<Shape extends AllowedData> {
   private instance?: Instance<Shape>;
   private adapter: BaseAdapter<Shape>;

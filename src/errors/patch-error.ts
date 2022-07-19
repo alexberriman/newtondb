@@ -1,3 +1,6 @@
+/**
+ * @category Errors
+ */
 import { PatchOperation } from "../data/json-patch";
 
 export class PatchError extends Error {
