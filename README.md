@@ -352,27 +352,155 @@ db.$.scientists.find({ code: "isa" });
 
 ## Database
 
-### `new newton(options)`
+### `new newton(adapter, options)`
 
-Lorem
+Instantiates a new collection newton instance. The first argument takes either an `Adapter` instance, or a data object (in which case newton will instantiate a `MemoryAdapter` on your behalf).
+
+**Instantiating with an adapter:**
 
 ```ts
-//
+import newton, { FileAdapter } from "newtondb";
+
+const adapter = new FileAdapter("./db.json");
+const db = new newton(adapter);
+await db.load();
+```
+
+**Instantiating with a data object:**
+
+```ts
+import newton from "newton";
+
+const db = new newton({
+  scientists: [
+    // ...
+  ]
+  universities: [
+    // ...
+  ]
+});
+```
+
+Newton can be instantiated with either a single collection, or multiple collections. A single collection is defined by an array of objects of the same type, whereas multiple collections is defined as an object whose properties each contain an array of the same type. See: [using multiple collections](#using-multiple-collections).
+
+#### Options
+
+The following options can be passed through to Newton:
+
+| Option          | Type      | Required | Default value | Description                                                                                                                                                                                         |
+| --------------- | --------- | -------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `writeOnCommit` | `boolean` | `false`  | `true`        | If `true`, Newton will call the `write()` method on your adapter after each commit, persisting data mutations to your data source. **Note:** this option is ignored when using the `MemoryAdapter`. |
+| `collection`    | `object`  | `false`  | `{}`          | Can be used to configure each collection. See below.                                                                                                                                                |
+
+#### DatabaseCollectionOptions
+
+When Newton is instantiated with a single collection, the `DatabaseCollectionOptions` object is a single instance of the [`CollectionOptions`](#new-collectionoptions) object. For example:
+
+**Setting `collection` options for a single collection:**
+
+```ts
+const scientists = [
+  { code: "isa", name: "Isaac Newton", university: "berlin" },
+  { code: "alb", name: "Albert Einstein", university: "cambridge" },
+];
+
+const db = new newton(scientists, {
+  collection: {
+    primaryKey: "code",
+  },
+});
+```
+
+When instantiating Newton with multiple collections, the `collection` option takes the shape of an object whose properties are the same as your database shape, where each value is an instance of [`CollectionOptions`](#new-collectionoptions) object. For example:
+
+**Setting `collection` options when using multiple collections:**
+
+```ts
+const scientists = [
+  { code: "isa", name: "Isaac Newton", university: "berlin" },
+  { code: "alb", name: "Albert Einstein", university: "cambridge" },
+];
+
+const universities = [
+  { name: "University of Zurich", location: "Zurich, Switzerland" },
+];
+
+const db = new newton(scientists, {
+  collection: {
+    scientists: {
+      primaryKey: "code",
+    },
+  },
+});
+```
+
+You can configure as many collections as you like. When omitted from your options, each collection uses the default settings (`{}`):
+
+```ts
+const db = new newton(scientists, {
+  collection: {
+    scientists: {
+      primaryKey: "code",
+    },
+    universities: {
+      primaryKey: ["name", "location"],
+    },
+  },
+});
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
 ### `.read()`
 
-Lorem
+When reading your data from any source other than memory, you must call `.read()` before you can interact with your database. `read()` is an asynchronous function that returns a `Promise` when complete:
 
 ```ts
-//
+import newton, { FileAdapter } from "newtondb";
+
+const db = new newton(new FileAdapter("./db.json"));
+await db.read();
+
+// can now interact with your db
+```
+
+In addition to loading your data, `read()` triggers some basic bootstrapping of your collections. If you try to interact with your database prior to calling read, a `NotReadyError` exception will be thrown:
+
+```ts
+import newton, { FileAdapter } from "newtondb";
+
+const db = new newton(new FileAdapter("./db.json"));
+db.$.find({ name: "isaac newton" }); // will throw a NotReadyError exception
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
 
 ### `.write`
+
+Will write the current state of your database to its source by triggering the `write()` method in the `Adapter` you instantiated the database with. Returns a `Promise` which will resolve to `true` when the write operation was successful and `false` when it was unsuccessful.
+
+```ts
+const db = new newton(new FileAdapter("./db.json"));
+await db.read();
+
+db.find({ name: "isaac newton" }).set({ alive: false }).commit();
+await db.write();
+```
+
+When newton is instantiated with `writeOnCommit` set to `true` (the default option), commits will automatically be written:
+
+```ts
+const db = new newton(new FileAdapter("./db.json"), { writeOnCommit: true });
+await db.read();
+
+db.find({ name: "isaac newton" }).set({ alive: false }).commit();
+
+// .write() is not necessary as the changes would have already been written
+```
+
+<div align="right"><a href="#top">Back to top</a></div>
+
+### `.observe`
 
 Lorem
 
@@ -383,16 +511,6 @@ Lorem
 <div align="right"><a href="#top">Back to top</a></div>
 
 ### `.unobserve`
-
-Lorem
-
-```ts
-//
-```
-
-<div align="right"><a href="#top">Back to top</a></div>
-
-### new newton(options)
 
 Lorem
 

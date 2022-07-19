@@ -1,4 +1,5 @@
-import { Collection, CollectionOptions } from "../collection/collection";
+import { Collection, type CollectionOptions } from "../collection/collection";
+import { type MutationEvent } from "../collection/observer";
 import { isObject } from "../utils/types";
 
 export type Db<T> = {
@@ -23,6 +24,26 @@ export type DatabaseOptions<Shape> = {
   collection?: DatabaseCollectionOptions<Shape>;
   writeOnCommit?: boolean;
 };
+
+export type ValueOf<T> = T[keyof T];
+
+export type DbObserverEvent<
+  T,
+  Property extends keyof T
+> = T[Property] extends unknown[]
+  ? MutationEvent<T[Property][number]>
+  : DatabaseObserverCallback<T[Property]>;
+
+export type DbObserverCallback<T> = {
+  [Property in keyof T]: (
+    collection: Property,
+    event: DbObserverEvent<T, Property>
+  ) => void;
+};
+
+export type DatabaseObserverCallback<Shape> = Shape extends unknown[]
+  ? (event: MutationEvent<Shape[number]>) => void
+  : ValueOf<DbObserverCallback<Shape>>;
 
 export function isCollection<T>(instance: unknown): instance is T {
   return !!instance && instance instanceof Collection;
