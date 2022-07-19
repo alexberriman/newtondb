@@ -34,9 +34,9 @@ Will improve performance on read operations. Records that are stored pre-sorted 
 
 🚀 &nbsp;**OPEN** &nbsp;&nbsp;📉 &nbsp;&nbsp;**0 / 1** goals completed **(0%)**
 
-| Status | Goal                                                          | Labels                   |
-| :----: | :------------------------------------------------------------ | ------------------------ |
-|   ❌   | [Sort keys](https://github.com/alexberriman/cleardb/issues/2) | `enhancement`, `backlog` |
+| Status | Goal                                                           | Labels                   |
+| :----: | :------------------------------------------------------------- | ------------------------ |
+|   ❌   | [Sort keys](https://github.com/alexberriman/newtondb/issues/2) | `enhancement`, `backlog` |
 
 ### Secondary indexes
 
@@ -44,9 +44,9 @@ Currently, an index is only created for the primary key of a collection. That me
 
 🚀 &nbsp;**OPEN** &nbsp;&nbsp;📉 &nbsp;&nbsp;**0 / 1** goals completed **(0%)**
 
-| Status | Goal                                                                  | Labels                   |
-| :----: | :-------------------------------------------------------------------- | ------------------------ |
-|   ❌   | [Secondary indexes](https://github.com/alexberriman/cleardb/issues/3) | `enhancement`, `backlog` |
+| Status | Goal                                                                   | Labels                   |
+| :----: | :--------------------------------------------------------------------- | ------------------------ |
+|   ❌   | [Secondary indexes](https://github.com/alexberriman/newtondb/issues/3) | `enhancement`, `backlog` |
 
 ## Adapters
 
@@ -62,6 +62,6 @@ Read/write a JSON file from Amazon's S3 object storage. This will most likely be
 
 🚀 &nbsp;**OPEN** &nbsp;&nbsp;📉 &nbsp;&nbsp;**0 / 1** goals completed **(0%)**
 
-| Status | Goal                                                           | Labels                   |
-| :----: | :------------------------------------------------------------- | ------------------------ |
-|   ❌   | [S3 adapter](https://github.com/alexberriman/cleardb/issues/3) | `enhancement`, `backlog` |
+| Status | Goal                                                            | Labels                   |
+| :----: | :-------------------------------------------------------------- | ------------------------ |
+|   ❌   | [S3 adapter](https://github.com/alexberriman/newtondb/issues/3) | `enhancement`, `backlog` |

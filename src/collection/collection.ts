@@ -35,7 +35,7 @@ import type {
 } from "./observer";
 import { ObserverError } from "../errors/observer-error";
 
-interface CollectionOptions<IndexKeys> {
+export interface CollectionOptions<IndexKeys> {
   primaryKey?: IndexKeys | IndexKeys[];
 
   // by default, the data object that is initially passed in is mutated when
@@ -133,7 +133,7 @@ export class Collection<
         const $chain = chain.cloneForProperties(properties);
         return this.chain<Subset<DataResponse, T, K>, K>($chain);
       },
-      set: (value: Partial<T> | ((item: T) => Partial<T> | T)) =>
+      set: (value: Partial<T> | ((item: T) => Partial<T>)) =>
         this.$set(value, chain),
     };
   }
@@ -271,6 +271,7 @@ export class Collection<
     return this.chain<Pick<T, Properties>[], Properties>(chain);
   }
 
+  // @todo find predicate has value unknown
   find(
     value?:
       | FindPredicate<T, HashTableItem<Index, T>>

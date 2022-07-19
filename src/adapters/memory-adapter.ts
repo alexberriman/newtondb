@@ -8,4 +8,9 @@ export class MemoryAdapter<T> extends BaseAdapter<T> {
   async read() {
     return this.data;
   }
+
+  async write() {
+    // do nothing, memory adapter has no write method
+    return true;
+  }
 }
