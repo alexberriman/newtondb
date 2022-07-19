@@ -13,6 +13,8 @@ import type {
   ValueOf,
 } from "./types";
 
+import { isCollection, isDatabase } from "./types";
+
 export type {
   Database,
   AllowedData,
@@ -26,3 +28,5 @@ export type {
   Instance,
   ValueOf,
 };
+
+export { isCollection, isDatabase };

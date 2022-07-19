@@ -1,9 +1,12 @@
 {
   "name": "newtondb",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A simple, easy to use and extendible JSON database.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    "./adapters/": "./dist/adapters/"
+  },
   "scripts": {
     "build": "rm -rf .build && tsc --project tsconfig.build.json",
     "ci": "concurrently \"npm:lint\" \"npm:test\"",
