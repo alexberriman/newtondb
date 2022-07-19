@@ -16,7 +16,7 @@ export function addPreprocessor(name: string, fn: PreprocessFn) {
   preprocessors[name] = fn;
 }
 
-interface ExecuteOptions {
+export interface ExecuteOptions {
   name: string;
   args: any[];
   defaultValue: unknown;

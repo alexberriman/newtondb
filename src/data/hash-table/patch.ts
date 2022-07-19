@@ -1,4 +1,4 @@
-type BasePatchResult<T> = {
+export type BasePatchResult<T> = {
   $id: number;
   original: T | null;
 };

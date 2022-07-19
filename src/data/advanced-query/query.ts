@@ -2,34 +2,37 @@ import { dot } from "../../utils/object";
 import { isObject } from "../../utils/types";
 import { preProcess } from "./preprocess";
 
-type NestedPreProcessor = { fn: string; args?: (NestedProperty | unknown)[] };
-type PreProcessor = string | NestedPreProcessor;
+export type NestedPreProcessor = {
+  fn: string;
+  args?: (NestedProperty | unknown)[];
+};
+export type PreProcessor = string | NestedPreProcessor;
 
 export type NestedProperty = { name: string; preProcess?: PreProcessor[] };
 
-type Property = string | NestedProperty;
+export type Property = string | NestedProperty;
 
-type ValueReference = {
+export type ValueReference = {
   property: Property;
 };
 
-type ConditionValue<T> = T | ValueReference;
+export type ConditionValue<T> = T | ValueReference;
 
-interface BaseCondition {
+export interface BaseCondition {
   property: Property;
 }
 
-interface StringCondition extends BaseCondition {
+export interface StringCondition extends BaseCondition {
   operator: "startsWith" | "endsWith" | "matchesRegex" | "doesNotMatchRegex";
   value: ConditionValue<string>;
 }
 
-interface ScalarCondition extends BaseCondition {
+export interface ScalarCondition extends BaseCondition {
   operator: "equal" | "notEqual";
   value: ConditionValue<string | number | boolean>;
 }
 
-interface NumericCondition extends BaseCondition {
+export interface NumericCondition extends BaseCondition {
   operator:
     | "lessThan"
     | "lessThanInclusive"
@@ -38,26 +41,26 @@ interface NumericCondition extends BaseCondition {
   value: ConditionValue<number>;
 }
 
-interface ArrayInCondition extends BaseCondition {
+export interface ArrayInCondition extends BaseCondition {
   operator: "in" | "notIn";
   value: ConditionValue<unknown[]>;
 }
 
-interface ContainsCondition extends BaseCondition {
+export interface ContainsCondition extends BaseCondition {
   operator: "contains" | "doesNotContain";
   value: ConditionValue<string | number | boolean>;
 }
 
-type AtomicCondition =
+export type AtomicCondition =
   | StringCondition
   | ScalarCondition
   | NumericCondition
   | ArrayInCondition
   | ContainsCondition;
 
-type EveryCondition = { every: AdvancedCondition[] };
+export type EveryCondition = { every: AdvancedCondition[] };
 
-type SomeCondition = { some: AdvancedCondition[] };
+export type SomeCondition = { some: AdvancedCondition[] };
 
 export type AdvancedCondition =
   | AtomicCondition

@@ -1,4 +1,4 @@
-import { PatchResult } from "../data/hash-table/patch";
+import type { PatchResult } from "../data/hash-table/patch";
 import { keyArrayBy } from "../utils/array";
 
 export type ObserverEvent = "insert" | "update" | "delete" | "*";

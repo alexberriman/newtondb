@@ -1,7 +1,7 @@
 import { Adapter, BaseAdapter } from "../adapters/base-adapter";
 import { MemoryAdapter } from "../adapters/memory-adapter";
 import { Collection } from "../collection/collection";
-import { GenericObserver, MutationEvent } from "../collection/observer";
+import type { GenericObserver, MutationEvent } from "../collection/observer";
 import { AdapterError } from "../errors/adapter-error";
 import { NotReadyError } from "../errors/not-ready-error";
 import { ObserverError } from "../errors/observer-error";
@@ -15,10 +15,10 @@ import {
   type Instance,
   type DatabaseOptions,
   type DatabaseCollectionOptions,
-  DatabaseObserverCallback,
-  ValueOf,
-  DbObserverCallback,
-  DbObserverEvent,
+  type DatabaseObserverCallback,
+  type ValueOf,
+  type DbObserverCallback,
+  type DbObserverEvent,
 } from "./types";
 
 export class Database<Shape extends AllowedData> {

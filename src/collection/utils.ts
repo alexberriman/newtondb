@@ -2,7 +2,7 @@ import { FindError } from "../errors/find-error";
 import { isDefined, isObject, isScalar } from "../utils/types";
 import type { FindPredicate } from "./collection";
 
-interface CreateConditionOptions<T> {
+export interface CreateConditionOptions<T> {
   primaryKey: T[];
 }
 

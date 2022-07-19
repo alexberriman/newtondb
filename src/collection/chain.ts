@@ -1,11 +1,11 @@
 import { orderBy } from "lodash";
-import { HashTable, type HashTableItem } from "../data/hash-table";
+import { HashTable, type HashTableItem } from "../data/hash-table/table";
 import {
   createPartialPatch,
   createPatch,
-  PatchOperation,
-  RemoveOperation,
-  TestAddReplaceOperation,
+  type PatchOperation,
+  type RemoveOperation,
+  type TestAddReplaceOperation,
   toPointer,
   type Patch,
 } from "../data/json-patch";
@@ -18,9 +18,13 @@ import {
   type FunctionKeys,
 } from "../utils/types";
 import { type Collection } from "./collection";
-import { createEvents, MutationEvent } from "./observer";
+import { createEvents, type MutationEvent } from "./observer";
 
-interface HistoryItem<DataType, IndexKeys extends keyof DataType, Index> {
+export interface HistoryItem<
+  DataType,
+  IndexKeys extends keyof DataType,
+  Index
+> {
   operation: FunctionKeys<Collection<DataType, IndexKeys, Index>>;
   args: unknown[];
 }

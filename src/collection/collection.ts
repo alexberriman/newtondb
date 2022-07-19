@@ -4,23 +4,23 @@ import {
   isScalar,
   isSingleArray,
   objectOfProperties,
-  Subset,
+  type Subset,
 } from "../utils/types";
 import {
-  get as getByAdvancedCondition,
-  query as queryByAdvancedCondition,
-} from "../data/advanced-query";
+  type AdvancedCondition,
+  isCondition as isAdvancedCondition,
+} from "../data/advanced-query/query";
 import {
   get as getByBasicCondition,
   query as queryByBasicCondition,
 } from "../data/basic-query";
-import { createCondition, isFindPredicate } from "./utils";
 import {
-  type AdvancedCondition,
-  isCondition as isAdvancedCondition,
-} from "../data/advanced-query";
+  get as getByAdvancedCondition,
+  query as queryByAdvancedCondition,
+} from "../data/advanced-query/db";
+import { createCondition, isFindPredicate } from "./utils";
 import { AssertionError } from "../errors/assertion-error";
-import { HashTable, type HashTableItem } from "../data/hash-table";
+import { HashTable, type HashTableItem } from "../data/hash-table/table";
 import { Chain, type CommitResult } from "./chain";
 import { cloneDeep } from "lodash";
 import { findLast } from "../utils/array";
@@ -44,7 +44,7 @@ export interface CollectionOptions<IndexKeys> {
   copy?: boolean;
 }
 
-type AssertionFunction<
+export type AssertionFunction<
   DataType,
   IndexKeys extends keyof DataType,
   Properties extends keyof DataType,
@@ -56,6 +56,67 @@ export type FindPredicate<T, Y> = (
   index: number,
   array: Y[]
 ) => value is T;
+
+export interface Chainable<
+  Data,
+  IndexKeys extends keyof Data,
+  Index,
+  DataResponse,
+  Properties extends keyof Data
+> {
+  readonly data: DataResponse;
+  readonly nodes: HashTableItem<Index, Data>[];
+  readonly count: number;
+  readonly exists: boolean;
+  readonly chain: Chain<
+    Data,
+    IndexKeys,
+    Properties,
+    Index,
+    Pick<Data, Properties>
+  >;
+  assert: (
+    assertionFnOrDescription:
+      | AssertionFunction<Data, IndexKeys, Properties, Index>
+      | string,
+    assertionFn?: AssertionFunction<Data, IndexKeys, Properties, Index>
+  ) => Chainable<Data, IndexKeys, Index, Pick<Data, Properties>[], Properties>;
+  commit: () => CommitResult<Data, IndexKeys, Index>;
+  delete: () => Chainable<
+    Data,
+    IndexKeys,
+    Index,
+    Pick<Data, Properties>[],
+    Properties
+  >;
+  insert: (
+    value: Data | Data[]
+  ) => Chainable<Data, IndexKeys, Index, Pick<Data, Properties>[], Properties>;
+  get: (
+    value: unknown
+  ) => Chainable<Data, IndexKeys, Index, Pick<Data, Properties>, Properties>;
+  find: (
+    value?: unknown
+  ) => Chainable<Data, IndexKeys, Index, Pick<Data, Properties>[], Properties>;
+  limit: (
+    amount: number
+  ) => Chainable<Data, IndexKeys, Index, Pick<Data, Properties>[], Properties>;
+  offset: (
+    amount: number
+  ) => Chainable<Data, IndexKeys, Index, Pick<Data, Properties>[], Properties>;
+  orderBy: (
+    order: Partial<Record<keyof Data, "asc" | "desc">>
+  ) => Chainable<Data, IndexKeys, Index, Pick<Data, Properties>[], Properties>;
+  replace: (
+    value: Data | ((item: Data) => Data)
+  ) => Chainable<Data, IndexKeys, Index, Pick<Data, Properties>[], Properties>;
+  select: <K extends keyof Data>(
+    properties: K[]
+  ) => Chainable<Data, IndexKeys, Index, Subset<DataResponse, Data, K>, K>;
+  set: (
+    value: Partial<Data> | ((item: Data) => Partial<Data>)
+  ) => Chainable<Data, IndexKeys, Index, Pick<Data, Properties>[], Properties>;
+}
 
 export class Collection<
   T,
@@ -86,7 +147,7 @@ export class Collection<
 
   private chain<DataResponse, Properties extends keyof T>(
     chain: Chain<T, IndexKeys, Properties, Index>
-  ) {
+  ): Chainable<T, IndexKeys, Index, DataResponse, Properties> {
     return {
       // details of chain
       get data(): DataResponse {

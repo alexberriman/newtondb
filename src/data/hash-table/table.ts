@@ -10,12 +10,12 @@ import {
   objectOfProperties,
 } from "../../utils/types";
 import {
-  Patch,
-  RemoveOperation,
-  TestAddReplaceOperation,
+  type Patch,
+  type RemoveOperation,
+  type TestAddReplaceOperation,
   toTokens,
 } from "../json-patch";
-import {
+import type {
   PatchAddResult,
   PatchRemoveResult,
   PatchResult,
@@ -24,7 +24,7 @@ import {
 
 // @todo freeze data
 
-interface HashTableOptions<IndexKeys, StorageKeys> {
+export interface HashTableOptions<IndexKeys, StorageKeys> {
   // need a key to generate a hash against for quick access
   // when a key is omitted, the array index will be used.
   keyBy?: IndexKeys[];

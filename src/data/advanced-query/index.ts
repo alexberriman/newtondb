@@ -1,3 +1,40 @@
-export * from "./db";
-export * from "./preprocess";
-export * from "./query";
+import type { ExecuteOptions } from "./preprocess";
+
+import type {
+  AdvancedCondition,
+  ArrayInCondition,
+  AtomicCondition,
+  BaseCondition,
+  ConditionValue,
+  ContainsCondition,
+  EveryCondition,
+  NestedPreProcessor,
+  NestedProperty,
+  NumericCondition,
+  PreProcessor,
+  Property,
+  ScalarCondition,
+  SomeCondition,
+  StringCondition,
+  ValueReference,
+} from "./query";
+
+export type {
+  ExecuteOptions,
+  AdvancedCondition,
+  ArrayInCondition,
+  AtomicCondition,
+  BaseCondition,
+  ConditionValue,
+  ContainsCondition,
+  EveryCondition,
+  NestedPreProcessor,
+  NestedProperty,
+  NumericCondition,
+  PreProcessor,
+  Property,
+  ScalarCondition,
+  SomeCondition,
+  StringCondition,
+  ValueReference,
+};

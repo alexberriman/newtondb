@@ -1,7 +1,7 @@
 import { createPatch as createRfcPatch } from "rfc6902";
 import { asArray } from "../utils/types";
 
-type BaseOperation = { path: string };
+export type BaseOperation = { path: string };
 
 export type MoveCopyOperation = BaseOperation & {
   op: "move" | "copy";
