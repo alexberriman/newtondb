@@ -93,7 +93,7 @@
 
 ## Introduction
 
-JSON is central to Javascript and Typescript development - it's most commonly used when you need to transfer data between one medium and another, such as when your application is consuming and sending data to and from APIs and when persisting and hydrating application data to a remote store (be it the file system, an S3 bucket, session storage, local storage, etc.)
+JSON is central to Javascript and Typescript development - it's commonly used when you need to transfer data between one medium and another, such as when you're consuming and sending data to and from APIs and when persisting and hydrating application data to a remote store (be it the file system, an S3 bucket, session storage, local storage, etc.)
 
 Most of the time, Javascript's Object and Array prototype methods are sufficient when interfacing with your data, however there are times when you may need to interface with a JSON data source as you might a more traditional database. You might find yourself needing to:
 
@@ -103,19 +103,21 @@ Most of the time, Javascript's Object and Array prototype methods are sufficient
 - Set up observers to listen to changes in your data.
 - Automatically hydrate from and persist changes to a remote store (e.g. file system, local storage, s3 bucket, etc.)
 
+That's where Newton can help out.
+
 ### Key features
 
-Although Newton doesn't aim to replace a traditional database, it does borrow on common features to let you interact with JSON data more effectively. It does this by providing:
+Although Newton doesn't aim to replace a traditional database, it does borrow on common features to let you interact with your data more effectively. It does this by providing:
 
 - A serializable query language to query your data.
-- Adapters to read and batch update data to a common set of stores (filesystem, s3, local/session storage, etc.)
-- Primary, secondary and sort indexes to improve the efficiency of reads.
+- Adapters to read and write to commonly used stores (filesystem, s3, local/session storage, etc.)
+- Indices - primary, secondary and sort indexes to improve the efficiency of reads.
 - Serializable data transformations.
-- Query caching, eager/lazy loading data and relations.
+- Query caching, eager/lazy loading.
 - Transactions.
 - Observers (hooks).
 
-and more. Above everything else, Newton's mission is to optimize for **performance** and **extendability** when interfacing with JSON data.
+and more. Above everything else, Newton's mission is to allow you to interface with your data while optimizing for **performance** and **extendability**.
 
 <div align="right"><a href="#top">Back to top</a></div>
 
