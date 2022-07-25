@@ -99,11 +99,11 @@ Most of the time, Javascript's Object and Array prototype methods are sufficient
 
 - Performantly query large data sets (of which arrays are notoriously poor for).
 - Safely execute serializable queries (e.g. user defined queries).
-- Safely execute data transformations.
+- Safely execute serializable data transformations.
 - Set up observers to listen to changes in your data.
 - Automatically hydrate from and persist changes to a remote store (e.g. file system, local storage, s3 bucket, etc.)
 
-That's where Newton can help out.
+This is where Newton can help out.
 
 ### Key features
 
