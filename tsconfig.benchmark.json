@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": ".dist-benchmark",
+    "noEmitOnError": true,
+    "target": "ES2015",
+    "lib": ["es2019", "dom", "ESNext"]
+  },
+  "exclude": [".build", "src/**/*.test.ts"],
+  "include": ["."]
+}

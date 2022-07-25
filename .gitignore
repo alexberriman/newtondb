@@ -2,3 +2,5 @@ node_modules/
 .build/
 .DS_STORE
 docs/
+.benchmark/
+.dist-benchmark/
