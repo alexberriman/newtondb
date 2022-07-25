@@ -1,8 +1,15 @@
 {
-  "branches": ["main"],
+  "branches": ["main", "build/benchmarks"],
   "plugins": [
+    "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
     "@semantic-release/changelog",
+    [
+      "@semantic-release/exec",
+      {
+        "generateNotesCmd": "./benchmark.sh"
+      }
+    ],
     "@semantic-release/npm",
     "@semantic-release/git",
     "@semantic-release/github"

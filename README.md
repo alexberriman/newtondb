@@ -94,7 +94,7 @@
 
 ## Introduction
 
-JSON is central to Javascript and Typescript development - it's commonly used when you need to transfer data between one medium and another, such as when you're consuming and sending data to and from APIs and when persisting and hydrating application data to a remote store (be it the file system, an S3 bucket, session storage, local storage, etc.)
+JSON is central to Javascript and Typescript development. It's commonly used when you need to transfer data between one medium and another, such as when you're consuming and sending data to and from APIs and when persisting and hydrating application data to a remote store (be it the file system, an S3 bucket, session storage, local storage, etc.)
 
 Most of the time, Javascript's Object and Array prototype methods are sufficient when interfacing with your data, however there are times when you may need to interface with a JSON data source as you might a more traditional database. You might find yourself needing to:
 
