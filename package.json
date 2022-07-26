@@ -13,6 +13,7 @@
     "jest": "jest",
     "lint": "eslint src/",
     "prepare": "husky install",
+    "semantic-release": "HUSKY=0 semantic-release",
     "test": "jest src/"
   },
   "lint-staged": {
