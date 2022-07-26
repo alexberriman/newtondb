@@ -1235,6 +1235,29 @@ This query will return all scientists who were born after the year 1800 or whose
 ]
 ```
 
+#### `not`
+
+`not` can be used to return the _reverse_ of the condition. Similar to standard Javascript, `!false` would return `true` and `!true` would return `false`.
+
+The following returns all scientists who are alive:
+
+```ts
+$.find({
+  not: {
+    { property: "alive", operator: "equal", value: false }
+  },
+}).data;
+```
+
+Returned value:
+
+```json
+[
+  { "id": 5, "name": "roger penrose", "born": 1931, "alive": true },
+  { "id": 6, "name": "rosalind franklin", "born": 1920, "alive": true }
+]
+```
+
 ##### Nesting conditions
 
 You can nest conditions to create complex rules:

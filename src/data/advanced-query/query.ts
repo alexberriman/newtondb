@@ -62,10 +62,13 @@ export type EveryCondition = { every: AdvancedCondition[] };
 
 export type SomeCondition = { some: AdvancedCondition[] };
 
+export type NotCondition = { not: AdvancedCondition };
+
 export type AdvancedCondition =
   | AtomicCondition
   | EveryCondition
-  | SomeCondition;
+  | SomeCondition
+  | NotCondition;
 
 function isValueReference<T>(
   value: ConditionValue<T>
@@ -299,6 +302,10 @@ export function evaluate<T>(
 ): boolean {
   if (isAtomicCondition(condition)) {
     return evaluateAtom(condition, candidate);
+  }
+
+  if ("not" in condition) {
+    return !evaluate(condition.not, candidate);
   }
 
   if ("every" in condition) {

@@ -433,4 +433,69 @@ describe("evaluate", () => {
       )
     ).toBe(true);
   });
+
+  test("not operator", () => {
+    expect(
+      evaluate(
+        { not: { property: "name", operator: "equal", value: "harry" } },
+        harry
+      )
+    ).toBe(false);
+
+    expect(
+      evaluate(
+        {
+          not: {
+            some: [
+              {
+                property: "house",
+                operator: "equal",
+                value: "slytherin",
+              },
+              {
+                property: "born",
+                operator: "equal",
+                value: 1000,
+              },
+            ],
+          },
+        },
+        harry
+      )
+    ).toBe(true);
+
+    expect(
+      evaluate(
+        {
+          every: [
+            {
+              not: {
+                property: "house",
+                operator: "equal",
+                value: "gryffindpr",
+              },
+            },
+            {
+              property: "born",
+              operator: "notEqual",
+              value: 1000,
+            },
+            {
+              not: {
+                some: [
+                  {
+                    property: "name",
+                    operator: "notIn",
+                    value: ["harry", "ron"],
+                  },
+                  { property: "married", operator: "equal", value: false },
+                ],
+              },
+            },
+          ],
+        },
+        harry
+      )
+    ).toBe(true);
+  });
 });
