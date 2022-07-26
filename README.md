@@ -65,6 +65,7 @@
   - [Basic conditions](#by-basic-condition)
   - [Advanced conditions](#by-advanced-condition)
     - [`every` and `some`](#every-and-some)
+    - [`not`](#not)
     - [Operators](#operators)
       - [equal](#equal)
       - [notEqual](#notequal)
