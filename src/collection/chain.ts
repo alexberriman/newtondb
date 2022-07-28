@@ -9,8 +9,8 @@ import {
   toPointer,
   type Patch,
 } from "../data/json-patch";
-import { flatten } from "../utils/array";
-import { objectSubset } from "../utils/object";
+import { flatten } from "../utils/arrays";
+import { subset } from "../utils/objects";
 import {
   asArray,
   isCallable,
@@ -100,7 +100,7 @@ export class Chain<
     }
 
     return data.map((item) =>
-      objectSubset(item, properties)
+      subset(item, properties)
     ) as unknown as SelectItem[];
   }
 

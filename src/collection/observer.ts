@@ -1,5 +1,5 @@
 import type { PatchResult } from "../data/hash-table/patch";
-import { keyArrayBy } from "../utils/array";
+import { keyArrayBy } from "../utils/arrays";
 
 export type ObserverEvent = "insert" | "update" | "delete" | "*";
 

@@ -1,9 +1,9 @@
 import {
   asArray,
   isCallable,
+  isObjectOfProperties,
   isScalar,
   isSingleArray,
-  objectOfProperties,
   type Subset,
 } from "../utils/types";
 import {
@@ -22,7 +22,7 @@ import { createCondition, isFindPredicate } from "./utils";
 import { AssertionError } from "../errors/assertion-error";
 import { HashTable, type HashTableItem } from "../data/hash-table/table";
 import { Chain, type CommitResult } from "./chain";
-import { findLast } from "../utils/array";
+import { findLast } from "../utils/arrays";
 import type {
   DeleteObserver,
   GenericObserver,
@@ -33,7 +33,7 @@ import type {
   ObserverEvent,
 } from "./observer";
 import { ObserverError } from "../errors/observer-error";
-import { cloneDeep } from "../utils/object";
+import { cloneDeep } from "../utils/collections";
 
 export interface CollectionOptions<IndexKeys> {
   primaryKey?: IndexKeys | IndexKeys[];
@@ -388,7 +388,7 @@ export class Collection<
     { mode }: { mode: "find" | "get" },
     chain: Chain<DataShape, IndexKeys, Properties, Index>
   ): typeof this.hashTable.nodes {
-    if (objectOfProperties<Index>(value, this.primaryKey as string[])) {
+    if (isObjectOfProperties<Index>(value, this.primaryKey as string[])) {
       // primary key was passed through - can pull directly from hash table
       // rather than iterate through the list
       return chain.hashTable.get(value, { asItem: false });

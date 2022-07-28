@@ -1,4 +1,4 @@
-import { dot } from "../../utils/object";
+import { dot } from "../../utils/collections";
 import { isObject } from "../../utils/types";
 import { preProcess } from "./preprocess";
 
