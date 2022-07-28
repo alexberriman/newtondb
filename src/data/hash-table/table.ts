@@ -1,13 +1,13 @@
-import { isEqual } from "lodash";
 import { PatchError } from "../../errors/patch-error";
-import { flatten, shallowEqual } from "../../utils/array";
-import { cloneDeep, dot, objectSubset, set, unset } from "../../utils/object";
+import { flatten, shallowEqual } from "../../utils/arrays";
+import { cloneDeep, dot, isEqual, set, unset } from "../../utils/collections";
+import { subset } from "../../utils/objects";
 import {
   isObject,
+  isObjectOfProperties,
   isPopulatedArray,
   isScalar,
   isSingleArray,
-  objectOfProperties,
 } from "../../utils/types";
 import {
   type Patch,
@@ -142,12 +142,12 @@ export class HashTable<
   toNode(item: Data) {
     const { keyBy, properties } = this.options;
     const index = isPopulatedArray(keyBy)
-      ? (objectSubset(item, keyBy) as unknown as Index)
+      ? (subset(item, keyBy) as unknown as Index)
       : this.latestId.toString(); // auto incrementing ids as index
     const hash = createHash(index as string | Record<string, unknown>);
     const data =
       Array.isArray(properties) && properties.length > 0
-        ? objectSubset(item, properties)
+        ? subset(item, properties)
         : item;
 
     return { data: data as unknown as DataItem, hash, index };
@@ -322,7 +322,7 @@ export class HashTable<
       return this.deleteByIndex(itemOrIndex, predicate);
     }
 
-    if (objectOfProperties<Index>(itemOrIndex, keyBy as string[])) {
+    if (isObjectOfProperties<Index>(itemOrIndex, keyBy as string[])) {
       // passed through an index
       return this.deleteByIndex(itemOrIndex, predicate);
     }
