@@ -48,7 +48,6 @@
     "@semantic-release/git": "^10.0.1",
     "@tsconfig/node16": "^1.0.3",
     "@types/jest": "^28.1.6",
-    "@types/lodash": "^4.14.182",
     "@typescript-eslint/eslint-plugin": "^5.30.7",
     "@typescript-eslint/parser": "^5.30.7",
     "benny": "^3.7.1",
@@ -69,7 +68,6 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "lodash": "^4.17.21",
     "rfc6902": "^5.0.1"
   }
 }
