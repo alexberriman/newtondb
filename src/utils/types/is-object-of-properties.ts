@@ -1,5 +1,5 @@
 import { shallowEqual } from "../arrays";
-import { isArray } from "./is-array";
+import { isObject } from "./is-object";
 
 export function isObjectOfProperties<T>(
   object: unknown,
@@ -7,8 +7,7 @@ export function isObjectOfProperties<T>(
 ): object is T {
   return (
     object !== null &&
-    typeof object === "object" &&
-    !isArray(object) &&
+    isObject(object) &&
     shallowEqual(Object.keys(object), properties)
   );
 }
