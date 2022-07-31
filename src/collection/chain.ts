@@ -1,4 +1,3 @@
-import { orderBy } from "lodash";
 import { HashTable, type HashTableItem } from "../data/hash-table/table";
 import {
   createPartialPatch,
@@ -10,6 +9,7 @@ import {
   type Patch,
 } from "../data/json-patch";
 import { flatten } from "../utils/arrays";
+import { orderBy } from "../utils/arrays/order-by";
 import { subset } from "../utils/objects";
 import {
   asArray,
