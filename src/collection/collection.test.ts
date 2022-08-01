@@ -446,6 +446,83 @@ describe("replace", () => {
   });
 });
 
+describe("or", () => {
+  // $.get(condition).or.throw();
+  // $.get(condition).insert(record).or.throw();
+  // $.get(condition).set(update).or.insert(record).commit();
+  // $.get(condition).replace(update).or.insert(record).commit();
+
+  it("doesn't get triggered on a get operation which returns data", () => {
+    const $ = new Collection(wizards, { copy: true });
+    const { mutations } = $.get({ name: "harry" })
+      .set({ name: "harry potter" })
+      .or.insert(extraWizards.neville)
+      .commit();
+
+    expect(mutations).toEqual([
+      { op: "replace", path: "/0/0/name", value: "harry potter" },
+    ]);
+  });
+
+  it("triggers on a get operation that returns no data", () => {
+    const $ = new Collection(wizards, { copy: true });
+    const { mutations } = $.get({ name: "luna" })
+      .set({ name: "luna lovegood" })
+      .or.insert(extraWizards.neville)
+      .commit();
+
+    expect(mutations).toEqual([
+      {
+        op: "add",
+        path: "/4",
+        value: {
+          id: 100,
+          name: "neville",
+          house: "gryffindor",
+          born: 1980,
+          married: true,
+        },
+      },
+    ]);
+  });
+
+  it("doesn't get triggered on a find operation which returns data", () => {
+    const $ = new Collection(wizards, { copy: true });
+    const { mutations } = $.find({ name: "harry" })
+      .replace(extraWizards.cho)
+      .or.insert(extraWizards.neville)
+      .commit();
+
+    expect(mutations).toEqual([
+      { op: "replace", path: "/0/0/id", value: 101 },
+      { op: "replace", path: "/0/0/name", value: "cho" },
+      { op: "replace", path: "/0/0/house", value: "ravenclaw" },
+    ]);
+  });
+
+  it("triggers on a find operation that returns no data", () => {
+    const $ = new Collection(wizards, { copy: true });
+    const { mutations } = $.find({ name: "luna" })
+      .replace(extraWizards.cho)
+      .or.insert(extraWizards.neville)
+      .commit();
+
+    expect(mutations).toEqual([
+      {
+        op: "add",
+        path: "/4",
+        value: {
+          id: 100,
+          name: "neville",
+          house: "gryffindor",
+          born: 1980,
+          married: true,
+        },
+      },
+    ]);
+  });
+});
+
 describe("orderBy", () => {
   it("orders by attributes", () => {
     const $ = new Collection(wizards);

@@ -68,11 +68,11 @@ export interface Chainable<
   DataResponse,
   Properties extends keyof Data
 > {
-  /* lorem ipsum 123 */
   readonly data: DataResponse;
   readonly nodes: HashTableItem<Index, Data>[];
   readonly count: number;
   readonly exists: boolean;
+  readonly or: any;
   readonly chain: Chain<
     Data,
     IndexKeys,
@@ -191,9 +191,6 @@ export class Collection<
 
   private primaryKey: IndexKeys[];
 
-  /**
-   * Observers lorem
-   */
   private observers: Observers<DataShape> = {
     insert: [],
     update: [],
@@ -263,6 +260,10 @@ export class Collection<
       },
       get nodes() {
         return chain.nodes;
+      },
+      get or() {
+        chain.or = { inChain: true, inEffect: chain.data.length === 0 };
+        return this;
       },
       count: chain.count,
       exists: chain.exists,
