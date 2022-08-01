@@ -39,6 +39,11 @@ export interface CommitResult<
   events: MutationEvent<DataType>[];
 }
 
+interface Or {
+  inChain: boolean;
+  inEffect: boolean;
+}
+
 export class Chain<
   DataType,
   IndexKeys extends keyof DataType,
@@ -49,6 +54,9 @@ export class Chain<
   order?: Partial<Record<keyof DataType, "asc" | "desc">>;
   mutations: Patch = [];
   history: HistoryItem<DataType, IndexKeys, Index>[] = [];
+
+  // @todo document
+  or: Or = { inChain: false, inEffect: false };
 
   // used to make rolling changes (such as .find() etc.)
   // @todo rename
@@ -122,6 +130,12 @@ export class Chain<
       : null;
   }
 
+  private shouldProcess() {
+    const { inChain, inEffect } = this.or;
+
+    return !inChain || inEffect;
+  }
+
   private addToHistory(operation?: HistoryItem<DataType, IndexKeys, Index>) {
     if (operation) {
       this.history = [...this.history, operation];
@@ -149,6 +163,10 @@ export class Chain<
     nodes: HashTableItem<Index, DataType>[],
     operation?: HistoryItem<DataType, IndexKeys, Index>
   ) {
+    if (!this.shouldProcess()) {
+      return;
+    }
+
     // since not mutating can create a shallow clone
     const { latestId } = this.hashTable; // @todo create shallowClone()
     this.hashTable = new HashTable(nodes, this.hashTable.options);
@@ -158,6 +176,10 @@ export class Chain<
   }
 
   delete() {
+    if (!this.shouldProcess()) {
+      return;
+    }
+
     const mutations = flatten<RemoveOperation>(
       this.hashTable.nodes.map(({ hash, $id }) => [
         { op: "remove", path: toPointer(hash, $id) },
@@ -169,6 +191,10 @@ export class Chain<
   }
 
   insert(items: DataType | DataType[]) {
+    if (!this.shouldProcess()) {
+      return;
+    }
+
     const hasIndex = isPopulatedArray(this.hashTable.options.keyBy);
     const mutations = asArray(items).map((item, index) => {
       const node = this.hashTable.toNode(item);
@@ -223,11 +249,19 @@ export class Chain<
       | Partial<DataType>
       | ((item: DataType) => DataType | Partial<DataType>)
   ) {
+    if (!this.shouldProcess()) {
+      return;
+    }
+
     this.addToHistory({ operation: "set", args: [update] });
     return this.setOrReplace(update, createPartialPatch);
   }
 
   replace(document: DataType | ((item: DataType) => DataType)) {
+    if (!this.shouldProcess()) {
+      return;
+    }
+
     this.addToHistory({ operation: "replace", args: [document] });
     return this.setOrReplace(document, createPatch);
   }
@@ -258,6 +292,10 @@ export class Chain<
   }
 
   orderBy(order: Partial<Record<keyof DataType, "asc" | "desc">>) {
+    if (!this.shouldProcess()) {
+      return;
+    }
+
     this.order = order;
     this.addToHistory({ operation: "orderBy", args: [order] });
   }

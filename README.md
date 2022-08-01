@@ -51,6 +51,8 @@
   - [.insert()](#insert)
   - [.set()](#set)
   - [.replace()](#replace)
+  - [.or](#or)
+    - [Upserting data](#upsert)
   - [.delete()](#delete)
   - [.orderBy()](#orderby)
   - [.limit()](#limit)
@@ -846,6 +848,30 @@ $.replace((record) => ({
 ```
 
 <div align="right"><a href="#top">Back to top</a></div>
+
+### `.or`
+
+When a `.get()` or `.find()` operation doesn't return any data, the `.or` property can be used to conditionally execute methods on chain:
+
+```ts
+// will throw an Error if Isaac Newton can not be found
+const isaac = $.get("Isaac Newton").or.throw();
+```
+
+#### Upsert
+
+Importantly, `or` doesn't have to be used immediately after the find/get operation - this allows you to perform conditional operations such as updating an existing record **or** inserting a new record (upserting):
+
+```ts
+const isaac = $.get("Isaac Newton")
+  .set({ university: "Trinity College" })
+  .or.insert({
+    id: 100,
+    name: "Isaac Newton",
+    university: "Trinity College",
+  })
+  .commit();
+```
 
 ### `.delete()`
 
