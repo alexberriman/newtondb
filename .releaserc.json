@@ -3,14 +3,18 @@
   "plugins": [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
-    "@semantic-release/changelog",
     [
-      "@semantic-release/exec",
+      "@semantic-release/changelog",
       {
-        "generateNotesCmd": "./benchmark.sh"
+        "changelogTitle": "Changelog"
       }
     ],
-    "@semantic-release/npm",
+    [
+      "@semantic-release/npm",
+      {
+        "pkgRoot": "./build"
+      }
+    ],
     "@semantic-release/git",
     "@semantic-release/github"
   ]

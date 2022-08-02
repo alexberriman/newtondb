@@ -1,5 +1,5 @@
 <h1 align="center" id="top">
-  <a href="https://github.com/alexberriman/newtondb"><img src="./static/logo.png" alt="newtondb" height="190"></a>
+  <a href="https://github.com/alexberriman/newtondb"><img src="https://github.com/alexberriman/newtondb/raw/main/static/logo.png" alt="newtondb" height="190"></a>
   <br>
   Newton
   <br>
@@ -872,6 +872,8 @@ const isaac = $.get("Isaac Newton")
   })
   .commit();
 ```
+
+<div align="right"><a href="#top">Back to top</a></div>
 
 ### `.delete()`
 
@@ -1900,7 +1902,7 @@ const db = new Database([
 ]);
 ```
 
-<img src="./static/01-type-inference-single-collection.png" alt="type inference using a single collection" />
+<img src="https://github.com/alexberriman/newtondb/raw/main/static/01-type-inference-single-collection.png" alt="type inference using a single collection" />
 
 **Using multiple collections:**
 
@@ -1916,7 +1918,7 @@ const db = new Database({
 });
 ```
 
-<img src="./static/02-type-inference-multiple-collections.png" alt="type inference using a single collection" />
+<img src="https://github.com/alexberriman/newtondb/raw/main/static/02-type-inference-multiple-collections.png" alt="type inference using a single collection" />
 
 When the shape of the data can't be inferred automatically, you can pass through the shape of the data when instantiating your database:
 
