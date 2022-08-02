@@ -1,3 +1,12 @@
+Changelog
+
+## [0.3.1](https://github.com/alexberriman/newtondb/compare/v0.3.0...v0.3.1) (2022-08-02)
+
+
+### Bug Fixes
+
+* update semantic-release and build configuration to correctly deploy ([fa07692](https://github.com/alexberriman/newtondb/commit/fa076920cc12defad87ac96b7a53f20c38998db1))
+
 # [0.3.0](https://github.com/alexberriman/newtondb/compare/v0.2.0...v0.3.0) (2022-08-02)
 
 ### Features
