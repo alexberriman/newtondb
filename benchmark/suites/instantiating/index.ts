@@ -1,7 +1,7 @@
 import { add, complete, cycle, save, suite } from "benny";
 import type { SaveOptions } from "benny/lib/internal/common-types";
-import { Database } from "../../src";
-import { createRecords } from "../helpers/faker";
+import { Database } from "../../../src";
+import { createRecords } from "../../helpers/faker";
 
 export default (config: SaveOptions) =>
   suite(

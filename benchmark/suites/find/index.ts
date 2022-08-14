@@ -1,14 +1,14 @@
 import { add, complete, cycle, save, suite } from "benny";
 import type { SaveOptions } from "benny/lib/internal/common-types";
-import { Database } from "../../src";
-import { createRecords, type Scientist } from "../helpers/faker";
-import { rand } from "../helpers/rand";
+import { Database } from "../../../src";
+import { createRecords, type Scientist } from "../../helpers/faker";
+import { rand } from "../../helpers/rand";
 
 export default (config: SaveOptions) => {
   const scientists = createRecords(1000000);
 
   suite(
-    "`db.get` (1000k records)",
+    "`db.find` (1000k records)",
 
     add("**native** `Array.prototype.find()`", () => {
       const index = rand(0, scientists.length - 1);
@@ -24,7 +24,7 @@ export default (config: SaveOptions) => {
         const index = rand(0, scientists.length - 1);
         const target = scientists[index];
 
-        db.$.get({ id: target.id }).data;
+        db.$.find({ id: target.id }).data;
       };
     }),
 
@@ -37,12 +37,12 @@ export default (config: SaveOptions) => {
         const index = rand(0, scientists.length - 1);
         const target = scientists[index];
 
-        db.$.get({ id: target.id }).data;
+        db.$.find({ id: target.id }).data;
       };
     }),
 
     cycle(),
     complete(),
-    save({ ...config, file: "get" })
+    save({ ...config, file: "find" })
   );
 };
