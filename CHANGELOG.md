@@ -1,5 +1,12 @@
 Changelog
 
+## [0.3.2](https://github.com/alexberriman/newtondb/compare/v0.3.1...v0.3.2) (2022-08-24)
+
+
+### Bug Fixes
+
+* **collection:** deundefined/null value when deleting array ([cd6a62f](https://github.com/alexberriman/newtondb/commit/cd6a62f87838899dadd062099bf15c6ad92b0df0))
+
 ## [0.3.1](https://github.com/alexberriman/newtondb/compare/v0.3.0...v0.3.1) (2022-08-02)
 
 
