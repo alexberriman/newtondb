@@ -225,13 +225,14 @@ export class Chain<
     const mutations = flatten<PatchOperation>(
       this.hashTable.nodes
         .map((node) => {
+          const { data } = node;
           const updated = isCallable<
             (arg0: DataType) => DataType | Partial<DataType>
           >(updateFnOrObject)
-            ? updateFnOrObject(node.data)
+            ? updateFnOrObject(data)
             : updateFnOrObject;
 
-          return patchFn(node.data as unknown as object, updated, [
+          return patchFn(data as unknown as object, updated, [
             node.hash,
             node.$id,
           ]);

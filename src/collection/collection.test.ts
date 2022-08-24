@@ -402,6 +402,23 @@ describe("set", () => {
     ]);
     expect(1).toBe(1);
   });
+
+  it("removes an item from an array using set", () => {
+    const $ = new Collection([
+      { color: "red", contents: ["apple", "orange", "banana"] },
+    ]);
+
+    const $patch = $.get({ color: "red" })
+      .set({ contents: ["orange", "banana"] })
+      .commit();
+
+    console.log($patch);
+
+    expect($.get({ color: "red" }).data).toEqual({
+      color: "red",
+      contents: ["orange", "banana"],
+    });
+  });
 });
 
 describe("replace", () => {

@@ -72,7 +72,8 @@ export interface Chainable<
   readonly nodes: HashTableItem<Index, Data>[];
   readonly count: number;
   readonly exists: boolean;
-  readonly or: any;
+  // @todo fix
+  readonly or: any; // eslint-disable-line
   readonly chain: Chain<
     Data,
     IndexKeys,
