@@ -270,7 +270,9 @@ export class Chain<
     const mutationResults = this.masterTable.patch(this.mutations);
     const events = createEvents(
       mutationResults,
-      ($id) => this.masterTable.items[$id].data
+      ($id) =>
+        this.masterTable.items.get(Number($id))?.data ??
+        ({} as unknown as DataType)
     );
 
     return {

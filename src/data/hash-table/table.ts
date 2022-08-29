@@ -22,6 +22,8 @@ import type {
   ReplaceResult,
 } from "./patch";
 
+// Map <Index(string), items[]>
+
 // @todo freeze data
 
 export interface HashTableOptions<IndexKeys, StorageKeys> {
@@ -94,7 +96,8 @@ export class HashTable<
   latestId = 0;
   size = 0;
   table: Record<string, HashTableItem<Index, DataItem>[]> = {};
-  items: Record<string, HashTableItem<Index, DataItem>> = {}; // @todo make private
+  items: Map<number, HashTableItem<Index, DataItem>> = new Map();
+  // items: Record<string, HashTableItem<Index, DataItem>> = {}; // @todo make private
 
   // doubly linked list to be able to convert between array and hash map
   tail: HashTableItem<Index, DataItem> | null = null;
@@ -189,20 +192,22 @@ export class HashTable<
     }
 
     // fetch node from current table (node passed through may have been cloned with different options)
-    const $node = this.items[$id];
+    const $node = this.items.get($id);
 
     // delete a single item from the hash table
-    delete this.items[$id];
-    delete this.table[hash][$node.$order];
-    this.table[hash].splice($node.$order, 1);
+    if ($node) {
+      this.items.delete($id);
+      delete this.table[hash][$node.$order];
+      this.table[hash].splice($node.$order, 1);
 
-    if (this.table[hash].length === 0) {
-      delete this.table[hash];
+      if (this.table[hash].length === 0) {
+        delete this.table[hash];
+      }
+
+      this.resize(hash, $node.$order);
+
+      --this.size;
     }
-
-    this.resize(hash, $node.$order);
-
-    --this.size;
   }
 
   private deleteByIndex(
@@ -250,7 +255,7 @@ export class HashTable<
     }
 
     this.head = node;
-    this.items[node.$id] = node;
+    this.items.set(node.$id, node);
 
     ++this.latestId;
     ++this.size;
@@ -319,7 +324,10 @@ export class HashTable<
       }
 
       // delete by scalar
-      return this.deleteByIndex(itemOrIndex, predicate);
+      return this.deleteByIndex(
+        itemOrIndex as string | number | Index,
+        predicate
+      );
     }
 
     if (isObjectOfProperties<Index>(itemOrIndex, keyBy as string[])) {
@@ -372,10 +380,11 @@ export class HashTable<
   private $patchRemove(
     operation: RemoveOperation
   ): PatchRemoveResult<DataItem> | PatchRemoveResult<DataItem>[] {
-    const [hash, $id, ...attributePath] = toTokens(operation.path);
+    const [hash, id, ...attributePath] = toTokens(operation.path);
 
-    if ($id) {
-      const node = this.items[$id];
+    if (id) {
+      const $id = Number(id);
+      const node = this.items.get($id);
       if (!node) {
         throw new PatchError(operation, "Node does not exist");
       }
@@ -383,11 +392,12 @@ export class HashTable<
       const original = cloneDeep(node.data);
       if (attributePath.length > 0) {
         const attribute = attributePath.join(".");
-        unset(this.items[$id].data, attribute);
+        unset(node.data, attribute);
+        this.items.set($id, node);
 
         return {
           operation: "removeAttribute",
-          $id: Number($id),
+          $id,
           original,
           attribute,
         };
@@ -396,7 +406,7 @@ export class HashTable<
 
         return {
           operation: "remove",
-          $id: Number($id),
+          $id,
           original,
           value: original,
         };
@@ -411,7 +421,7 @@ export class HashTable<
 
         return {
           operation: "remove",
-          $id: Number($id),
+          $id: Number(id),
           original,
           value: original,
         };
@@ -426,29 +436,30 @@ export class HashTable<
     operation: TestAddReplaceOperation
   ): PatchAddResult<DataItem> {
     const { value } = operation;
-    const [, $id, ...path] = toTokens(operation.path);
-    const node = this.items[$id];
+    const [, id, ...path] = toTokens(operation.path);
+    const $id = Number(id);
+    const node = this.items.get($id);
 
-    if ($id && node && path.length > 0) {
+    if (!isNaN($id) && node && path.length > 0) {
       // adding a new attribute to an existing node
       const attribute = path.join(".");
       const original = cloneDeep(node.data);
-      set(this.items[$id].data as unknown as object, attribute, value);
+      set(node.data as unknown as object, attribute, value);
 
       return {
         operation: "addAttribute",
-        $id: Number($id),
+        $id,
         original,
         attribute,
         value,
       };
     }
 
-    if (!$id && isObject(value)) {
+    if (isNaN($id) && isObject(value)) {
       const $id = this.insert(value as unknown as Data);
       return {
         operation: "add",
-        $id: Number($id),
+        $id,
         original: value as DataItem,
         value: value as DataItem,
       };
@@ -460,8 +471,9 @@ export class HashTable<
   private $patchReplace(
     operation: TestAddReplaceOperation
   ): ReplaceResult<DataItem> {
-    const [, $id, ...path] = toTokens(operation.path);
-    const node = this.items[$id];
+    const [, id, ...path] = toTokens(operation.path);
+    const $id = Number(id);
+    const node = this.items.get($id);
     if (!node) {
       throw new PatchError(operation, "Node does not exist");
     }
@@ -474,7 +486,7 @@ export class HashTable<
 
     return {
       operation: "replaceAttribute",
-      $id: Number($id),
+      $id,
       original,
       attribute,
       value: operation.value,
