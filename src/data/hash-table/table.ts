@@ -3,12 +3,14 @@ import { flatten, shallowEqual } from "../../utils/arrays";
 import { cloneDeep, dot, isEqual, set, unset } from "../../utils/collections";
 import { subset } from "../../utils/objects";
 import {
+  isNumber,
   isObject,
   isObjectOfProperties,
   isPopulatedArray,
   isScalar,
   isSingleArray,
 } from "../../utils/types";
+import { isString } from "../../utils/types/is-string";
 import {
   type Patch,
   type RemoveOperation,
@@ -309,7 +311,7 @@ export class HashTable<
   ) {
     const { keyBy = [] } = this.options;
 
-    if (isScalar(itemOrIndex)) {
+    if (isString(itemOrIndex) || isNumber(itemOrIndex)) {
       if (isSingleArray(keyBy)) {
         // passed through a scalar (of which we can infer an index)
         return this.deleteByIndex(
