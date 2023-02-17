@@ -1,5 +1,12 @@
 Changelog
 
+## [0.3.3](https://github.com/alexberriman/newtondb/compare/v0.3.2...v0.3.3) (2023-02-17)
+
+
+### Bug Fixes
+
+* **set:** updating an array ([e299867](https://github.com/alexberriman/newtondb/commit/e29986749cb432bcdd719171903687016ab36533))
+
 ## [0.3.2](https://github.com/alexberriman/newtondb/compare/v0.3.1...v0.3.2) (2022-08-24)
 
 
