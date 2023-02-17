@@ -408,13 +408,59 @@ describe("set", () => {
       { color: "red", contents: ["apple", "orange", "banana"] },
     ]);
 
-    const $patch = $.get({ color: "red" })
+    $.get({ color: "red" })
       .set({ contents: ["orange", "banana"] })
       .commit();
 
-    console.log($patch);
+    expect($.get({ color: "red" }).data).toEqual({
+      color: "red",
+      contents: ["orange", "banana"],
+    });
+  });
+
+  it("updates an empty array", () => {
+    const $ = new Collection<{
+      color: string;
+      contents: string[];
+      animal: string;
+    }>(
+      [
+        { color: "green", contents: ["apple"], animal: "gorilla" },
+        { color: "red", contents: [], animal: "monkey" },
+      ],
+      { primaryKey: "color" }
+    );
+
+    $.get({ color: "red" })
+      .set({ contents: ["orange", "banana"], animal: "giraffe" })
+      .commit();
 
     expect($.get({ color: "red" }).data).toEqual({
+      animal: "giraffe",
+      color: "red",
+      contents: ["orange", "banana"],
+    });
+  });
+
+  it("adds to an existing array", () => {
+    const $ = new Collection<{
+      color: string;
+      contents: string[];
+      animal: string;
+    }>(
+      [
+        { color: "green", contents: ["apple"], animal: "gorilla" },
+        { color: "red", contents: ["pea"], animal: "monkey" },
+      ],
+      { primaryKey: "color" }
+    );
+
+    $.get({ color: "red" })
+      .set({ contents: ["orange", "banana"], animal: "giraffe" })
+      .commit();
+
+    expect($.get({ color: "red" }).data).toEqual({
+      animal: "giraffe",
       color: "red",
       contents: ["orange", "banana"],
     });

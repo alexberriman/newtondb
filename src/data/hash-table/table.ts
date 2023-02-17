@@ -432,10 +432,23 @@ export class HashTable<
     const node = this.items[$id];
 
     if ($id && node && path.length > 0) {
-      // adding a new attribute to an existing node
-      const attribute = path.join(".");
       const original = cloneDeep(node.data);
-      set(this.items[$id].data as unknown as object, attribute, value);
+      const isAddToArrayOperation = path[path.length - 1] === "-";
+      const attribute = (isAddToArrayOperation ? path.slice(0, -1) : path).join(
+        "."
+      );
+      const { data } = this.items[$id];
+
+      if (isAddToArrayOperation) {
+        // add element to an array
+        const existing = dot(
+          data as Record<string, unknown>,
+          attribute
+        ) as unknown[];
+        set(data, attribute, [...existing, value]);
+      } else {
+        set(data as unknown as object, attribute, value);
+      }
 
       return {
         operation: "addAttribute",
