@@ -1,5 +1,12 @@
 Changelog
 
+## [0.3.4](https://github.com/alexberriman/newtondb/compare/v0.3.3...v0.3.4) (2023-04-24)
+
+
+### Bug Fixes
+
+* orderBy during chain execution ([67029f6](https://github.com/alexberriman/newtondb/commit/67029f64ded91d174217c15b164f737b461d1a51))
+
 ## [0.3.3](https://github.com/alexberriman/newtondb/compare/v0.3.2...v0.3.3) (2023-02-17)
 
 
