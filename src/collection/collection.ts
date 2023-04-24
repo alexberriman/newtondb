@@ -410,7 +410,7 @@ export class Collection<
     // calling nodes on the chain creates an array from a linked list (o(n))
     // call this only after the hash table is known to be unusable
     const $nodes = chain.nodes;
-    type Node = typeof $nodes[number];
+    type Node = (typeof $nodes)[number];
 
     if (isFindPredicate<DataShape, HashTableItem<Index, DataShape>>(value)) {
       const predicate = (item: Node, index: number, obj: Node[]) => {
