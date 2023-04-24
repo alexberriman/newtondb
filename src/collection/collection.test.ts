@@ -612,6 +612,15 @@ describe("orderBy", () => {
       { name: "harry", born: 1980 },
     ]);
   });
+
+  it("orders by attributes with limits and offsets", () => {
+    const $ = new Collection(wizards);
+
+    expect($.orderBy({ id: "desc" }).offset(0).limit(2).data).toMatchObject([
+      { id: 4, name: "draco" },
+      { id: 3, name: "ron" },
+    ]);
+  });
 });
 
 describe("observers", () => {

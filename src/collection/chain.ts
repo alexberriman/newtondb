@@ -9,7 +9,6 @@ import {
   type Patch,
 } from "../data/json-patch";
 import { flatten } from "../utils/arrays";
-import { orderBy } from "../utils/arrays/order-by";
 import { subset } from "../utils/objects";
 import {
   asArray,
@@ -51,16 +50,11 @@ export class Chain<
   Index = Pick<DataType, IndexKeys>,
   SelectItem = Pick<DataType, SelectKeys>
 > {
-  order?: Partial<Record<keyof DataType, "asc" | "desc">>;
   mutations: Patch = [];
   history: HistoryItem<DataType, IndexKeys, Index>[] = [];
 
   // @todo document
   or: Or = { inChain: false, inEffect: false };
-
-  // used to make rolling changes (such as .find() etc.)
-  // @todo rename
-  // hashTable: HashTable<DataType, IndexKeys, keyof DataType, Index, DataType>;
 
   // the master table is the source of truth that contains all of the data items
   // it is only updated when .commit() is called
@@ -81,26 +75,14 @@ export class Chain<
     >,
     public options: {
       properties?: SelectKeys[];
-      orderBy?: Partial<Record<keyof DataType, "asc" | "desc">>;
     } = {}
   ) {
-    const { orderBy } = options;
     this.masterTable = hashTable;
     this.mutableTable = hashTable;
-
-    if (orderBy) {
-      this.order = orderBy;
-    }
   }
 
   get data(): SelectItem[] {
-    const data = this.order
-      ? orderBy(
-          this.hashTable.data,
-          Object.keys(this.order),
-          Object.values(this.order)
-        )
-      : this.hashTable.data;
+    const data = this.hashTable.data;
 
     const properties = asArray(this.options.properties);
     if (properties.length === 0) {
@@ -290,14 +272,5 @@ export class Chain<
     $chain.mutableTable = this.mutableTable;
 
     return $chain;
-  }
-
-  orderBy(order: Partial<Record<keyof DataType, "asc" | "desc">>) {
-    if (!this.shouldProcess()) {
-      return;
-    }
-
-    this.order = order;
-    this.addToHistory({ operation: "orderBy", args: [order] });
   }
 }

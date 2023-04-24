@@ -22,7 +22,7 @@ import { createCondition, isFindPredicate } from "./utils";
 import { AssertionError } from "../errors/assertion-error";
 import { HashTable, type HashTableItem } from "../data/hash-table/table";
 import { Chain, type CommitResult } from "./chain";
-import { findLast } from "../utils/arrays";
+import { findLast, orderBy } from "../utils/arrays";
 import type {
   DeleteObserver,
   GenericObserver,
@@ -803,7 +803,13 @@ export class Collection<
     order: Partial<Record<keyof DataShape, "asc" | "desc">>,
     chain: Chain<DataShape, IndexKeys, Properties, Index>
   ) {
-    chain.orderBy(order);
+    const ordered = orderBy(
+      chain.nodes,
+      Object.keys(order).map((key) => `data.${key}`),
+      Object.values(order)
+    );
+    chain.update(ordered, { operation: "orderBy", args: [order] });
+
     return this.chain<Pick<DataShape, Properties>[], Properties>(chain);
   }
 
