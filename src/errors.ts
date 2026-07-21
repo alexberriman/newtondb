@@ -1,14 +1,18 @@
 export type NewtonErrorCode =
   | "ERR_CLOSED"
   | "ERR_CONFLICT"
+  | "ERR_CORRUPT_STORAGE"
   | "ERR_DUPLICATE_KEY"
   | "ERR_DUPLICATE_UNIQUE_INDEX"
   | "ERR_IMMUTABLE_PRIMARY_KEY"
   | "ERR_INVALID_ARGUMENT"
   | "ERR_INVALID_JSON_DOCUMENT"
   | "ERR_NOT_FOUND"
+  | "ERR_PERSISTENCE"
   | "ERR_QUERY_VALIDATION"
   | "ERR_SCHEMA_VALIDATION"
+  | "ERR_STORAGE"
+  | "ERR_STORAGE_CONFLICT"
   | "ERR_TRANSACTION_CALLBACK"
   | "ERR_TRANSACTION_STATE";
 
@@ -43,6 +47,12 @@ export class ConflictError extends NewtonError {
       "ERR_CONFLICT",
       "The transaction conflicts with a newer committed revision",
     );
+  }
+}
+
+export class CorruptStorageError extends NewtonError {
+  constructor(message: string, options?: ErrorOptions) {
+    super("ERR_CORRUPT_STORAGE", message, options);
   }
 }
 
@@ -117,6 +127,39 @@ export class QueryValidationError extends NewtonError {
       `Invalid query (${issue}) at ${location || "/"}`,
       options,
     );
+  }
+}
+
+export interface CommittedReceiptMetadata {
+  readonly affected: number;
+  readonly databaseId: string;
+  readonly durability: "memory" | "persisted";
+  readonly revision: number;
+  readonly transactionId: string;
+}
+
+export class PersistenceError extends NewtonError {
+  readonly receipt: Readonly<CommittedReceiptMetadata>;
+
+  constructor(receipt: CommittedReceiptMetadata, options?: ErrorOptions) {
+    super(
+      "ERR_PERSISTENCE",
+      `Revision ${receipt.revision} committed in memory but could not be persisted`,
+      options,
+    );
+    this.receipt = Object.freeze({ ...receipt });
+  }
+}
+
+export class StorageError extends NewtonError {
+  constructor(message: string, options?: ErrorOptions) {
+    super("ERR_STORAGE", message, options);
+  }
+}
+
+export class StorageConflictError extends NewtonError {
+  constructor(message = "The storage generation changed unexpectedly") {
+    super("ERR_STORAGE_CONFLICT", message);
   }
 }
 

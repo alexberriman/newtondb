@@ -1,11 +1,14 @@
 import {
   ClosedError,
   ConflictError,
+  CorruptStorageError,
   DuplicateKeyError,
   DuplicateUniqueIndexError,
   ImmutablePrimaryKeyError,
   InvalidArgumentError,
   NotFoundError,
+  PersistenceError,
+  StorageError,
   SchemaValidationError,
   TransactionCallbackError,
   TransactionStateError,
@@ -36,6 +39,13 @@ import {
   type PrimaryKey,
   type WidenSeed,
 } from "./schema.js";
+import {
+  catalogsEqual,
+  cloneSnapshotCollections,
+  createCatalog,
+  type SnapshotEnvelope,
+  type StorageAdapter,
+} from "./storage.js";
 
 interface StoredCollection {
   readonly indexes: ReadonlyMap<string, SecondaryIndexState>;
@@ -79,7 +89,7 @@ interface QueryOptions {
 export interface CommitReceipt {
   readonly affected: number;
   readonly databaseId: string;
-  readonly durability: "memory";
+  readonly durability: "memory" | "persisted";
   readonly revision: number;
   readonly transactionId: string;
 }
@@ -88,8 +98,21 @@ export interface DatabaseOptions<Seed extends DatabaseSeed> {
   readonly eventLimits?: Partial<EventLimits>;
   readonly onEventOverflow?: (batch: ChangeBatch) => void;
   readonly onListenerError?: (error: unknown, batch: ChangeBatch) => void;
+  readonly persistenceLimits?: Partial<PersistenceLimits>;
   readonly schema: DatabaseSchema<Seed>;
   readonly transactionLimits?: Partial<TransactionLimits>;
+}
+
+export interface DatabaseOpenOptions<
+  Seed extends DatabaseSeed,
+> extends DatabaseOptions<Seed> {
+  readonly adapter: StorageAdapter<Seed>;
+  readonly initialData?: Seed;
+}
+
+export interface TransactionOptions {
+  readonly allowVolatileWhenDegraded?: boolean;
+  readonly durability?: "memory" | "persisted";
 }
 
 export interface EventLimits {
@@ -103,6 +126,10 @@ export interface TransactionLimits {
   readonly maxReadCollections: number;
 }
 
+export interface PersistenceLimits {
+  readonly maxPendingSnapshots: number;
+}
+
 const defaultEventLimits: EventLimits = Object.freeze({
   maxQueuedBatches: 1_024,
   maxQueuedChanges: 100_000,
@@ -114,7 +141,12 @@ const defaultTransactionLimits: TransactionLimits = Object.freeze({
   maxReadCollections: 1_000,
 });
 
-type DatabaseState = "closed" | "closing" | "open";
+const defaultPersistenceLimits: PersistenceLimits = Object.freeze({
+  maxPendingSnapshots: 256,
+});
+
+export type DatabaseState =
+  "closed" | "closing" | "corrupt" | "degraded" | "open" | "opening";
 
 function randomId(): string {
   return globalThis.crypto.randomUUID();
@@ -243,6 +275,7 @@ function createStoredCollection(
   name: string,
   documents: readonly JsonObject[],
   schema: CollectionSchema<JsonObject>,
+  revision = 0,
 ): StoredCollection {
   const records = new Map<string, ReadonlyDeep<JsonObject>>();
   const order: string[] = [];
@@ -260,7 +293,7 @@ function createStoredCollection(
     indexes,
     order: Object.freeze(order),
     records,
-    revision: 0,
+    revision,
     schema,
   });
 }
@@ -325,6 +358,13 @@ export class Database<Seed extends DatabaseSeed> {
   #eventQueueChanges = 0;
   #listenerId = 0;
   #listeners = new Map<number, ChangeListener>();
+  #adapter?: StorageAdapter<Seed>;
+  #catalog: ReturnType<typeof createCatalog>;
+  #closePromise: Promise<void> | undefined;
+  #generation = 0;
+  #persistedRevision = 0;
+  #persistenceTail: Promise<void> = Promise.resolve();
+  #pendingPersistence = 0;
   #revision = 0;
   #state: DatabaseState = "open";
   #transactionCallbackActive = false;
@@ -332,8 +372,26 @@ export class Database<Seed extends DatabaseSeed> {
   private constructor(
     seed: Seed,
     readonly options: DatabaseOptions<Seed>,
+    stored?: Readonly<{
+      databaseId: string;
+      generation: number;
+      revision: number;
+    }>,
   ) {
-    this.id = randomId();
+    const maxPendingSnapshots = options.persistenceLimits?.maxPendingSnapshots;
+    if (
+      maxPendingSnapshots !== undefined &&
+      (!Number.isSafeInteger(maxPendingSnapshots) || maxPendingSnapshots <= 0)
+    ) {
+      throw new InvalidArgumentError(
+        "maxPendingSnapshots must be a positive safe integer",
+      );
+    }
+    this.id = stored?.databaseId ?? randomId();
+    this.#revision = stored?.revision ?? 0;
+    this.#generation = stored?.generation ?? 0;
+    this.#persistedRevision = stored?.revision ?? 0;
+    this.#catalog = createCatalog(options.schema);
     const collections = new Map<string, StoredCollection>();
     for (const name of Object.keys(seed)) {
       const documents = seed[name];
@@ -343,7 +401,10 @@ export class Database<Seed extends DatabaseSeed> {
           `Missing collection data or schema for ${name}`,
         );
       }
-      collections.set(name, createStoredCollection(name, documents, schema));
+      collections.set(
+        name,
+        createStoredCollection(name, documents, schema, this.#revision),
+      );
     }
     for (const name of Object.keys(options.schema)) {
       if (!Object.hasOwn(seed, name)) {
@@ -360,6 +421,37 @@ export class Database<Seed extends DatabaseSeed> {
     options: DatabaseOptions<WidenSeed<Seed>>,
   ): Database<WidenSeed<Seed>> {
     return new Database(seed as unknown as WidenSeed<Seed>, options);
+  }
+
+  static async open<Seed extends DatabaseSeed>(
+    options: DatabaseOpenOptions<Seed>,
+  ): Promise<Database<Seed>> {
+    const loaded = await options.adapter.load();
+    const expectedCatalog = createCatalog(options.schema);
+    if (loaded !== null && !catalogsEqual(loaded.catalog, expectedCatalog)) {
+      await options.adapter.close();
+      throw new CorruptStorageError(
+        "The stored catalog does not match the supplied database schema",
+      );
+    }
+    const seed = loaded?.collections ?? options.initialData;
+    if (seed === undefined) {
+      await options.adapter.close();
+      throw new InvalidArgumentError(
+        "initialData is required when persistent storage is empty",
+      );
+    }
+    try {
+      const database = new Database(seed, options, loaded ?? undefined);
+      database.#adapter = options.adapter;
+      if (loaded === null) database.#persistedRevision = -1;
+      return database;
+    } catch (error) {
+      await options.adapter.close();
+      throw new CorruptStorageError("The stored database snapshot is invalid", {
+        cause: error,
+      });
+    }
   }
 
   get revision(): number {
@@ -392,8 +484,26 @@ export class Database<Seed extends DatabaseSeed> {
 
   async transaction(
     callback: (transaction: Transaction<Seed>) => void,
+    options: TransactionOptions = {},
   ): Promise<CommitReceipt> {
     this.#assertOpen();
+    const durability =
+      options.durability ??
+      (this.#adapter === undefined ? "memory" : "persisted");
+    if (
+      this.#state === "degraded" &&
+      (durability === "persisted" || !options.allowVolatileWhenDegraded)
+    ) {
+      throw new PersistenceError(
+        Object.freeze({
+          affected: 0,
+          databaseId: this.id,
+          durability: "memory",
+          revision: this.#revision,
+          transactionId: randomId(),
+        }),
+      );
+    }
     if (this.#transactionCallbackActive) {
       throw new TransactionStateError(
         "Nested transaction callbacks are not supported",
@@ -416,7 +526,14 @@ export class Database<Seed extends DatabaseSeed> {
         "Transaction callbacks must be synchronous",
       );
     }
-    return transaction.commit();
+    const receipt = transaction.commit();
+    if (durability === "memory") {
+      return receipt;
+    }
+    if (this.#adapter === undefined) return receipt;
+    if (this.#persistedRevision < receipt.revision)
+      await this.#persist(receipt);
+    return Object.freeze({ ...receipt, durability: "persisted" });
   }
 
   beginTransaction(): Transaction<Seed> {
@@ -428,17 +545,53 @@ export class Database<Seed extends DatabaseSeed> {
   }
 
   async flush(): Promise<number> {
-    this.#assertOpen();
-    return this.#revision;
+    this.#assertUsable();
+    const target = this.#revision;
+    if (this.#adapter !== undefined && this.#persistedRevision < target) {
+      const receipt: CommitReceipt = Object.freeze({
+        affected: 0,
+        databaseId: this.id,
+        durability: "memory",
+        revision: target,
+        transactionId: randomId(),
+      });
+      await this.#persist(receipt);
+    } else {
+      await this.#persistenceTail;
+    }
+    return target;
   }
 
-  async close(): Promise<void> {
-    if (this.#state === "closed") return;
-    if (this.#state === "closing") return;
+  close(): Promise<void> {
+    if (this.#state === "closed") return Promise.resolve();
+    if (this.#closePromise !== undefined) return this.#closePromise;
     this.#state = "closing";
+    this.#closePromise = this.#performClose();
+    return this.#closePromise;
+  }
+
+  async #performClose(): Promise<void> {
+    let failure: unknown;
+    try {
+      await this.flushDuringClose();
+    } catch (error) {
+      failure = error;
+    }
+    try {
+      await this.#adapter?.close();
+    } catch (error) {
+      failure ??= error;
+    }
     this.#listeners.clear();
     this.#eventQueue = [];
     this.#state = "closed";
+    if (failure !== undefined) {
+      throw failure instanceof Error
+        ? failure
+        : new StorageError("Closing persistent storage failed", {
+            cause: failure,
+          });
+    }
   }
 
   /** @internal */
@@ -572,7 +725,93 @@ export class Database<Seed extends DatabaseSeed> {
   }
 
   #assertOpen(): void {
-    if (this.#state !== "open") throw new ClosedError();
+    if (this.#state !== "open" && this.#state !== "degraded")
+      throw new ClosedError();
+  }
+
+  #assertUsable(): void {
+    if (this.#state !== "open" && this.#state !== "degraded")
+      throw new ClosedError();
+  }
+
+  async flushDuringClose(): Promise<void> {
+    if (this.#adapter === undefined) return;
+    if (this.#persistedRevision < this.#revision) {
+      const receipt: CommitReceipt = Object.freeze({
+        affected: 0,
+        databaseId: this.id,
+        durability: "memory",
+        revision: this.#revision,
+        transactionId: randomId(),
+      });
+      await this.#persist(receipt);
+    } else {
+      await this.#persistenceTail;
+    }
+  }
+
+  #persist(receipt: CommitReceipt): Promise<void> {
+    const adapter = this.#adapter;
+    if (adapter === undefined) return Promise.resolve();
+    const limits = {
+      ...defaultPersistenceLimits,
+      ...this.options.persistenceLimits,
+    };
+    if (this.#pendingPersistence >= limits.maxPendingSnapshots) {
+      this.#state = "degraded";
+      return Promise.reject(
+        new PersistenceError(receipt, {
+          cause: new StorageError("The persistence queue is full"),
+        }),
+      );
+    }
+    this.#pendingPersistence += 1;
+    const collections = cloneSnapshotCollections(this.#collections) as Seed;
+    const task = this.#persistenceTail.then(async () => {
+      const expectedGeneration = this.#generation;
+      const snapshot: SnapshotEnvelope<Seed> = Object.freeze({
+        catalog: this.#catalog,
+        collections,
+        databaseId: this.id,
+        format: "newtondb",
+        formatVersion: 1,
+        generation: expectedGeneration + 1,
+        revision: receipt.revision,
+      });
+      try {
+        const acknowledgement = await adapter.store(snapshot, {
+          expectedGeneration,
+        });
+        if (
+          acknowledgement.databaseId !== this.id ||
+          acknowledgement.generation !== snapshot.generation ||
+          acknowledgement.revision < receipt.revision
+        ) {
+          throw new Error(
+            "The storage adapter returned an invalid acknowledgement",
+          );
+        }
+        this.#generation = acknowledgement.generation;
+        this.#persistedRevision = Math.max(
+          this.#persistedRevision,
+          acknowledgement.revision,
+        );
+        if (
+          this.#state === "degraded" &&
+          this.#persistedRevision >= this.#revision
+        ) {
+          this.#state = "open";
+        }
+      } catch (error) {
+        this.#state = "degraded";
+        throw new PersistenceError(receipt, { cause: error });
+      }
+    });
+    const counted = task.finally(() => {
+      this.#pendingPersistence -= 1;
+    });
+    this.#persistenceTail = counted.catch(() => undefined);
+    return counted;
   }
 
   #stored(name: string): StoredCollection {

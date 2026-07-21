@@ -5,23 +5,32 @@ export {
   Transaction,
   TransactionCollection,
   type CommitReceipt,
+  type DatabaseOpenOptions,
   type DatabaseOptions,
+  type DatabaseState,
+  type PersistenceLimits,
   type QueryPlan,
+  type TransactionOptions,
 } from "./database.js";
 export {
   ClosedError,
   ConflictError,
+  CorruptStorageError,
   DuplicateKeyError,
   DuplicateUniqueIndexError,
   ImmutablePrimaryKeyError,
   InvalidArgumentError,
   NewtonError,
   NotFoundError,
+  PersistenceError,
   QueryValidationError,
   SchemaValidationError,
+  StorageConflictError,
+  StorageError,
   TransactionCallbackError,
   TransactionStateError,
   type NewtonErrorCode,
+  type CommittedReceiptMetadata,
   type QueryValidationIssue,
 } from "./errors.js";
 export type {
@@ -70,3 +79,15 @@ export {
   type Where,
   type WhereBuilder,
 } from "./query.js";
+export {
+  catalogsEqual,
+  createCatalog,
+  isSnapshotEnvelope,
+  snapshotFormat,
+  snapshotFormatVersion,
+  type CatalogCollection,
+  type DatabaseCatalog,
+  type SnapshotEnvelope,
+  type StorageAdapter,
+  type StoreAcknowledgement,
+} from "./storage.js";
