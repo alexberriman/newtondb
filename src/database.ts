@@ -85,9 +85,34 @@ export interface CommitReceipt {
 }
 
 export interface DatabaseOptions<Seed extends DatabaseSeed> {
+  readonly eventLimits?: Partial<EventLimits>;
+  readonly onEventOverflow?: (batch: ChangeBatch) => void;
   readonly onListenerError?: (error: unknown, batch: ChangeBatch) => void;
   readonly schema: DatabaseSchema<Seed>;
+  readonly transactionLimits?: Partial<TransactionLimits>;
 }
+
+export interface EventLimits {
+  readonly maxQueuedBatches: number;
+  readonly maxQueuedChanges: number;
+}
+
+export interface TransactionLimits {
+  readonly maxAgeMs: number;
+  readonly maxOperations: number;
+  readonly maxReadCollections: number;
+}
+
+const defaultEventLimits: EventLimits = Object.freeze({
+  maxQueuedBatches: 1_024,
+  maxQueuedChanges: 100_000,
+});
+
+const defaultTransactionLimits: TransactionLimits = Object.freeze({
+  maxAgeMs: 30_000,
+  maxOperations: 10_000,
+  maxReadCollections: 1_000,
+});
 
 type DatabaseState = "closed" | "closing" | "open";
 
@@ -297,10 +322,12 @@ export class Database<Seed extends DatabaseSeed> {
   #collections: ReadonlyMap<string, StoredCollection>;
   #dispatchScheduled = false;
   #eventQueue: ChangeBatch[] = [];
+  #eventQueueChanges = 0;
   #listenerId = 0;
   #listeners = new Map<number, ChangeListener>();
   #revision = 0;
   #state: DatabaseState = "open";
+  #transactionCallbackActive = false;
 
   private constructor(
     seed: Seed,
@@ -367,13 +394,21 @@ export class Database<Seed extends DatabaseSeed> {
     callback: (transaction: Transaction<Seed>) => void,
   ): Promise<CommitReceipt> {
     this.#assertOpen();
-    const transaction = new Transaction(this);
+    if (this.#transactionCallbackActive) {
+      throw new TransactionStateError(
+        "Nested transaction callbacks are not supported",
+      );
+    }
+    const transaction = this.beginTransaction();
     let result: unknown;
     try {
+      this.#transactionCallbackActive = true;
       result = callback(transaction);
     } catch (error) {
       transaction.rollback();
       throw error;
+    } finally {
+      this.#transactionCallbackActive = false;
     }
     if (isPromiseLike(result)) {
       transaction.rollback();
@@ -382,6 +417,14 @@ export class Database<Seed extends DatabaseSeed> {
       );
     }
     return transaction.commit();
+  }
+
+  beginTransaction(): Transaction<Seed> {
+    this.#assertOpen();
+    return new Transaction(this, {
+      ...defaultTransactionLimits,
+      ...this.options.transactionLimits,
+    });
   }
 
   async flush(): Promise<number> {
@@ -471,21 +514,29 @@ export class Database<Seed extends DatabaseSeed> {
   /** @internal */
   _commit(
     working: ReadonlyMap<string, WorkingCollection>,
-    readCollections: ReadonlySet<string>,
+    baseRevisions: ReadonlyMap<string, number>,
     changes: readonly Change[],
     transactionId: string,
   ): CommitReceipt {
     this.#assertOpen();
     const conflicts: string[] = [];
-    for (const name of new Set([...readCollections, ...working.keys()])) {
+    for (const [name, baseRevision] of baseRevisions) {
       const current = this.#stored(name);
-      const baseRevision = working.get(name)?.baseRevision ?? current.revision;
       if (current.revision !== baseRevision) conflicts.push(name);
     }
     if (conflicts.length > 0) {
       throw new ConflictError(Object.freeze(conflicts));
     }
 
+    if (changes.length === 0) {
+      return Object.freeze({
+        affected: 0,
+        databaseId: this.id,
+        durability: "memory",
+        revision: this.#revision,
+        transactionId,
+      });
+    }
     const revision = this.#revision + 1;
     const next = new Map(this.#collections);
     for (const [name, collection] of working) {
@@ -533,7 +584,16 @@ export class Database<Seed extends DatabaseSeed> {
   }
 
   #enqueue(batch: ChangeBatch): void {
+    const limits = { ...defaultEventLimits, ...this.options.eventLimits };
+    if (
+      this.#eventQueue.length >= limits.maxQueuedBatches ||
+      this.#eventQueueChanges + batch.changes.length > limits.maxQueuedChanges
+    ) {
+      this.options.onEventOverflow?.(batch);
+      return;
+    }
     this.#eventQueue.push(batch);
+    this.#eventQueueChanges += batch.changes.length;
     if (this.#dispatchScheduled) return;
     this.#dispatchScheduled = true;
     queueMicrotask(() => {
@@ -541,6 +601,7 @@ export class Database<Seed extends DatabaseSeed> {
         while (this.#eventQueue.length > 0) {
           const current = this.#eventQueue.shift();
           if (current === undefined) continue;
+          this.#eventQueueChanges -= current.changes.length;
           for (const listener of [...this.#listeners.values()]) {
             try {
               listener(current);
@@ -685,12 +746,18 @@ type TransactionStatus = "active" | "committed" | "rolledBack";
 
 export class Transaction<Seed extends DatabaseSeed> {
   readonly id = randomId();
+  #baseRevisions = new Map<string, number>();
   #changes: Change[] = [];
-  #reads = new Set<string>();
+  readonly #createdAt = Date.now();
+  #operations = 0;
   #status: TransactionStatus = "active";
   #working = new Map<string, WorkingCollection>();
 
-  constructor(private readonly database: Database<Seed>) {}
+  /** Construct transactions with `Database.beginTransaction()`. */
+  constructor(
+    private readonly database: Database<Seed>,
+    private readonly limits: TransactionLimits,
+  ) {}
 
   collection<Name extends keyof Seed & string>(
     name: Name,
@@ -709,10 +776,11 @@ export class Transaction<Seed extends DatabaseSeed> {
 
   commit(): CommitReceipt {
     this.#assertActive();
+    this.#assertWithinLimits();
     try {
       const receipt = this.database._commit(
         this.#working,
-        this.#reads,
+        this.#baseRevisions,
         this.#changes,
         this.id,
       );
@@ -730,13 +798,30 @@ export class Transaction<Seed extends DatabaseSeed> {
     primaryKey: PrimaryKey,
   ): ReadonlyDeep<JsonObject> | undefined {
     this.#assertActive();
-    this.#reads.add(name);
+    this.#touchCollection(name);
     const collection = this.#working.get(name) ?? this.database._stored(name);
     return collection.records.get(encodeKey(primaryKey));
   }
 
   /** @internal */
+  _query(name: string, condition: Where): readonly ReadonlyDeep<JsonObject>[] {
+    this.#touchCollection(name);
+    const collection = this.#working.get(name) ?? this.database._stored(name);
+    const compiled = compileWhere(condition);
+    return Object.freeze(
+      collection.order
+        .map((key) => collection.records.get(key))
+        .filter(
+          (document): document is ReadonlyDeep<JsonObject> =>
+            document !== undefined,
+        )
+        .filter(compiled.test),
+    );
+  }
+
+  /** @internal */
   _insert(name: string, input: JsonObject, upsert: boolean): void {
+    this.#recordOperation();
     const collection = this.#writable(name);
     const document = validateDocument(name, input, collection.schema);
     const primaryKey = documentKey(document, collection.schema);
@@ -772,6 +857,7 @@ export class Transaction<Seed extends DatabaseSeed> {
     primaryKey: PrimaryKey,
     patch: Partial<JsonObject>,
   ): void {
+    this.#recordOperation();
     const collection = this.#writable(name);
     const encoded = encodeKey(primaryKey);
     const before = collection.records.get(encoded);
@@ -802,6 +888,7 @@ export class Transaction<Seed extends DatabaseSeed> {
 
   /** @internal */
   _delete(name: string, primaryKey: PrimaryKey): void {
+    this.#recordOperation();
     const collection = this.#writable(name);
     const encoded = encodeKey(primaryKey);
     const before = collection.records.get(encoded);
@@ -826,12 +913,43 @@ export class Transaction<Seed extends DatabaseSeed> {
     }
   }
 
+  #assertWithinLimits(): void {
+    if (Date.now() - this.#createdAt > this.limits.maxAgeMs) {
+      throw new TransactionStateError("Transaction exceeded its maximum age");
+    }
+  }
+
+  #recordOperation(): void {
+    this.#assertActive();
+    this.#assertWithinLimits();
+    this.#operations += 1;
+    if (this.#operations > this.limits.maxOperations) {
+      throw new TransactionStateError(
+        "Transaction exceeded its operation limit",
+      );
+    }
+  }
+
+  #touchCollection(name: string): StoredCollection {
+    this.#assertActive();
+    this.#assertWithinLimits();
+    const stored = this.database._stored(name);
+    if (!this.#baseRevisions.has(name)) {
+      if (this.#baseRevisions.size >= this.limits.maxReadCollections) {
+        throw new TransactionStateError(
+          "Transaction exceeded its read-collection limit",
+        );
+      }
+      this.#baseRevisions.set(name, stored.revision);
+    }
+    return stored;
+  }
+
   #writable(name: string): WorkingCollection {
     this.#assertActive();
-    this.#reads.add(name);
     const existing = this.#working.get(name);
     if (existing !== undefined) return existing;
-    const stored = this.database._stored(name);
+    const stored = this.#touchCollection(name);
     const working: WorkingCollection = {
       baseRevision: stored.revision,
       indexes: cloneIndexes(stored.indexes),
@@ -858,6 +976,15 @@ export class TransactionCollection<
   ): ReadonlyDeep<DocumentOf<Seed, Name>> | undefined {
     return this.transaction._read(this.name, primaryKey) as
       ReadonlyDeep<DocumentOf<Seed, Name>> | undefined;
+  }
+
+  find(
+    condition: Where<DocumentOf<Seed, Name>>,
+  ): readonly ReadonlyDeep<DocumentOf<Seed, Name>>[] {
+    return this.transaction._query(
+      this.name,
+      condition,
+    ) as readonly ReadonlyDeep<DocumentOf<Seed, Name>>[];
   }
 
   insert(document: DocumentOf<Seed, Name>): void {
