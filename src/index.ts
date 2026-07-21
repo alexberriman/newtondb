@@ -62,7 +62,13 @@ export type {
   WidenJson,
   WidenSeed,
 } from "./schema.js";
-export { readPath, samePath, validatePath } from "./path.js";
+export {
+  formatPath,
+  parsePath,
+  readPath,
+  samePath,
+  validatePath,
+} from "./path.js";
 export type { PathToken, PropertyPath } from "./path.js";
 export {
   assertNonNegativeInteger,
