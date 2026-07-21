@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish reviewed tarball
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          cache: npm
+          node-version: 24.x
+          registry-url: https://registry.npmjs.org
+      - run: npm install --global npm@11
+      - run: npm ci --ignore-scripts
+      - run: npm run verify
+      - run: npm run release:check
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+      - run: npm pack --json > package-pack.json
+      - run: node scripts/hash-pack.mjs package-pack.json package.sha256
+      - run: npm sbom --sbom-format cyclonedx > sbom.cdx.json
+      - run: npm publish "$(node -p "require('./package-pack.json')[0].filename")" --access public
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: error
+          name: release-evidence-${{ github.ref_name }}
+          path: |
+            *.tgz
+            package-pack.json
+            package.sha256
+            sbom.cdx.json
