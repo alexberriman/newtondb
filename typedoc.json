@@ -1,10 +1,6 @@
 {
-  "$schema": "https://typedoc.org/schema.json",
-  "name": "Newton",
-  "includeVersion": true,
-  "excludePrivate": true,
-  "excludeProtected": true,
-  "excludeInternal": true,
-  "searchInComments": true,
-  "categorizeByGroup": true
+  "entryPoints": ["src/index.ts", "src/node/index.ts"],
+  "out": "docs/api",
+  "plugin": [],
+  "readme": "none"
 }

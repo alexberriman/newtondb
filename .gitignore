@@ -1,5 +1,7 @@
 node_modules/
 .build/
+dist/
+.coverage/
 .DS_STORE
 .benchmark/
 .dist-benchmark/

@@ -2,7 +2,7 @@
 
 This registry prevents accidental APIs and missing semantic coverage. The generated package/API report must match it before beta.
 
-## Stable V2.0 surface
+## Stable the initial release surface
 
 | Surface                                 | Stability          | Required evidence                                    |
 | --------------------------------------- | ------------------ | ---------------------------------------------------- |

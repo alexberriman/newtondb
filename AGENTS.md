@@ -1,10 +1,10 @@
-# NewtonDB V2 Engineering Guide
+# NewtonDB Engineering Guide
 
-This repository is being rebuilt as NewtonDB V2. These instructions apply to the entire repository.
+This repository is being rebuilt as NewtonDB. These instructions apply to the entire repository.
 
 ## Mission
 
-Implement the complete V2 specification in `PLANV2.md` as a clean, breaking redesign. V1 is audit evidence only: do not preserve its runtime API, deep imports, storage format, adapters, or accidental semantics.
+Implement the complete specification in `PLANV2.md` as a clean, breaking redesign. The legacy implementation is audit evidence only: do not preserve its runtime API, deep imports, storage format, adapters, or accidental semantics.
 
 ## Source of truth
 
@@ -32,7 +32,7 @@ Implement the complete V2 specification in `PLANV2.md` as a clean, breaking rede
 - Prefer the simplest design that satisfies the complete contract and measured supported envelope.
 - Keep public API orchestration thin; schema, query, engine, transaction, events, and storage boundaries must remain explicit.
 - Do not expose internal records, mutable indexes, transaction roots, or unversioned planner details.
-- Do not add V1 facades, migration tooling, codemods, deep-export aliases, or compatibility documentation.
+- Do not add legacy facades, migration tooling, codemods, deep-export aliases, or compatibility documentation.
 - Avoid adding dependencies when the platform or a small reviewed implementation is sufficient.
 - Every public symbol, error code, event, wire format, package subpath, and CLI behavior must be registered and tested.
 - Treat validators, predicates, observers, and adapters as extension boundaries. Normalize their failures and document trust/resource limitations.
@@ -73,4 +73,4 @@ Implement the complete V2 specification in `PLANV2.md` as a clean, breaking rede
 
 ## Definition of done
 
-Do not call V2 complete until every applicable `PLANV2.md` item and release gate has authoritative evidence, the plan audit finds no missing or weakly supported requirement, all verification passes from a clean checkout and packed artifact, the final README and logo are complete, and `PLANV2.md` remains uncommitted.
+Do not call the release complete until every applicable `PLANV2.md` item and release gate has authoritative evidence, the plan audit finds no missing or weakly supported requirement, all verification passes from a clean checkout and packed artifact, the final README and logo are complete, and `PLANV2.md` remains uncommitted.

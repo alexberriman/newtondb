@@ -7,7 +7,7 @@
 
 ## Storage ownership
 
-A writable persistent adapter must either hold an exclusive fenced writer lease acquired before load and retained through close, or implement atomic conditional store by expected generation. The V2 Node file adapter uses an exclusive lock and generation metadata. Other processes that ignore the protocol are outside the guarantee; detection is best effort.
+A writable persistent adapter must either hold an exclusive fenced writer lease acquired before load and retained through close, or implement atomic conditional store by expected generation. The current release Node file adapter uses an exclusive lock and generation metadata. Other processes that ignore the protocol are outside the guarantee; detection is best effort.
 
 ## Revisions and acknowledgements
 
@@ -31,7 +31,7 @@ States are `opening`, `open`, `degraded`, `closing`, `closed`, and `corrupt`.
 | flush          | reject/not exposed | allow           | reject with cause                        | join captured close/flush | reject                                          |
 | close          | join open          | transition once | transition once                          | join existing promise     | idempotent closed result / corrupt cleanup only |
 
-Reload is not a V2.0 operation. Abort signals are observed only at cooperative engine/adapter checkpoints. Arbitrary synchronous callbacks cannot be preempted.
+Reload is not a the initial release operation. Abort signals are observed only at cooperative engine/adapter checkpoints. Arbitrary synchronous callbacks cannot be preempted.
 
 ## Events
 

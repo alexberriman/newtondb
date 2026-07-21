@@ -19,7 +19,7 @@ Validators are synchronous and validation-only. They cannot transform/default va
 - Generated keys, when enabled, are cryptographically random UUID strings. Generation happens inside the transaction; rollback discards them.
 - Canonical encoding uses separate tagged namespaces for strings and safe integers and preserves JavaScript string code units without normalization.
 - Insertion order is stable for un-ordered scans. Explicit sorting uses documented type/missing/collation rules and a primary-key tie-breaker.
-- V2.0 secondary indexes are declared hash indexes only, unique or non-unique.
+- the initial release secondary indexes are declared hash indexes only, unique or non-unique.
 
 ## Query grammar
 
@@ -35,7 +35,7 @@ Missing is distinct from `null`. Ordering comparisons require same-domain string
 
 ## Transactions
 
-V2.0 uses serializable optimistic transactions with collection-granular conflict validation:
+the initial release uses serializable optimistic transactions with collection-granular conflict validation:
 
 - a transaction captures database and per-collection base revisions;
 - point and predicate reads mark their collection read;
