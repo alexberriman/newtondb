@@ -1,0 +1,259 @@
+import fc from "fast-check";
+import { describe, expect, expectTypeOf, it } from "vitest";
+
+import {
+  Database,
+  DuplicateUniqueIndexError,
+  QueryValidationError,
+  collectionSchema,
+  compileWhere,
+  parseWhere,
+  where,
+  type Where,
+} from "../src/index.js";
+
+type User = {
+  active: boolean;
+  age: number;
+  email: string;
+  id: string;
+  name: string;
+};
+
+const users: User[] = [
+  {
+    active: true,
+    age: 84,
+    email: "isaac@example.com",
+    id: "u1",
+    name: "Isaac",
+  },
+  {
+    active: false,
+    age: 76,
+    email: "albert@example.com",
+    id: "u2",
+    name: "Albert",
+  },
+  {
+    active: true,
+    age: 88,
+    email: "galileo@example.com",
+    id: "u3",
+    name: "Galileo",
+  },
+];
+
+function createIndexedDatabase(seed = users) {
+  return Database.memory(
+    { users: seed },
+    {
+      schema: {
+        users: collectionSchema<User>({
+          indexes: [
+            { name: "by-active", path: ["active"] },
+            { name: "by-email", path: ["email"], unique: true },
+          ],
+          primaryKey: "id",
+        }),
+      },
+    },
+  );
+}
+
+describe("serializable query grammar", () => {
+  it("builds schema-derived conditions", () => {
+    const w = where<User>();
+    const condition = w.and(
+      w.eq("active", true),
+      w.gte("age", 80),
+      w.not(w.eq("name", "Albert")),
+    );
+
+    expectTypeOf(condition).toExtend<Where<User>>();
+    expect(condition).toEqual({
+      conditions: [
+        { op: "eq", path: ["active"], value: true },
+        { op: "gte", path: ["age"], value: 80 },
+        { condition: { op: "eq", path: ["name"], value: "Albert" }, op: "not" },
+      ],
+      op: "and",
+    });
+    expect(Object.isFrozen(condition)).toBe(true);
+  });
+
+  it("validates untrusted ASTs without invoking accessors", () => {
+    let invoked = false;
+    const candidate = { op: "eq", path: ["name"] } as Record<string, unknown>;
+    Object.defineProperty(candidate, "value", {
+      enumerable: true,
+      get() {
+        invoked = true;
+        return "Isaac";
+      },
+    });
+
+    expect(() => parseWhere(candidate)).toThrow(QueryValidationError);
+    expect(invoked).toBe(false);
+  });
+
+  it.each([
+    [{ op: "regex", path: ["name"], value: ".*" }, "INVALID_OPERATOR"],
+    [{ op: "and", conditions: [] }, "INVALID_BOOLEAN"],
+    [{ op: "eq", path: [], value: "x" }, "INVALID_PATH"],
+    [{ op: "eq", path: ["x"], value: Number.NaN }, "INVALID_VALUE"],
+    [{ op: "in", path: ["x"], value: [undefined] }, "INVALID_VALUE"],
+  ])("rejects malformed condition %#", (condition, issue) => {
+    expect(() => parseWhere(condition)).toThrow(
+      expect.objectContaining({ code: "ERR_QUERY_VALIDATION", issue }),
+    );
+  });
+
+  it("enforces query depth and node limits", () => {
+    const condition = {
+      condition: {
+        condition: { op: "eq", path: ["id"], value: "u1" },
+        op: "not",
+      },
+      op: "not",
+    };
+    expect(() =>
+      parseWhere(condition, {
+        maxDepth: 1,
+        maxNodes: 10,
+        maxPathTokens: 4,
+        maxSetValues: 4,
+      }),
+    ).toThrow(expect.objectContaining({ issue: "DEPTH_LIMIT" }));
+    expect(() =>
+      parseWhere(
+        { conditions: [{ op: "eq", path: ["id"], value: "u1" }], op: "and" },
+        { maxDepth: 4, maxNodes: 1, maxPathTokens: 4, maxSetValues: 4 },
+      ),
+    ).toThrow(expect.objectContaining({ issue: "NODE_LIMIT" }));
+  });
+
+  it("defines strict, non-coercing comparison truth tables", () => {
+    const stringNumber = compileWhere({
+      op: "eq",
+      path: ["value"],
+      value: "1",
+    });
+    const missingNotEqual = compileWhere({
+      op: "ne",
+      path: ["missing"],
+      value: null,
+    });
+    const mixedOrder = compileWhere({ op: "gt", path: ["value"], value: 0 });
+
+    expect(stringNumber.test({ value: 1 })).toBe(false);
+    expect(stringNumber.test({ value: "1" })).toBe(true);
+    expect(missingNotEqual.test({ value: null })).toBe(true);
+    expect(mixedOrder.test({ value: "10" })).toBe(false);
+  });
+});
+
+describe("query planning and secondary indexes", () => {
+  it("selects primary, secondary, and scan plans", () => {
+    const db = createIndexedDatabase();
+    const w = where<User>();
+
+    expect(db.collection("users").query(w.eq("id", "u1")).explain()).toEqual({
+      strategy: "primary",
+    });
+    expect(
+      db.collection("users").query(w.eq("active", true)).explain(),
+    ).toEqual({
+      index: "by-active",
+      strategy: "secondary",
+    });
+    expect(
+      db.collection("users").query(w.startsWith("name", "I")).explain(),
+    ).toEqual({
+      strategy: "scan",
+    });
+  });
+
+  it("executes boolean queries, deterministic order, offset, and limit", () => {
+    const db = createIndexedDatabase();
+    const w = where<User>();
+
+    const result = db
+      .collection("users")
+      .query(w.or(w.eq("active", true), w.lt("age", 80)))
+      .orderBy("age", "desc")
+      .offset(1)
+      .limit(2)
+      .toArray();
+
+    expect(result.map(({ id }) => id)).toEqual(["u1", "u2"]);
+    expect(Object.isFrozen(result)).toBe(true);
+  });
+
+  it("maintains secondary indexes across updates, inserts, and deletes", async () => {
+    const db = createIndexedDatabase();
+    const w = where<User>();
+
+    await db.transaction((tx) => {
+      tx.collection("users").update("u1", { active: false });
+      tx.collection("users").insert({
+        active: true,
+        age: 66,
+        email: "marie@example.com",
+        id: "u4",
+        name: "Marie",
+      });
+      tx.collection("users").delete("u3");
+    });
+
+    expect(
+      db
+        .collection("users")
+        .query(w.eq("active", true))
+        .toArray()
+        .map(({ id }) => id),
+    ).toEqual(["u4"]);
+  });
+
+  it("enforces unique secondary indexes without partial updates", async () => {
+    const db = createIndexedDatabase();
+
+    await expect(
+      db.collection("users").update("u1", { email: "albert@example.com" }),
+    ).rejects.toBeInstanceOf(DuplicateUniqueIndexError);
+
+    expect(db.collection("users").get("u1")?.email).toBe("isaac@example.com");
+    expect(db.revision).toBe(0);
+  });
+
+  it("matches scan and index execution over generated datasets", () => {
+    fc.assert(
+      fc.property(
+        fc.uniqueArray(
+          fc.record({
+            active: fc.boolean(),
+            age: fc.integer({ min: 0, max: 120 }),
+            email: fc.uuid().map((id) => `${id}@example.com`),
+            id: fc.uuid(),
+            name: fc.string({ maxLength: 30 }),
+          }),
+          { maxLength: 100, selector: ({ id }) => id },
+        ),
+        fc.boolean(),
+        (seed, active) => {
+          const indexed = createIndexedDatabase(seed);
+          const scanned = Database.memory(
+            { users: seed },
+            { schema: { users: collectionSchema<User>({ primaryKey: "id" }) } },
+          );
+          const condition = where<User>().eq("active", active);
+
+          expect(
+            indexed.collection("users").query(condition).toArray(),
+          ).toEqual(scanned.collection("users").query(condition).toArray());
+        },
+      ),
+      { numRuns: 100, seed: 20_260_723 },
+    );
+  });
+});

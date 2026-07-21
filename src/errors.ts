@@ -2,10 +2,12 @@ export type NewtonErrorCode =
   | "ERR_CLOSED"
   | "ERR_CONFLICT"
   | "ERR_DUPLICATE_KEY"
+  | "ERR_DUPLICATE_UNIQUE_INDEX"
   | "ERR_IMMUTABLE_PRIMARY_KEY"
   | "ERR_INVALID_ARGUMENT"
   | "ERR_INVALID_JSON_DOCUMENT"
   | "ERR_NOT_FOUND"
+  | "ERR_QUERY_VALIDATION"
   | "ERR_SCHEMA_VALIDATION"
   | "ERR_TRANSACTION_CALLBACK"
   | "ERR_TRANSACTION_STATE";
@@ -56,6 +58,18 @@ export class DuplicateKeyError extends NewtonError {
   }
 }
 
+export class DuplicateUniqueIndexError extends NewtonError {
+  constructor(
+    readonly collection: string,
+    readonly index: string,
+  ) {
+    super(
+      "ERR_DUPLICATE_UNIQUE_INDEX",
+      `Unique index ${collection}.${index} contains a duplicate value`,
+    );
+  }
+}
+
 export class ImmutablePrimaryKeyError extends NewtonError {
   constructor(readonly collection: string) {
     super(
@@ -79,6 +93,29 @@ export class NotFoundError extends NewtonError {
     super(
       "ERR_NOT_FOUND",
       `No document exists for the requested primary key in ${collection}`,
+    );
+  }
+}
+
+export type QueryValidationIssue =
+  | "DEPTH_LIMIT"
+  | "INVALID_BOOLEAN"
+  | "INVALID_NODE"
+  | "INVALID_OPERATOR"
+  | "INVALID_PATH"
+  | "INVALID_VALUE"
+  | "NODE_LIMIT";
+
+export class QueryValidationError extends NewtonError {
+  constructor(
+    readonly issue: QueryValidationIssue,
+    readonly location: string,
+    options?: ErrorOptions,
+  ) {
+    super(
+      "ERR_QUERY_VALIDATION",
+      `Invalid query (${issue}) at ${location || "/"}`,
+      options,
     );
   }
 }

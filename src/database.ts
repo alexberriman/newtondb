@@ -2,6 +2,7 @@ import {
   ClosedError,
   ConflictError,
   DuplicateKeyError,
+  DuplicateUniqueIndexError,
   ImmutablePrimaryKeyError,
   InvalidArgumentError,
   NotFoundError,
@@ -15,9 +16,18 @@ import {
   defaultJsonLimits,
   type JsonLimits,
   type JsonObject,
+  type JsonPrimitive,
+  type JsonValue,
   type ReadonlyDeep,
 } from "./json.js";
-import { documentKey, encodeKey } from "./key.js";
+import { documentKey, encodeIndexValue, encodeKey } from "./key.js";
+import { readPath, samePath, validatePath, type PropertyPath } from "./path.js";
+import {
+  assertNonNegativeInteger,
+  compileWhere,
+  type ComparisonCondition,
+  type Where,
+} from "./query.js";
 import {
   type CollectionSchema,
   type DatabaseSchema,
@@ -28,6 +38,7 @@ import {
 } from "./schema.js";
 
 interface StoredCollection {
+  readonly indexes: ReadonlyMap<string, SecondaryIndexState>;
   readonly order: readonly string[];
   readonly records: ReadonlyMap<string, ReadonlyDeep<JsonObject>>;
   readonly revision: number;
@@ -36,9 +47,33 @@ interface StoredCollection {
 
 interface WorkingCollection {
   readonly baseRevision: number;
+  indexes: Map<string, SecondaryIndexState>;
   order: string[];
   records: Map<string, ReadonlyDeep<JsonObject>>;
   readonly schema: CollectionSchema<JsonObject>;
+}
+
+interface SecondaryIndexState {
+  readonly buckets: Map<string, Set<string>>;
+  readonly name: string;
+  readonly path: PropertyPath;
+  readonly unique: boolean;
+}
+
+export interface QueryPlan {
+  readonly index?: string;
+  readonly strategy: "primary" | "scan" | "secondary";
+}
+
+interface QueryExecution<T extends JsonObject> {
+  readonly documents: readonly ReadonlyDeep<T>[];
+  readonly plan: QueryPlan;
+}
+
+interface QueryOptions {
+  readonly limit?: number;
+  readonly offset: number;
+  readonly order?: Readonly<{ direction: "asc" | "desc"; path: PropertyPath }>;
 }
 
 export interface CommitReceipt {
@@ -81,6 +116,104 @@ function validateDocument(
   return cloned;
 }
 
+function indexValue(
+  collection: string,
+  index: SecondaryIndexState,
+  document: ReadonlyDeep<JsonObject>,
+): string | undefined {
+  const value = readPath(document, index.path);
+  if (value === undefined) return undefined;
+  if (
+    value !== null &&
+    typeof value !== "boolean" &&
+    typeof value !== "number" &&
+    typeof value !== "string"
+  ) {
+    throw new InvalidArgumentError(
+      `Index ${collection}.${index.name} must resolve to a JSON primitive`,
+    );
+  }
+  return encodeIndexValue(value);
+}
+
+function createIndexes(
+  collection: string,
+  schema: CollectionSchema<JsonObject>,
+): Map<string, SecondaryIndexState> {
+  const indexes = new Map<string, SecondaryIndexState>();
+  for (const definition of schema.indexes ?? []) {
+    if (definition.name.length === 0 || indexes.has(definition.name)) {
+      throw new InvalidArgumentError(
+        `Secondary index names must be non-empty and unique in ${collection}`,
+      );
+    }
+    indexes.set(definition.name, {
+      buckets: new Map(),
+      name: definition.name,
+      path: validatePath(definition.path),
+      unique: definition.unique ?? false,
+    });
+  }
+  return indexes;
+}
+
+function addToIndexes(
+  collection: string,
+  indexes: Map<string, SecondaryIndexState>,
+  primaryKey: string,
+  document: ReadonlyDeep<JsonObject>,
+): void {
+  const additions: [SecondaryIndexState, string][] = [];
+  for (const index of indexes.values()) {
+    const encoded = indexValue(collection, index, document);
+    if (encoded === undefined) continue;
+    const bucket = index.buckets.get(encoded);
+    if (index.unique && bucket !== undefined && !bucket.has(primaryKey)) {
+      throw new DuplicateUniqueIndexError(collection, index.name);
+    }
+    additions.push([index, encoded]);
+  }
+  for (const [index, encoded] of additions) {
+    const bucket = index.buckets.get(encoded) ?? new Set<string>();
+    bucket.add(primaryKey);
+    index.buckets.set(encoded, bucket);
+  }
+}
+
+function removeFromIndexes(
+  collection: string,
+  indexes: Map<string, SecondaryIndexState>,
+  primaryKey: string,
+  document: ReadonlyDeep<JsonObject>,
+): void {
+  for (const index of indexes.values()) {
+    const encoded = indexValue(collection, index, document);
+    if (encoded === undefined) continue;
+    const bucket = index.buckets.get(encoded);
+    bucket?.delete(primaryKey);
+    if (bucket?.size === 0) index.buckets.delete(encoded);
+  }
+}
+
+function cloneIndexes(
+  indexes: ReadonlyMap<string, SecondaryIndexState>,
+): Map<string, SecondaryIndexState> {
+  return new Map(
+    [...indexes].map(([name, index]) => [
+      name,
+      {
+        ...index,
+        buckets: new Map(
+          [...index.buckets].map(([value, primaryKeys]) => [
+            value,
+            new Set(primaryKeys),
+          ]),
+        ),
+      },
+    ]),
+  );
+}
+
 function createStoredCollection(
   name: string,
   documents: readonly JsonObject[],
@@ -88,6 +221,7 @@ function createStoredCollection(
 ): StoredCollection {
   const records = new Map<string, ReadonlyDeep<JsonObject>>();
   const order: string[] = [];
+  const indexes = createIndexes(name, schema);
   for (const input of documents) {
     const document = validateDocument(name, input, schema);
     const key = documentKey(document, schema);
@@ -95,8 +229,10 @@ function createStoredCollection(
     if (records.has(encoded)) throw new DuplicateKeyError(name, key);
     records.set(encoded, document);
     order.push(encoded);
+    addToIndexes(name, indexes, encoded, document);
   }
   return Object.freeze({
+    indexes,
     order: Object.freeze(order),
     records,
     revision: 0,
@@ -115,6 +251,45 @@ function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
     "then" in value &&
     typeof value.then === "function"
   );
+}
+
+function choosePlan<T extends JsonObject>(
+  collection: StoredCollection,
+  condition: Where<T>,
+): QueryPlan {
+  if (condition.op !== "eq" || Array.isArray(condition.value)) {
+    return Object.freeze({ strategy: "scan" });
+  }
+  const primaryPath: PropertyPath = [collection.schema.primaryKey];
+  if (samePath(condition.path, primaryPath)) {
+    return Object.freeze({ strategy: "primary" });
+  }
+  for (const index of collection.indexes.values()) {
+    if (samePath(condition.path, index.path)) {
+      return Object.freeze({ index: index.name, strategy: "secondary" });
+    }
+  }
+  return Object.freeze({ strategy: "scan" });
+}
+
+function compareJson(
+  left: JsonValue | undefined,
+  right: JsonValue | undefined,
+): number {
+  if (left === right) return 0;
+  if (left === undefined) return 1;
+  if (right === undefined) return -1;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  if (typeof left === "number" && typeof right === "number")
+    return left - right;
+  if (typeof left === "string" && typeof right === "string") {
+    return left < right ? -1 : 1;
+  }
+  if (typeof left === "boolean" && typeof right === "boolean")
+    return left ? 1 : -1;
+  const typeOrder = ["boolean", "number", "string", "object"];
+  return typeOrder.indexOf(typeof left) - typeOrder.indexOf(typeof right);
 }
 
 export class Database<Seed extends DatabaseSeed> {
@@ -229,6 +404,71 @@ export class Database<Seed extends DatabaseSeed> {
   }
 
   /** @internal */
+  _query<T extends JsonObject>(
+    name: string,
+    condition: Where<T>,
+    options: QueryOptions,
+  ): QueryExecution<T> {
+    this.#assertOpen();
+    const collection = this.#stored(name);
+    const compiled = compileWhere<T>(condition);
+    const plan = choosePlan(collection, compiled.ast);
+    let candidateKeys: readonly string[];
+    if (plan.strategy === "primary") {
+      const comparison = compiled.ast as ComparisonCondition<T>;
+      try {
+        candidateKeys = [encodeKey(comparison.value as PrimaryKey)];
+      } catch {
+        candidateKeys = [];
+      }
+    } else if (plan.strategy === "secondary" && plan.index !== undefined) {
+      const comparison = compiled.ast as ComparisonCondition<T>;
+      const index = collection.indexes.get(plan.index);
+      const bucket = index?.buckets.get(
+        encodeIndexValue(comparison.value as JsonPrimitive),
+      );
+      candidateKeys =
+        bucket === undefined
+          ? []
+          : collection.order.filter((key) => bucket.has(key));
+    } else {
+      candidateKeys = collection.order;
+    }
+
+    let documents = candidateKeys
+      .map((key) => collection.records.get(key) as ReadonlyDeep<T> | undefined)
+      .filter((document): document is ReadonlyDeep<T> => document !== undefined)
+      .filter(compiled.test);
+
+    if (options.order !== undefined) {
+      const { direction, path } = options.order;
+      documents = documents
+        .map((document, position) => ({ document, position }))
+        .sort((left, right) => {
+          const compared = compareJson(
+            readPath(left.document, path),
+            readPath(right.document, path),
+          );
+          if (compared !== 0) return direction === "asc" ? compared : -compared;
+          const leftKey = documentKey(left.document, collection.schema);
+          const rightKey = documentKey(right.document, collection.schema);
+          const keyCompared = compareJson(leftKey, rightKey);
+          return keyCompared === 0
+            ? left.position - right.position
+            : keyCompared;
+        })
+        .map(({ document }) => document);
+    }
+
+    const end =
+      options.limit === undefined ? undefined : options.offset + options.limit;
+    return Object.freeze({
+      documents: Object.freeze(documents.slice(options.offset, end)),
+      plan,
+    });
+  }
+
+  /** @internal */
   _commit(
     working: ReadonlyMap<string, WorkingCollection>,
     readCollections: ReadonlySet<string>,
@@ -252,6 +492,7 @@ export class Database<Seed extends DatabaseSeed> {
       next.set(
         name,
         Object.freeze({
+          indexes: collection.indexes,
           order: Object.freeze([...collection.order]),
           records: collection.records,
           revision,
@@ -357,6 +598,10 @@ export class Collection<
     );
   }
 
+  query(condition: Where<DocumentOf<Seed, Name>>): Query<Seed, Name> {
+    return new Query(this.database, this.name, condition);
+  }
+
   insert(document: DocumentOf<Seed, Name>): Promise<CommitReceipt> {
     return this.database.transaction((transaction) => {
       transaction.collection(this.name).insert(document);
@@ -376,6 +621,63 @@ export class Collection<
     return this.database.transaction((transaction) => {
       transaction.collection(this.name).delete(primaryKey);
     });
+  }
+}
+
+export class Query<
+  Seed extends DatabaseSeed,
+  Name extends keyof Seed & string,
+> {
+  constructor(
+    private readonly database: Database<Seed>,
+    readonly collectionName: Name,
+    readonly condition: Where<DocumentOf<Seed, Name>>,
+    private readonly options: QueryOptions = { offset: 0 },
+  ) {}
+
+  limit(amount: number): Query<Seed, Name> {
+    assertNonNegativeInteger(amount, "limit");
+    return new Query(this.database, this.collectionName, this.condition, {
+      ...this.options,
+      limit: amount,
+    });
+  }
+
+  offset(amount: number): Query<Seed, Name> {
+    assertNonNegativeInteger(amount, "offset");
+    return new Query(this.database, this.collectionName, this.condition, {
+      ...this.options,
+      offset: amount,
+    });
+  }
+
+  orderBy(
+    field: keyof DocumentOf<Seed, Name> & string,
+    direction: "asc" | "desc" = "asc",
+  ): Query<Seed, Name> {
+    return new Query(this.database, this.collectionName, this.condition, {
+      ...this.options,
+      order: Object.freeze({
+        direction,
+        path: validatePath([field]),
+      }),
+    });
+  }
+
+  explain(): QueryPlan {
+    return this.database._query<DocumentOf<Seed, Name>>(
+      this.collectionName,
+      this.condition,
+      { ...this.options, limit: 0 },
+    ).plan;
+  }
+
+  toArray(): readonly ReadonlyDeep<DocumentOf<Seed, Name>>[] {
+    return this.database._query<DocumentOf<Seed, Name>>(
+      this.collectionName,
+      this.condition,
+      this.options,
+    ).documents;
   }
 }
 
@@ -442,6 +744,15 @@ export class Transaction<Seed extends DatabaseSeed> {
     const before = collection.records.get(encoded);
     if (before !== undefined && !upsert)
       throw new DuplicateKeyError(name, primaryKey);
+    if (before !== undefined)
+      removeFromIndexes(name, collection.indexes, encoded, before);
+    try {
+      addToIndexes(name, collection.indexes, encoded, document);
+    } catch (error) {
+      if (before !== undefined)
+        addToIndexes(name, collection.indexes, encoded, before);
+      throw error;
+    }
     collection.records.set(encoded, document);
     if (before === undefined) collection.order.push(encoded);
     this.#changes.push(
@@ -470,6 +781,13 @@ export class Transaction<Seed extends DatabaseSeed> {
     if (documentKey(after, collection.schema) !== primaryKey) {
       throw new ImmutablePrimaryKeyError(name);
     }
+    removeFromIndexes(name, collection.indexes, encoded, before);
+    try {
+      addToIndexes(name, collection.indexes, encoded, after);
+    } catch (error) {
+      addToIndexes(name, collection.indexes, encoded, before);
+      throw error;
+    }
     collection.records.set(encoded, after);
     this.#changes.push(
       freezeChange({
@@ -488,6 +806,7 @@ export class Transaction<Seed extends DatabaseSeed> {
     const encoded = encodeKey(primaryKey);
     const before = collection.records.get(encoded);
     if (before === undefined) throw new NotFoundError(name, primaryKey);
+    removeFromIndexes(name, collection.indexes, encoded, before);
     collection.records.delete(encoded);
     const position = collection.order.indexOf(encoded);
     if (position >= 0) collection.order.splice(position, 1);
@@ -515,6 +834,7 @@ export class Transaction<Seed extends DatabaseSeed> {
     const stored = this.database._stored(name);
     const working: WorkingCollection = {
       baseRevision: stored.revision,
+      indexes: cloneIndexes(stored.indexes),
       order: [...stored.order],
       records: new Map(stored.records),
       schema: stored.schema,

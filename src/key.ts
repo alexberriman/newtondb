@@ -1,5 +1,5 @@
 import { InvalidArgumentError } from "./errors.js";
-import type { JsonObject, ReadonlyDeep } from "./json.js";
+import type { JsonObject, JsonPrimitive, ReadonlyDeep } from "./json.js";
 import type { CollectionSchema, PrimaryKey } from "./schema.js";
 
 export function encodeKey(key: PrimaryKey): string {
@@ -14,6 +14,15 @@ export function encodeKey(key: PrimaryKey): string {
     );
   }
   return `n:${key}`;
+}
+
+export function encodeIndexValue(value: JsonPrimitive): string {
+  if (value === null) return "z:";
+  if (typeof value === "boolean") return value ? "b:1" : "b:0";
+  if (typeof value === "string") return `s:${value.length}:${value}`;
+  if (!Number.isFinite(value))
+    throw new InvalidArgumentError("Index numbers must be finite");
+  return `n:${Object.is(value, -0) ? "-0" : value}`;
 }
 
 export function documentKey<T extends JsonObject>(

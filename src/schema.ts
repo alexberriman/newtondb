@@ -1,4 +1,5 @@
 import type { JsonLimits, JsonObject, ReadonlyDeep } from "./json.js";
+import type { PropertyPath } from "./path.js";
 
 export type PrimaryKey = number | string;
 export type PrimaryKeyField<T extends JsonObject> = {
@@ -7,9 +8,16 @@ export type PrimaryKeyField<T extends JsonObject> = {
   string;
 
 export interface CollectionSchema<T extends JsonObject> {
+  readonly indexes?: readonly SecondaryIndex[];
   readonly primaryKey: PrimaryKeyField<T>;
   readonly validate?: (document: ReadonlyDeep<T>) => void;
   readonly limits?: Partial<JsonLimits>;
+}
+
+export interface SecondaryIndex {
+  readonly name: string;
+  readonly path: PropertyPath;
+  readonly unique?: boolean;
 }
 
 export function collectionSchema<T extends JsonObject>(
