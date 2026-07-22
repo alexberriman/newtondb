@@ -121,6 +121,44 @@ describe("JsonFileAdapter", () => {
     await db.close();
   });
 
+  it("does not reclaim a lock whose pid may have been reused", async () => {
+    const path = await temporaryPath();
+    const lock = JSON.stringify({ pid: process.pid, token: "previous-owner" });
+    await writeFile(`${path}.lock`, lock, { mode: 0o600 });
+
+    await expect(
+      Database.open<Seed>({
+        adapter: new JsonFileAdapter<Seed>(path),
+        initialData: { users: [] },
+        schema,
+      }),
+    ).rejects.toMatchObject({ code: "ERR_STORAGE_CONFLICT" });
+    await expect(readFile(`${path}.lock`, "utf8")).resolves.toBe(lock);
+  });
+
+  it("fails fenced writes and preserves a replacement lock", async () => {
+    const path = await temporaryPath();
+    const database = await Database.open<Seed>({
+      adapter: new JsonFileAdapter<Seed>(path),
+      initialData: { users: [] },
+      schema,
+    });
+    await unlink(`${path}.lock`);
+    const replacement = JSON.stringify({
+      pid: process.pid,
+      token: "replacement-owner",
+    });
+    await writeFile(`${path}.lock`, replacement, { mode: 0o600 });
+
+    await expect(
+      database.collection("users").insert({ id: "u1", name: "Isaac" }),
+    ).rejects.toMatchObject({ code: "ERR_PERSISTENCE" });
+    await expect(database.close()).rejects.toMatchObject({
+      code: "ERR_PERSISTENCE",
+    });
+    await expect(readFile(`${path}.lock`, "utf8")).resolves.toBe(replacement);
+  });
+
   it("rejects checksum corruption without exposing a database", async () => {
     const path = await temporaryPath();
     const first = await Database.open<Seed>({

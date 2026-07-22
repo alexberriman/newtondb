@@ -159,6 +159,7 @@ export class JsonFileAdapter<
     this.#loaded = true;
     try {
       await this.#removeStaleTemps();
+      await this.#assertLockOwnership();
       const snapshot = await this.#loadWithRecovery();
       this.#generation = snapshot?.generation ?? 0;
       this.#databaseId = snapshot?.databaseId;
@@ -174,6 +175,7 @@ export class JsonFileAdapter<
     options: Readonly<{ expectedGeneration: number }>,
   ): Promise<StoreAcknowledgement> {
     this.#assertReady();
+    await this.#assertLockOwnership();
     if (
       options.expectedGeneration !== this.#generation ||
       snapshot.generation !== options.expectedGeneration + 1
@@ -213,7 +215,7 @@ export class JsonFileAdapter<
     const temporaryPath = `${dirname(this.path)}/.${basename(this.path)}.${process.pid}.${randomUUID()}.tmp`;
     let temporary: FileHandle | undefined;
     try {
-      if (disk !== null) await this.#writeBackup();
+      if (disk !== null) await this.#writeBackup(disk);
       await this.#fault("before-temp-open");
       temporary = await open(
         temporaryPath,
@@ -228,6 +230,7 @@ export class JsonFileAdapter<
       await temporary.close();
       temporary = undefined;
       await this.#fault("after-temp-close");
+      await this.#assertLockOwnership();
       await rename(temporaryPath, this.path);
       await this.#fault("after-rename");
       await this.#syncDirectory();
@@ -352,9 +355,11 @@ export class JsonFileAdapter<
   }
 
   async #readSnapshotAt(path: string): Promise<SnapshotEnvelope<Seed> | null> {
+    let handle: FileHandle | undefined;
     try {
-      const info = await lstat(path);
-      if (info.isSymbolicLink() || !info.isFile()) {
+      handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+      const info = await handle.stat();
+      if (!info.isFile()) {
         throw new CorruptStorageError(
           "Storage path must be a regular file, not a symlink",
         );
@@ -369,7 +374,7 @@ export class JsonFileAdapter<
           "Stored snapshot exceeds the configured byte limit",
         );
       }
-      const bytes = await readFile(path);
+      const bytes = await handle.readFile();
       if (bytes.length > this.#maxBytes) {
         throw new CorruptStorageError(
           "Stored snapshot exceeds the configured byte limit",
@@ -398,6 +403,16 @@ export class JsonFileAdapter<
       return envelope.snapshot;
     } catch (error) {
       if (isMissing(error)) return null;
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        (error as NodeJS.ErrnoException).code === "ELOOP"
+      ) {
+        throw new CorruptStorageError(
+          "Storage path must be a regular file, not a symlink",
+          { cause: error },
+        );
+      }
       if (error instanceof CorruptStorageError) throw error;
       if (error instanceof SyntaxError || error instanceof TypeError) {
         throw new CorruptStorageError(
@@ -410,6 +425,8 @@ export class JsonFileAdapter<
       throw new StorageError("Failed to read the database snapshot", {
         cause: error,
       });
+    } finally {
+      await handle?.close().catch(() => undefined);
     }
   }
 
@@ -450,12 +467,22 @@ export class JsonFileAdapter<
         { ...(primaryError === undefined ? {} : { cause: primaryError }) },
       );
     }
-    await this.#installBytes(this.path, await readFile(this.backupPath));
+    await this.#installBytes(this.path, this.#serializeSnapshot(backup));
     return backup;
   }
 
-  async #writeBackup(): Promise<void> {
-    await this.#installBytes(this.backupPath, await readFile(this.path));
+  async #writeBackup(snapshot: SnapshotEnvelope<Seed>): Promise<void> {
+    await this.#installBytes(
+      this.backupPath,
+      this.#serializeSnapshot(snapshot),
+    );
+  }
+
+  #serializeSnapshot(snapshot: SnapshotEnvelope<Seed>): Uint8Array {
+    return Buffer.from(
+      `${JSON.stringify({ checksum: checksum(snapshot), snapshot })}\n`,
+      "utf8",
+    );
   }
 
   async #installBytes(destination: string, bytes: Uint8Array): Promise<void> {
@@ -524,6 +551,20 @@ export class JsonFileAdapter<
     this.#assertOpen();
     if (!this.#loaded || this.#lock === undefined) {
       throw new StorageError("load() must acquire storage before store()");
+    }
+  }
+
+  async #assertLockOwnership(): Promise<void> {
+    if (this.#lockToken === undefined) {
+      throw new StorageConflictError("The database lock is not owned");
+    }
+    const current = parseLock(
+      await readFile(this.#lockPath, "utf8").catch(() => ""),
+    );
+    if (current?.token !== this.#lockToken) {
+      throw new StorageConflictError(
+        "The database lock fencing token changed unexpectedly",
+      );
     }
   }
 

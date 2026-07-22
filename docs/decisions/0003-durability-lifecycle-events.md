@@ -7,7 +7,9 @@
 
 ## Storage ownership
 
-A writable persistent adapter must either hold an exclusive fenced writer lease acquired before load and retained through close, or implement atomic conditional store by expected generation. The current release Node file adapter uses an exclusive lock and generation metadata. Other processes that ignore the protocol are outside the guarantee; detection is best effort.
+A writable persistent adapter must either hold an exclusive fenced writer lease acquired before load and retained through close, or implement atomic conditional store by expected generation. The current release Node file adapter uses an exclusive lock, a random fencing token checked before load and replacement, and generation metadata. A lock carrying a live PID is conservatively retained even when PID reuse is possible; close removes only its own token. Other processes that ignore or replace the protocol are outside the guarantee, but token loss stops the cooperative writer before replacement.
+
+Crash-safe file replacement is qualified on maintained Linux Node 22/24 runners using local filesystems that provide same-directory atomic rename and file/directory sync. Network filesystems, FUSE mounts, Windows replacement semantics, and filesystems that do not provide these primitives are outside the durability claim until separately qualified. The adapter may run elsewhere, but must not be described as crash-qualified there.
 
 ## Revisions and acknowledgements
 
