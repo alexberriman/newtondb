@@ -1,6 +1,7 @@
 {
   "entryPoints": ["src/index.ts", "src/node/index.ts", "src/testing/index.ts"],
   "excludeInternal": true,
+  "gitRevision": "main",
   "out": "docs/api",
   "plugin": [],
   "readme": "none"
