@@ -111,7 +111,10 @@ async function qualify(size) {
   globalThis.gc?.();
   const rssBefore = process.memoryUsage().rss;
   const heapBefore = process.memoryUsage().heapUsed;
-  const database = Database.memory({ records }, { schema });
+  const database = Database.memory(
+    { records },
+    { eventDocuments: "include", schema },
+  );
   globalThis.gc?.();
   const loadedMemory = process.memoryUsage();
   const rssDelta = Math.max(0, loadedMemory.rss - rssBefore);

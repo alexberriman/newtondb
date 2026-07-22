@@ -10,14 +10,14 @@ At 100,000 records the reference run measured:
 
 | Operation                                      |      p95 |
 | ---------------------------------------------- | -------: |
-| Load and validate with three secondary indexes |   879 ms |
-| Ten indexed equality hits                      | 0.063 ms |
-| Ten equivalent full-scan equality hits         |   138 ms |
-| One indexed record update                      |  9.54 ms |
-| Durable flush after a memory commit            |   331 ms |
-| Open, validate, rebuild indexes, and close     |   974 ms |
+| Load and validate with three secondary indexes | 1,171 ms |
+| Ten indexed equality hits                      | 0.074 ms |
+| Ten equivalent full-scan equality hits         |   175 ms |
+| One indexed record update                      |  7.17 ms |
+| Durable flush after a memory commit            |   520 ms |
+| Open, validate, rebuild indexes, and close     | 1,383 ms |
 
-The canonical snapshot was 11,228,656 bytes. Post-load heap growth was 64.2 MB and post-load RSS was 329.4 MB. Declared secondary indexes accounted for approximately 12.0 MB of the measured heap delta. A one-record indexed update retained 2.7 MB in the deliberately noisy forced-GC probe—well below the full 64.2 MB root—and 100 retained event batches serialized to 44.6 KB because records are shared immutable snapshots. The benchmark also records the much larger process-lifetime RSS high-water caused by repeated load trials; that diagnostic is intentionally not presented as the resident size of one loaded database.
+The canonical snapshot was 11,228,656 bytes. Post-load heap growth was 63.6 MB and post-load RSS was 335.1 MB. Declared secondary indexes accounted for approximately 11.3 MB of the measured heap delta. A one-record indexed update retained 2.7 MB in the deliberately noisy forced-GC probe—well below the full 63.6 MB root—and 100 retained event batches serialized to 44.6 KB because records are shared immutable snapshots. The benchmark also records the much larger process-lifetime RSS high-water caused by repeated load trials; that diagnostic is intentionally not presented as the resident size of one loaded database.
 
 ## Running benchmarks
 
