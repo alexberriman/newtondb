@@ -77,17 +77,20 @@ export {
   assertNonNegativeInteger,
   compileWhere,
   defaultQueryLimits,
+  localPredicate,
   parseWhere,
   where,
   type AndCondition,
   type ComparisonCondition,
   type ComparisonOperator,
+  type LocalPredicate,
   type NotCondition,
   type OrCondition,
   type QueryLimits,
   type Where,
   type WhereBuilder,
 } from "./query.js";
+export { queryGrammarVersion, queryJsonSchema } from "./query-schema.js";
 export {
   catalogsEqual,
   createCatalog,

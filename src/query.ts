@@ -44,6 +44,23 @@ export interface NotCondition<T extends JsonObject = JsonObject> {
 export type Where<T extends JsonObject = JsonObject> =
   AndCondition<T> | ComparisonCondition<T> | NotCondition<T> | OrCondition<T>;
 
+const localPredicateBrand: unique symbol = Symbol("NewtonDB.localPredicate");
+
+export interface LocalPredicate<T extends JsonObject> {
+  readonly [localPredicateBrand]: true;
+  readonly test: (document: ReadonlyDeep<T>) => boolean;
+}
+
+/** Wraps process-local code that is deliberately excluded from serialized queries. */
+export function localPredicate<T extends JsonObject>(
+  test: (document: ReadonlyDeep<T>) => boolean,
+): LocalPredicate<T> {
+  if (typeof test !== "function") {
+    throw new InvalidArgumentError("A local predicate must be a function");
+  }
+  return Object.freeze({ [localPredicateBrand]: true as const, test });
+}
+
 type ScalarFields<T extends JsonObject> = {
   [Key in keyof T]-?: T[Key] extends JsonPrimitive ? Key : never;
 }[keyof T] &
@@ -195,6 +212,16 @@ export function parseWhere<T extends JsonObject>(
       throw new QueryValidationError("INVALID_OPERATOR", location);
     }
     const op = descriptor.value;
+    const keys = Object.keys(Object.getOwnPropertyDescriptors(candidate));
+    const allowedKeys =
+      op === "and" || op === "or"
+        ? ["conditions", "op"]
+        : op === "not"
+          ? ["condition", "op"]
+          : ["op", "path", "value"];
+    if (keys.some((key) => !allowedKeys.includes(key))) {
+      throw new QueryValidationError("INVALID_NODE", location);
+    }
     if (op === "and" || op === "or") {
       const conditions = Object.getOwnPropertyDescriptor(
         candidate,

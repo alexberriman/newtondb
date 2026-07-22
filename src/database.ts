@@ -29,6 +29,7 @@ import { readPath, samePath, validatePath, type PropertyPath } from "./path.js";
 import {
   assertNonNegativeInteger,
   compileWhere,
+  type LocalPredicate,
   type ComparisonCondition,
   type Where,
 } from "./query.js";
@@ -1021,6 +1022,12 @@ export class Collection<
 
   query(condition: Where<DocumentOf<Seed, Name>>): Query<Seed, Name> {
     return new Query(this.database, this.name, condition);
+  }
+
+  filter(
+    predicate: LocalPredicate<DocumentOf<Seed, Name>>,
+  ): readonly ReadonlyDeep<DocumentOf<Seed, Name>>[] {
+    return Object.freeze(this.toArray().filter(predicate.test));
   }
 
   insert(
