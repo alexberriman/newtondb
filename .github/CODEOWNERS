@@ -1,0 +1,11 @@
+# Default and release ownership
+* @alexberriman
+
+/src/node/ @alexberriman
+/src/storage.ts @alexberriman
+/src/database.ts @alexberriman
+/src/query.ts @alexberriman
+/src/json.ts @alexberriman
+/.github/workflows/ @alexberriman
+/scripts/check-release.mjs @alexberriman
+/SECURITY.md @alexberriman

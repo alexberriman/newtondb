@@ -22,6 +22,7 @@
   },
   "files": [
     "dist/",
+    "static/newton.svg",
     "README.md",
     "LICENSE"
   ],
@@ -39,10 +40,12 @@
     "clean": "node scripts/clean.mjs",
     "coverage": "vitest run --coverage",
     "docs": "typedoc",
+    "docs:check": "npm run build && npm run docs && node scripts/docs-check.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "license:check": "node scripts/check-licenses.mjs",
+    "logo:check": "node scripts/evaluate-logo.mjs",
     "mutation:check": "node scripts/mutation-check.mjs",
     "pack:check": "npm run build && publint && attw --pack . --profile esm-only",
     "release:check": "node scripts/check-release.mjs",

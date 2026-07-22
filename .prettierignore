@@ -3,6 +3,8 @@
 .coverage/
 .dist-benchmark/
 dist/
+docs/api/
 node_modules/
 etc/*.api.md
+.github/CODEOWNERS
 PLANV2.md

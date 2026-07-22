@@ -1,5 +1,6 @@
 {
-  "entryPoints": ["src/index.ts", "src/node/index.ts"],
+  "entryPoints": ["src/index.ts", "src/node/index.ts", "src/testing/index.ts"],
+  "excludeInternal": true,
   "out": "docs/api",
   "plugin": [],
   "readme": "none"

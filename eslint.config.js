@@ -10,6 +10,7 @@ export default tseslint.config(
       ".build-benchmark/**",
       ".coverage/**",
       "benchmark/**",
+      "docs/api/**",
     ],
   },
   eslint.configs.recommended,
@@ -45,7 +46,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["scripts/**/*.mjs", "eslint.config.js"],
+    files: ["examples/**/*.mjs", "scripts/**/*.mjs", "eslint.config.js"],
     ...tseslint.configs.disableTypeChecked,
   },
 );

@@ -1,5 +1,5 @@
 {
   "entryPoints": ["src/index.ts", "src/node/index.ts", "src/testing/index.ts"],
-  "packageFiles": ["dist/", "README.md", "LICENSE"],
+  "packageFiles": ["dist/", "static/newton.svg", "README.md", "LICENSE"],
   "version": "2.0.0-beta.0"
 }

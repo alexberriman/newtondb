@@ -1,0 +1,234 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 512 512"
+  role="img"
+  aria-labelledby="newton-title newton-description"
+>
+  <title id="newton-title">NewtonDB</title>
+  <desc id="newton-description">
+    A falling apple follows a gravity arc toward a luminous database core shaped
+    by the letter N.
+  </desc>
+  <defs>
+    <linearGradient
+      id="space"
+      x1="70"
+      y1="38"
+      x2="446"
+      y2="474"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stop-color="#111B3C" />
+      <stop offset=".52" stop-color="#0A1230" />
+      <stop offset="1" stop-color="#050817" />
+    </linearGradient>
+    <linearGradient
+      id="n-stroke"
+      x1="137"
+      y1="128"
+      x2="380"
+      y2="386"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stop-color="#F7FBFF" />
+      <stop offset=".48" stop-color="#A9E8FF" />
+      <stop offset="1" stop-color="#57B9FF" />
+    </linearGradient>
+    <linearGradient
+      id="data"
+      x1="153"
+      y1="316"
+      x2="368"
+      y2="434"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stop-color="#77F2D0" />
+      <stop offset="1" stop-color="#22A8F5" />
+    </linearGradient>
+    <radialGradient
+      id="apple"
+      cx="0"
+      cy="0"
+      r="1"
+      gradientTransform="translate(318 116) rotate(124) scale(89 77)"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stop-color="#FFB36B" />
+      <stop offset=".45" stop-color="#FF5C6C" />
+      <stop offset="1" stop-color="#D92767" />
+    </radialGradient>
+    <linearGradient
+      id="leaf"
+      x1="330"
+      y1="47"
+      x2="380"
+      y2="89"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stop-color="#B7F56A" />
+      <stop offset="1" stop-color="#3AD69B" />
+    </linearGradient>
+    <filter
+      id="soft-glow"
+      x="-50%"
+      y="-50%"
+      width="200%"
+      height="200%"
+      color-interpolation-filters="sRGB"
+    >
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feColorMatrix
+        in="blur"
+        values="0 0 0 0 0.15 0 0 0 0 0.72 0 0 0 0 1 0 0 0 .45 0"
+      />
+      <feBlend in="SourceGraphic" />
+    </filter>
+    <filter id="apple-shadow" x="-45%" y="-45%" width="190%" height="200%">
+      <feDropShadow
+        dx="0"
+        dy="10"
+        stdDeviation="10"
+        flood-color="#00051A"
+        flood-opacity=".62"
+      />
+    </filter>
+    <clipPath id="badge-clip">
+      <rect x="18" y="18" width="476" height="476" rx="124" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#badge-clip)">
+    <rect x="18" y="18" width="476" height="476" rx="124" fill="url(#space)" />
+    <circle cx="395" cy="99" r="154" fill="#3044B9" opacity=".12" />
+    <circle cx="108" cy="420" r="174" fill="#00C8B4" opacity=".08" />
+    <path
+      d="M58 357C132 220 242 108 418 70"
+      fill="none"
+      stroke="#76D9FF"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-dasharray="2 13"
+      opacity=".45"
+    />
+    <path
+      d="M94 399C142 265 235 164 386 108"
+      fill="none"
+      stroke="#76D9FF"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity=".18"
+    />
+    <g
+      filter="url(#soft-glow)"
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path
+        d="M139 349V171L363 349V171"
+        stroke="#155A8A"
+        stroke-width="43"
+        opacity=".42"
+      />
+      <path
+        d="M139 349V171L363 349V171"
+        stroke="url(#n-stroke)"
+        stroke-width="25"
+      />
+      <path d="M139 171V349" stroke="#FFFFFF" stroke-width="5" opacity=".58" />
+      <path d="M363 171V349" stroke="#6ED4FF" stroke-width="5" opacity=".58" />
+    </g>
+    <g opacity=".96">
+      <ellipse
+        cx="256"
+        cy="374"
+        rx="119"
+        ry="42"
+        fill="#07132E"
+        stroke="url(#data)"
+        stroke-width="8"
+      />
+      <path
+        d="M137 374V420C137 443 190 462 256 462S375 443 375 420V374"
+        fill="#081A36"
+        stroke="url(#data)"
+        stroke-width="8"
+      />
+      <path
+        d="M137 398C137 421 190 440 256 440S375 421 375 398"
+        fill="none"
+        stroke="#5DE8D3"
+        stroke-width="5"
+        opacity=".82"
+      />
+      <ellipse cx="256" cy="374" rx="119" ry="42" fill="#0B274A" />
+      <ellipse
+        cx="256"
+        cy="370"
+        rx="92"
+        ry="27"
+        fill="#0F3659"
+        stroke="#8BF7E0"
+        stroke-width="4"
+        opacity=".95"
+      />
+      <ellipse cx="256" cy="368" rx="52" ry="13" fill="#56E8D0" opacity=".2" />
+      <path
+        d="M209 368h94"
+        stroke="#B8FFF1"
+        stroke-width="4"
+        stroke-linecap="round"
+        opacity=".78"
+      />
+    </g>
+    <g filter="url(#apple-shadow)">
+      <path
+        d="M314 89c-7-22 1-39 19-51"
+        fill="none"
+        stroke="#7C432A"
+        stroke-width="11"
+        stroke-linecap="round"
+      />
+      <path
+        d="M337 59c20-20 43-15 54-4-13 23-34 33-58 21 0-6 1-12 4-17Z"
+        fill="url(#leaf)"
+      />
+      <path
+        d="M314 84c-19-10-45-2-57 19-18 33 3 90 56 112 53-22 74-79 56-112-12-21-38-29-55-19Z"
+        fill="url(#apple)"
+      />
+      <path
+        d="M281 109c10-13 24-16 35-13"
+        fill="none"
+        stroke="#FFD8BA"
+        stroke-width="10"
+        stroke-linecap="round"
+        opacity=".58"
+      />
+      <path
+        d="M313 84c-4 12-3 23 1 32"
+        fill="none"
+        stroke="#B71959"
+        stroke-width="5"
+        stroke-linecap="round"
+        opacity=".55"
+      />
+    </g>
+    <g fill="#A9E8FF">
+      <circle cx="102" cy="157" r="4" opacity=".8" />
+      <circle cx="421" cy="275" r="3" opacity=".65" />
+      <circle cx="82" cy="287" r="2.5" opacity=".5" />
+      <circle cx="433" cy="407" r="4" opacity=".48" />
+    </g>
+  </g>
+  <rect
+    x="18"
+    y="18"
+    width="476"
+    height="476"
+    rx="124"
+    fill="none"
+    stroke="#9BE7FF"
+    stroke-width="3"
+    opacity=".28"
+  />
+</svg>
