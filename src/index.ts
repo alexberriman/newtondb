@@ -102,6 +102,8 @@ export {
   isSnapshotEnvelope,
   snapshotFormat,
   snapshotFormatVersion,
+  snapshotMaximumReadableVersion,
+  snapshotMinimumReadableVersion,
   type CatalogCollection,
   type DatabaseCatalog,
   type SnapshotEnvelope,

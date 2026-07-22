@@ -1,0 +1,15 @@
+{
+  "catalog": {
+    "users": {
+      "generatedPrimaryKey": false,
+      "indexes": [],
+      "primaryKey": "id"
+    }
+  },
+  "collections": { "users": [{ "id": "u1", "name": "future" }] },
+  "databaseId": "fixture-database",
+  "format": "newtondb",
+  "formatVersion": 2,
+  "generation": 1,
+  "revision": 0
+}

@@ -13,4 +13,9 @@ export type {
   StorageAdapter,
   StoreAcknowledgement,
 } from "../index.js";
-export { snapshotFormat, snapshotFormatVersion } from "../index.js";
+export {
+  snapshotFormat,
+  snapshotFormatVersion,
+  snapshotMaximumReadableVersion,
+  snapshotMinimumReadableVersion,
+} from "../index.js";

@@ -713,6 +713,12 @@ export const snapshotFormat: "newtondb";
 export const snapshotFormatVersion: 1;
 
 // @public (undocumented)
+export const snapshotMaximumReadableVersion: 1;
+
+// @public (undocumented)
+export const snapshotMinimumReadableVersion: 1;
+
+// @public (undocumented)
 export interface StorageAdapter<Seed extends DatabaseSeed> {
     // (undocumented)
     close(): Promise<void>;

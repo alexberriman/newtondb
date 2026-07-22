@@ -3,6 +3,8 @@ import type { DatabaseSchema, DatabaseSeed } from "./schema.js";
 
 export const snapshotFormat = "newtondb" as const;
 export const snapshotFormatVersion = 1 as const;
+export const snapshotMaximumReadableVersion = snapshotFormatVersion;
+export const snapshotMinimumReadableVersion = snapshotFormatVersion;
 
 export interface CatalogCollection {
   readonly generatedPrimaryKey: boolean;

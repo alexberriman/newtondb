@@ -46,6 +46,7 @@ import {
   catalogsEqual,
   cloneSnapshotCollections,
   createCatalog,
+  isSnapshotEnvelope,
   type SnapshotEnvelope,
   type StorageAdapter,
 } from "./storage.js";
@@ -528,6 +529,12 @@ export class Database<Seed extends DatabaseSeed> {
     options: DatabaseOpenOptions<Seed>,
   ): Promise<Database<Seed>> {
     const loaded = await options.adapter.load();
+    if (loaded !== null && !isSnapshotEnvelope(loaded)) {
+      await options.adapter.close();
+      throw new CorruptStorageError(
+        "The storage adapter returned an unsupported or malformed snapshot envelope",
+      );
+    }
     const expectedCatalog = createCatalog(options.schema);
     if (loaded !== null && !catalogsEqual(loaded.catalog, expectedCatalog)) {
       await options.adapter.close();
