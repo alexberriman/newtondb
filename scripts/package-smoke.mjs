@@ -31,10 +31,12 @@ try {
     join(workspace, "smoke.mjs"),
     `import { Database, collectionSchema } from "newtondb";
 import { JsonFileAdapter } from "newtondb/node";
+import { MemoryStorageAdapter } from "newtondb/testing";
 const schema = { records: collectionSchema({ primaryKey: "id" }) };
 const db = Database.memory({ records: [{ id: "one" }] }, { schema });
 if (!db.collection("records").has("one")) throw new Error("root import failed");
 if (typeof JsonFileAdapter !== "function") throw new Error("node import failed");
+if (typeof MemoryStorageAdapter !== "function") throw new Error("testing import failed");
 `,
   );
   const smoke = spawnSync(process.execPath, [join(workspace, "smoke.mjs")], {
