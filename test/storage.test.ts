@@ -67,6 +67,26 @@ function open(adapter: MemoryAdapter) {
 }
 
 describe("persistent database lifecycle", () => {
+  it("closes an adapter when load rejects", async () => {
+    let closed = false;
+    const adapter: StorageAdapter<Seed> = {
+      async close() {
+        closed = true;
+      },
+      async load() {
+        throw new Error("load failed after acquiring resources");
+      },
+      async store() {
+        throw new Error("unreachable");
+      },
+    };
+
+    await expect(
+      Database.open({ adapter, initialData: { users: [] }, schema }),
+    ).rejects.toThrow("load failed after acquiring resources");
+    expect(closed).toBe(true);
+  });
+
   it("persists by default and reopens the acknowledged snapshot", async () => {
     const adapter = new MemoryAdapter();
     const db = await open(adapter);

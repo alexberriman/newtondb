@@ -115,13 +115,17 @@ export class NotFoundError extends NewtonError {
 }
 
 export type QueryValidationIssue =
+  | "CANDIDATE_LIMIT"
   | "DEPTH_LIMIT"
   | "INVALID_BOOLEAN"
   | "INVALID_NODE"
   | "INVALID_OPERATOR"
   | "INVALID_PATH"
   | "INVALID_VALUE"
-  | "NODE_LIMIT";
+  | "NODE_LIMIT"
+  | "RESULT_LIMIT"
+  | "SCALAR_SIZE_LIMIT"
+  | "SORT_LIMIT";
 
 export class QueryValidationError extends NewtonError {
   constructor(

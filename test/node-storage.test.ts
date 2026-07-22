@@ -184,6 +184,20 @@ describe("JsonFileAdapter", () => {
     ).rejects.toMatchObject({ code: "ERR_CORRUPT_STORAGE" });
   });
 
+  it("rejects duplicate JSON keys before last-name-wins parsing", async () => {
+    const path = await temporaryPath();
+    await writeFile(
+      path,
+      '{"checksum":"first","checksum":"second","snapshot":{}}',
+      { mode: 0o600 },
+    );
+
+    await expect(new JsonFileAdapter<Seed>(path).load()).rejects.toMatchObject({
+      code: "ERR_CORRUPT_STORAGE",
+      message: expect.stringContaining("duplicate object key"),
+    });
+  });
+
   it("rejects byte-order marks, oversized files, and symlinks", async () => {
     const bomPath = await temporaryPath("bom.json");
     await writeFile(bomPath, Buffer.from([0xef, 0xbb, 0xbf, 0x7b, 0x7d]));

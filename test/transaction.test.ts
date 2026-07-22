@@ -17,6 +17,7 @@ function createDatabase(
   options: {
     eventLimits?: { maxQueuedBatches: number; maxQueuedChanges: number };
     onEventOverflow?: (batch: ChangeBatch) => void;
+    onListenerError?: (error: unknown, batch: ChangeBatch) => void;
     transactionLimits?: {
       maxAgeMs: number;
       maxOperations: number;
@@ -303,5 +304,34 @@ describe("transaction event batches", () => {
     expect(listener).toHaveBeenCalledOnce();
     expect(overflow).toHaveBeenCalledOnce();
     expect(db.revision).toBe(2);
+  });
+
+  it("isolates throwing overflow and listener-error diagnostics", async () => {
+    const db = createDatabase({
+      eventLimits: { maxQueuedBatches: 1, maxQueuedChanges: 10 },
+      onEventOverflow() {
+        throw new Error("overflow diagnostic failed");
+      },
+      onListenerError() {
+        throw new Error("listener diagnostic failed");
+      },
+    });
+    const delivered: number[] = [];
+    db.subscribe(() => {
+      throw new Error("listener failed");
+    });
+    db.subscribe((batch) => delivered.push(batch.revision));
+
+    const first = db.beginTransaction();
+    first.collection("accounts").update("a", { balance: 99 });
+    expect(first.commit()).toMatchObject({ revision: 1 });
+    const second = db.beginTransaction();
+    second.collection("accounts").update("b", { balance: 99 });
+    expect(second.commit()).toMatchObject({ revision: 2 });
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+    expect(db.revision).toBe(2);
+    expect(db.collection("accounts").getOrThrow("b").balance).toBe(99);
+    expect(delivered).toEqual([1]);
   });
 });

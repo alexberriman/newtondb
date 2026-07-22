@@ -26,6 +26,7 @@ type Post = {
 
 function createDatabase(
   options: {
+    eventDocuments?: "include" | "omit";
     onListenerError?: (error: unknown, batch: ChangeBatch) => void;
   } = {},
 ) {
@@ -45,6 +46,33 @@ function createDatabase(
 }
 
 describe("Database.memory", () => {
+  it("rejects invalid or safety-ceiling limit overrides at construction", () => {
+    const seed = { users: [] as User[] };
+    const base = collectionSchema<User>({ primaryKey: "id" });
+    expect(() =>
+      Database.memory(seed, {
+        eventLimits: { maxQueuedBatches: 0 },
+        schema: { users: base },
+      }),
+    ).toThrow(/event limit/u);
+    expect(() =>
+      Database.memory(seed, {
+        schema: { users: base },
+        transactionLimits: { maxOperations: Number.POSITIVE_INFINITY },
+      }),
+    ).toThrow(/transaction limit/u);
+    expect(() =>
+      Database.memory(seed, {
+        schema: {
+          users: collectionSchema<User>({
+            limits: { maxDocumentBytes: 1_048_577 },
+            primaryKey: "id",
+          }),
+        },
+      }),
+    ).toThrow(/JSON limit/u);
+  });
+
   it("provides inferred, immutable primary-key reads", () => {
     const db = createDatabase();
     const user = db.collection("users").get("u1");
@@ -223,6 +251,8 @@ describe("Database.memory", () => {
     });
     expect(Object.isFrozen(batch)).toBe(true);
     expect(Object.isFrozen(batch.changes)).toBe(true);
+    expect(batch.changes[0]).not.toHaveProperty("before");
+    expect(batch.changes[0]).not.toHaveProperty("after");
     expect(listenerError).toHaveBeenCalledOnce();
 
     unsubscribe();
@@ -230,6 +260,21 @@ describe("Database.memory", () => {
     await db.collection("users").update("u1", { active: true });
     await new Promise<void>((resolve) => queueMicrotask(resolve));
     expect(listener).toHaveBeenCalledOnce();
+  });
+
+  it("includes event document snapshots only by explicit opt-in", async () => {
+    const listener = vi.fn();
+    const db = createDatabase({ eventDocuments: "include" });
+    db.subscribe(listener);
+
+    await db.collection("users").update("u1", { active: false });
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+    const change = (listener.mock.calls[0]?.[0] as ChangeBatch).changes[0];
+    expect(change?.before).toMatchObject({ active: true, id: "u1" });
+    expect(change?.after).toMatchObject({ active: false, id: "u1" });
+    expect(Object.isFrozen(change?.before)).toBe(true);
+    expect(Object.isFrozen(change?.after)).toBe(true);
   });
 
   it("closes idempotently and rejects later operations", async () => {

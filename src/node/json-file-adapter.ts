@@ -24,6 +24,7 @@ import {
   type StorageAdapter,
   type StoreAcknowledgement,
 } from "../storage.js";
+import { assertNoDuplicateJsonKeys } from "./json-duplicates.js";
 
 const defaultMaxBytes = 64 * 1024 * 1024;
 
@@ -386,6 +387,7 @@ export class JsonFileAdapter<
         );
       }
       const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      assertNoDuplicateJsonKeys(text);
       const parsed: unknown = JSON.parse(text);
       if (parsed === null || typeof parsed !== "object") {
         throw new CorruptStorageError("Stored snapshot envelope is malformed");

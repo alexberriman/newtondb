@@ -84,23 +84,80 @@ export function catalogsEqual(
 }
 
 export function isSnapshotEnvelope(value: unknown): value is SnapshotEnvelope {
-  if (value === null || typeof value !== "object" || Array.isArray(value))
+  const isRecord = (candidate: unknown): candidate is Record<string, unknown> =>
+    candidate !== null &&
+    typeof candidate === "object" &&
+    !Array.isArray(candidate) &&
+    (Object.getPrototypeOf(candidate) === Object.prototype ||
+      Object.getPrototypeOf(candidate) === null);
+  try {
+    if (!isRecord(value)) return false;
+    const candidate = value;
+    if (
+      candidate.format !== snapshotFormat ||
+      candidate.formatVersion !== snapshotFormatVersion ||
+      typeof candidate.databaseId !== "string" ||
+      candidate.databaseId.length === 0 ||
+      candidate.databaseId.length > 256 ||
+      !Number.isSafeInteger(candidate.generation) ||
+      (candidate.generation as number) < 0 ||
+      !Number.isSafeInteger(candidate.revision) ||
+      (candidate.revision as number) < 0 ||
+      !isRecord(candidate.catalog) ||
+      !isRecord(candidate.collections)
+    ) {
+      return false;
+    }
+    const catalogNames = Object.keys(candidate.catalog).sort();
+    if (
+      JSON.stringify(catalogNames) !==
+      JSON.stringify(Object.keys(candidate.collections).sort())
+    ) {
+      return false;
+    }
+    for (const name of catalogNames) {
+      const catalog = candidate.catalog[name];
+      const collection = candidate.collections[name];
+      if (
+        name.length === 0 ||
+        !isRecord(catalog) ||
+        typeof catalog.generatedPrimaryKey !== "boolean" ||
+        typeof catalog.primaryKey !== "string" ||
+        catalog.primaryKey.length === 0 ||
+        !Array.isArray(catalog.indexes) ||
+        !Array.isArray(collection)
+      ) {
+        return false;
+      }
+      for (const index of catalog.indexes) {
+        if (
+          !isRecord(index) ||
+          typeof index.name !== "string" ||
+          index.name.length === 0 ||
+          typeof index.unique !== "boolean" ||
+          !Array.isArray(index.path) ||
+          index.path.length === 0 ||
+          typeof index.path[0] !== "string" ||
+          index.path.some(
+            (token, position) =>
+              typeof token !== "string" &&
+              !(
+                position > 0 &&
+                typeof token === "number" &&
+                Number.isSafeInteger(token) &&
+                token >= 0
+              ),
+          )
+        ) {
+          return false;
+        }
+      }
+      if (collection.some((document) => !isRecord(document))) return false;
+    }
+    return true;
+  } catch {
     return false;
-  const candidate = value as Partial<Record<keyof SnapshotEnvelope, unknown>>;
-  return (
-    candidate.format === snapshotFormat &&
-    candidate.formatVersion === snapshotFormatVersion &&
-    typeof candidate.databaseId === "string" &&
-    candidate.databaseId.length > 0 &&
-    Number.isSafeInteger(candidate.generation) &&
-    (candidate.generation as number) >= 0 &&
-    Number.isSafeInteger(candidate.revision) &&
-    (candidate.revision as number) >= 0 &&
-    candidate.catalog !== null &&
-    typeof candidate.catalog === "object" &&
-    candidate.collections !== null &&
-    typeof candidate.collections === "object"
-  );
+  }
 }
 
 export function cloneSnapshotCollections(

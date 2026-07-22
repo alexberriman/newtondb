@@ -81,6 +81,14 @@ export function cloneAndFreezeJsonObject<T extends JsonObject>(
   input: T,
   limits: JsonLimits = defaultJsonLimits,
 ): ReadonlyDeep<T> {
+  for (const [name, value] of Object.entries(limits)) {
+    const ceiling = defaultJsonLimits[name as keyof JsonLimits];
+    if (!Number.isSafeInteger(value) || value <= 0 || value > ceiling) {
+      throw new InvalidArgumentError(
+        `JSON limit ${name} must be a positive safe integer no greater than ${ceiling}`,
+      );
+    }
+  }
   const candidate: unknown = input;
   if (
     candidate === null ||
@@ -208,7 +216,16 @@ export function cloneAndFreezeJsonObject<T extends JsonObject>(
     return Object.freeze(output);
   };
 
-  return visit(input, [], 0) as ReadonlyDeep<T>;
+  const output = visit(input, [], 0) as ReadonlyDeep<T>;
+  const serializedBytes = textEncoder.encode(JSON.stringify(output)).byteLength;
+  if (serializedBytes > limits.maxDocumentBytes) {
+    fail(
+      "DOCUMENT_SIZE_LIMIT",
+      [],
+      `Document exceeds ${limits.maxDocumentBytes} serialized bytes`,
+    );
+  }
+  return output;
 }
 
 export function detachedFrozen<T extends JsonObject>(
@@ -216,3 +233,4 @@ export function detachedFrozen<T extends JsonObject>(
 ): ReadonlyDeep<T> {
   return cloneAndFreezeJsonObject(value as T);
 }
+import { InvalidArgumentError } from "./errors.js";

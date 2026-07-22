@@ -149,14 +149,18 @@ export interface QueryLimits {
   readonly maxDepth: number;
   readonly maxNodes: number;
   readonly maxPathTokens: number;
+  readonly maxScalarBytes: number;
   readonly maxSetValues: number;
+  readonly maxTotalScalarBytes: number;
 }
 
 export const defaultQueryLimits: QueryLimits = Object.freeze({
   maxDepth: 32,
   maxNodes: 1_000,
   maxPathTokens: 32,
+  maxScalarBytes: 262_144,
   maxSetValues: 10_000,
+  maxTotalScalarBytes: 1_048_576,
 });
 
 const comparisonOperators = new Set<ComparisonOperator>([
@@ -185,7 +189,25 @@ export function parseWhere<T extends JsonObject>(
   input: unknown,
   limits: QueryLimits = defaultQueryLimits,
 ): Where<T> {
+  for (const [name, value] of Object.entries(limits)) {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      throw new InvalidArgumentError(
+        `Query limit ${name} must be a positive safe integer`,
+      );
+    }
+  }
   let nodes = 0;
+  let scalarBytes = 0;
+  const consumeScalar = (value: JsonPrimitive | string, location: string) => {
+    const bytes = new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    if (bytes > limits.maxScalarBytes) {
+      throw new QueryValidationError("SCALAR_SIZE_LIMIT", location);
+    }
+    scalarBytes += bytes;
+    if (scalarBytes > limits.maxTotalScalarBytes) {
+      throw new QueryValidationError("SCALAR_SIZE_LIMIT", location);
+    }
+  };
   const visit = (
     candidate: unknown,
     depth: number,
@@ -263,6 +285,11 @@ export function parseWhere<T extends JsonObject>(
         cause: error,
       });
     }
+    for (const [index, token] of path.entries()) {
+      if (typeof token === "string") {
+        consumeScalar(token, `${location}/path/${index}`);
+      }
+    }
     const value = Object.getOwnPropertyDescriptor(candidate, "value")
       ?.value as unknown;
     if (op === "in") {
@@ -273,6 +300,9 @@ export function parseWhere<T extends JsonObject>(
       ) {
         throw new QueryValidationError("INVALID_VALUE", `${location}/value`);
       }
+      for (const [index, item] of value.entries()) {
+        consumeScalar(item, `${location}/value/${index}`);
+      }
       return Object.freeze({
         op,
         path,
@@ -281,6 +311,7 @@ export function parseWhere<T extends JsonObject>(
     }
     if (!isPrimitive(value))
       throw new QueryValidationError("INVALID_VALUE", `${location}/value`);
+    consumeScalar(value, `${location}/value`);
     if (
       (op === "startsWith" || op === "endsWith") &&
       typeof value !== "string"
@@ -375,7 +406,7 @@ export function compileWhere<T extends JsonObject>(
           );
         case "contains":
           return typeof source === "string"
-            ? source.includes(String(value))
+            ? typeof value === "string" && source.includes(value)
             : Array.isArray(source) && source.includes(value);
         case "startsWith":
           return (

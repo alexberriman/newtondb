@@ -233,6 +233,7 @@ export interface DatabaseOpenOptions<Seed extends DatabaseSeed> extends Database
 
 // @public (undocumented)
 export interface DatabaseOptions<Seed extends DatabaseSeed> {
+    readonly eventDocuments?: "include" | "omit";
     // (undocumented)
     readonly eventLimits?: Partial<EventLimits>;
     // (undocumented)
@@ -616,7 +617,11 @@ export interface QueryLimits {
     // (undocumented)
     readonly maxPathTokens: number;
     // (undocumented)
+    readonly maxScalarBytes: number;
+    // (undocumented)
     readonly maxSetValues: number;
+    // (undocumented)
+    readonly maxTotalScalarBytes: number;
 }
 
 // @public (undocumented)
@@ -650,7 +655,7 @@ export class QueryValidationError extends NewtonError {
 }
 
 // @public (undocumented)
-export type QueryValidationIssue = "DEPTH_LIMIT" | "INVALID_BOOLEAN" | "INVALID_NODE" | "INVALID_OPERATOR" | "INVALID_PATH" | "INVALID_VALUE" | "NODE_LIMIT";
+export type QueryValidationIssue = "CANDIDATE_LIMIT" | "DEPTH_LIMIT" | "INVALID_BOOLEAN" | "INVALID_NODE" | "INVALID_OPERATOR" | "INVALID_PATH" | "INVALID_VALUE" | "NODE_LIMIT" | "RESULT_LIMIT" | "SCALAR_SIZE_LIMIT" | "SORT_LIMIT";
 
 // @public (undocumented)
 export type ReadonlyDeep<T> = T extends JsonPrimitive ? T : T extends readonly (infer Item)[] ? readonly ReadonlyDeep<Item>[] : T extends object ? {

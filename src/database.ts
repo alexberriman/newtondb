@@ -9,6 +9,7 @@ import {
   InvalidArgumentError,
   NotFoundError,
   PersistenceError,
+  QueryValidationError,
   StorageError,
   SchemaValidationError,
   TransactionCallbackError,
@@ -96,6 +97,11 @@ interface QueryExecution<T extends JsonObject> {
   readonly plan: QueryPlan;
 }
 
+const maxQueryCandidates = 100_000;
+const maxQueryResults = 100_000;
+const maxSortCandidates = 100_000;
+const maxOrderFields = 8;
+
 export interface QueryOptions {
   readonly limit?: number;
   readonly offset: number;
@@ -120,6 +126,8 @@ export interface GeneratedKey {
 }
 
 export interface DatabaseOptions<Seed extends DatabaseSeed> {
+  /** Event payloads omit document bodies unless explicitly enabled. */
+  readonly eventDocuments?: "include" | "omit";
   readonly eventLimits?: Partial<EventLimits>;
   readonly onEventOverflow?: (batch: ChangeBatch) => void;
   readonly onListenerError?: (error: unknown, batch: ChangeBatch) => void;
@@ -172,6 +180,28 @@ const defaultPersistenceLimits: PersistenceLimits = Object.freeze({
   maxPendingSnapshots: 256,
 });
 
+function resolveLimits<T extends object>(
+  label: string,
+  defaults: T,
+  overrides: Partial<T> | undefined,
+): T {
+  const resolved = { ...defaults, ...overrides };
+  for (const [name, value] of Object.entries(resolved) as [string, number][]) {
+    const ceiling = (defaults as Readonly<Record<string, number>>)[name];
+    if (
+      ceiling === undefined ||
+      !Number.isSafeInteger(value) ||
+      value <= 0 ||
+      value > ceiling
+    ) {
+      throw new InvalidArgumentError(
+        `${label} limit ${name} must be a positive safe integer no greater than ${ceiling}`,
+      );
+    }
+  }
+  return Object.freeze(resolved);
+}
+
 export type DatabaseState =
   "closed" | "closing" | "corrupt" | "degraded" | "open" | "opening";
 
@@ -180,7 +210,7 @@ function randomId(): string {
 }
 
 function resolvedLimits(schema: CollectionSchema<JsonObject>): JsonLimits {
-  return Object.freeze({ ...defaultJsonLimits, ...schema.limits });
+  return resolveLimits("JSON", defaultJsonLimits, schema.limits);
 }
 
 function validateDocument(
@@ -517,6 +547,7 @@ export class Database<Seed extends DatabaseSeed> {
   #dispatchScheduled = false;
   #eventQueue: ChangeBatch[] = [];
   #eventQueueChanges = 0;
+  readonly #eventLimits: EventLimits;
   #listenerId = 0;
   #listeners = new Map<number, ChangeListener>();
   #adapter?: StorageAdapter<Seed>;
@@ -527,9 +558,11 @@ export class Database<Seed extends DatabaseSeed> {
   #persistenceTail: Promise<void> = Promise.resolve();
   readonly #persistenceByRevision = new Map<number, Promise<void>>();
   #pendingPersistence = 0;
+  readonly #persistenceLimits: PersistenceLimits;
   #revision = 0;
   #state: DatabaseState = "open";
   #transactionCallbackActive = false;
+  readonly #transactionLimits: TransactionLimits;
 
   private constructor(
     seed: Seed,
@@ -540,15 +573,21 @@ export class Database<Seed extends DatabaseSeed> {
       revision: number;
     }>,
   ) {
-    const maxPendingSnapshots = options.persistenceLimits?.maxPendingSnapshots;
-    if (
-      maxPendingSnapshots !== undefined &&
-      (!Number.isSafeInteger(maxPendingSnapshots) || maxPendingSnapshots <= 0)
-    ) {
-      throw new InvalidArgumentError(
-        "maxPendingSnapshots must be a positive safe integer",
-      );
-    }
+    this.#eventLimits = resolveLimits(
+      "event",
+      defaultEventLimits,
+      options.eventLimits,
+    );
+    this.#persistenceLimits = resolveLimits(
+      "persistence",
+      defaultPersistenceLimits,
+      options.persistenceLimits,
+    );
+    this.#transactionLimits = resolveLimits(
+      "transaction",
+      defaultTransactionLimits,
+      options.transactionLimits,
+    );
     this.id = stored?.databaseId ?? randomId();
     this.#revision = stored?.revision ?? 0;
     this.#generation = stored?.generation ?? 0;
@@ -563,6 +602,7 @@ export class Database<Seed extends DatabaseSeed> {
           `Missing collection data or schema for ${name}`,
         );
       }
+      resolvedLimits(schema);
       collections.set(
         name,
         createStoredCollection(name, documents, schema, this.#revision),
@@ -589,37 +629,53 @@ export class Database<Seed extends DatabaseSeed> {
   static async open<Seed extends DatabaseSeed>(
     options: DatabaseOpenOptions<Seed>,
   ): Promise<Database<Seed>> {
-    const loaded = await options.adapter.load();
-    if (loaded !== null && !isSnapshotEnvelope(loaded)) {
-      await options.adapter.close();
-      throw new CorruptStorageError(
-        "The storage adapter returned an unsupported or malformed snapshot envelope",
-      );
-    }
-    const expectedCatalog = createCatalog(options.schema);
-    if (loaded !== null && !catalogsEqual(loaded.catalog, expectedCatalog)) {
-      await options.adapter.close();
-      throw new CorruptStorageError(
-        "The stored catalog does not match the supplied database schema",
-      );
-    }
-    const seed = loaded?.collections ?? options.initialData;
-    if (seed === undefined) {
-      await options.adapter.close();
-      throw new InvalidArgumentError(
-        "initialData is required when persistent storage is empty",
-      );
-    }
+    let loaded: SnapshotEnvelope<Seed> | null | undefined;
     try {
+      loaded = await options.adapter.load();
+      if (loaded !== null && !isSnapshotEnvelope(loaded)) {
+        throw new CorruptStorageError(
+          "The storage adapter returned an unsupported or malformed snapshot envelope",
+        );
+      }
+      const expectedCatalog = createCatalog(options.schema);
+      if (loaded !== null && !catalogsEqual(loaded.catalog, expectedCatalog)) {
+        throw new CorruptStorageError(
+          "The stored catalog does not match the supplied database schema",
+        );
+      }
+      const seed = loaded?.collections ?? options.initialData;
+      if (seed === undefined) {
+        throw new InvalidArgumentError(
+          "initialData is required when persistent storage is empty",
+        );
+      }
       const database = new Database(seed, options, loaded ?? undefined);
       database.#adapter = options.adapter;
       if (loaded === null) database.#persistedRevision = -1;
       return database;
     } catch (error) {
-      await options.adapter.close();
-      throw new CorruptStorageError("The stored database snapshot is invalid", {
-        cause: error,
-      });
+      let primary = error;
+      if (
+        loaded !== undefined &&
+        loaded !== null &&
+        !(error instanceof CorruptStorageError)
+      ) {
+        primary = new CorruptStorageError(
+          "The stored database snapshot is invalid",
+          { cause: error },
+        );
+      }
+      try {
+        await options.adapter.close();
+      } catch (cleanupError) {
+        throw new StorageError(
+          "Database open and adapter cleanup both failed",
+          {
+            cause: new AggregateError([primary, cleanupError]),
+          },
+        );
+      }
+      throw primary;
     }
   }
 
@@ -716,10 +772,7 @@ export class Database<Seed extends DatabaseSeed> {
 
   beginTransaction(): Transaction<Seed> {
     this.#assertOpen();
-    return new Transaction(this, {
-      ...defaultTransactionLimits,
-      ...this.options.transactionLimits,
-    });
+    return new Transaction(this, this.#transactionLimits);
   }
 
   async flush(): Promise<number> {
@@ -814,35 +867,66 @@ export class Database<Seed extends DatabaseSeed> {
       candidateKeys = collection.order;
     }
 
-    let documents = candidateKeys
+    if (options.limit === 0) {
+      return Object.freeze({ documents: Object.freeze([]), plan });
+    }
+    if (candidateKeys.length > maxQueryCandidates) {
+      throw new QueryValidationError("CANDIDATE_LIMIT", "/execution");
+    }
+
+    let documents: ReadonlyDeep<T>[] = [];
+    const order = options.order;
+    if (order === undefined) {
+      let matched = 0;
+      for (const key of candidateKeys) {
+        const document = collection.records.get(key) as
+          ReadonlyDeep<T> | undefined;
+        if (document === undefined || !compiled.test(document)) continue;
+        if (matched++ < options.offset) continue;
+        if (documents.length >= maxQueryResults) {
+          throw new QueryValidationError("RESULT_LIMIT", "/execution");
+        }
+        documents.push(document);
+        if (options.limit !== undefined && documents.length >= options.limit) {
+          break;
+        }
+      }
+      return Object.freeze({ documents: Object.freeze(documents), plan });
+    }
+
+    documents = candidateKeys
       .map((key) => collection.records.get(key) as ReadonlyDeep<T> | undefined)
       .filter((document): document is ReadonlyDeep<T> => document !== undefined)
       .filter(compiled.test);
 
-    if (options.order !== undefined) {
-      documents = documents
-        .map((document, position) => ({ document, position }))
-        .sort((left, right) => {
-          for (const { direction, path } of options.order ?? []) {
-            const compared = compareJson(
-              readPath(left.document, path),
-              readPath(right.document, path),
-            );
-            if (compared !== 0)
-              return direction === "asc" ? compared : -compared;
-          }
-          const leftKey = documentKey(left.document, collection.schema);
-          const rightKey = documentKey(right.document, collection.schema);
-          const keyCompared = compareJson(leftKey, rightKey);
-          return keyCompared === 0
-            ? left.position - right.position
-            : keyCompared;
-        })
-        .map(({ document }) => document);
+    if (documents.length > maxSortCandidates) {
+      throw new QueryValidationError("SORT_LIMIT", "/execution");
     }
+    documents = documents
+      .map((document, position) => ({ document, position }))
+      .sort((left, right) => {
+        for (const { direction, path } of order) {
+          const compared = compareJson(
+            readPath(left.document, path),
+            readPath(right.document, path),
+          );
+          if (compared !== 0) return direction === "asc" ? compared : -compared;
+        }
+        const leftKey = documentKey(left.document, collection.schema);
+        const rightKey = documentKey(right.document, collection.schema);
+        const keyCompared = compareJson(leftKey, rightKey);
+        return keyCompared === 0 ? left.position - right.position : keyCompared;
+      })
+      .map(({ document }) => document);
 
     const end =
       options.limit === undefined ? undefined : options.offset + options.limit;
+    if (
+      Math.min(documents.length, end ?? documents.length) - options.offset >
+      maxQueryResults
+    ) {
+      throw new QueryValidationError("RESULT_LIMIT", "/execution");
+    }
     return Object.freeze({
       documents: Object.freeze(documents.slice(options.offset, end)),
       plan,
@@ -902,7 +986,17 @@ export class Database<Seed extends DatabaseSeed> {
     this.#collections = next;
     this.#revision = revision;
 
-    const frozenChanges = Object.freeze(changes.map(freezeChange));
+    const frozenChanges = Object.freeze(
+      changes.map((change) =>
+        this.options.eventDocuments === "include"
+          ? freezeChange(change)
+          : freezeChange({
+              collection: change.collection,
+              operation: change.operation,
+              primaryKey: change.primaryKey,
+            }),
+      ),
+    );
     const batch: ChangeBatch = Object.freeze({
       changes: frozenChanges,
       databaseId: this.id,
@@ -952,11 +1046,9 @@ export class Database<Seed extends DatabaseSeed> {
     if (adapter === undefined) return Promise.resolve();
     const pending = this.#persistenceByRevision.get(receipt.revision);
     if (pending !== undefined) return pending;
-    const limits = {
-      ...defaultPersistenceLimits,
-      ...this.options.persistenceLimits,
-    };
-    if (this.#pendingPersistence >= limits.maxPendingSnapshots) {
+    if (
+      this.#pendingPersistence >= this.#persistenceLimits.maxPendingSnapshots
+    ) {
       this.#state = "degraded";
       return Promise.reject(
         new PersistenceError(receipt, {
@@ -1026,12 +1118,16 @@ export class Database<Seed extends DatabaseSeed> {
   }
 
   #enqueue(batch: ChangeBatch): void {
-    const limits = { ...defaultEventLimits, ...this.options.eventLimits };
     if (
-      this.#eventQueue.length >= limits.maxQueuedBatches ||
-      this.#eventQueueChanges + batch.changes.length > limits.maxQueuedChanges
+      this.#eventQueue.length >= this.#eventLimits.maxQueuedBatches ||
+      this.#eventQueueChanges + batch.changes.length >
+        this.#eventLimits.maxQueuedChanges
     ) {
-      this.options.onEventOverflow?.(batch);
+      try {
+        this.options.onEventOverflow?.(batch);
+      } catch (error) {
+        this.#reportListenerError(error, batch);
+      }
       return;
     }
     this.#eventQueue.push(batch);
@@ -1048,7 +1144,7 @@ export class Database<Seed extends DatabaseSeed> {
             try {
               listener(current);
             } catch (error) {
-              this.options.onListenerError?.(error, current);
+              this.#reportListenerError(error, current);
             }
           }
         }
@@ -1056,6 +1152,14 @@ export class Database<Seed extends DatabaseSeed> {
         this.#dispatchScheduled = false;
       }
     });
+  }
+
+  #reportListenerError(error: unknown, batch: ChangeBatch): void {
+    try {
+      this.options.onListenerError?.(error, batch);
+    } catch {
+      // Diagnostics are isolated because the transaction is already published.
+    }
   }
 }
 
@@ -1195,6 +1299,11 @@ export class Query<
     if (this.options.order === undefined) {
       throw new InvalidArgumentError("thenBy() requires orderBy() first");
     }
+    if (this.options.order.length >= maxOrderFields) {
+      throw new InvalidArgumentError(
+        `A query can order by at most ${maxOrderFields} fields`,
+      );
+    }
     return new Query(this.database, this.collectionName, this.condition, {
       ...this.options,
       order: Object.freeze([
@@ -1289,16 +1398,21 @@ export class Transaction<Seed extends DatabaseSeed> {
   _query(name: string, condition: Where): readonly ReadonlyDeep<JsonObject>[] {
     this.#touchCollection(name);
     const collection = this.#working.get(name) ?? this.database._stored(name);
+    if (collection.order.length > maxQueryCandidates) {
+      throw new QueryValidationError("CANDIDATE_LIMIT", "/transaction");
+    }
     const compiled = compileWhere(condition);
-    return Object.freeze(
-      collection.order
-        .map((key) => collection.records.get(key))
-        .filter(
-          (document): document is ReadonlyDeep<JsonObject> =>
-            document !== undefined,
-        )
-        .filter(compiled.test),
-    );
+    const documents = collection.order
+      .map((key) => collection.records.get(key))
+      .filter(
+        (document): document is ReadonlyDeep<JsonObject> =>
+          document !== undefined,
+      )
+      .filter(compiled.test);
+    if (documents.length > maxQueryResults) {
+      throw new QueryValidationError("RESULT_LIMIT", "/transaction");
+    }
+    return Object.freeze(documents);
   }
 
   /** @internal */

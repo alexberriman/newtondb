@@ -77,6 +77,7 @@ describe("primitive property corpora", () => {
       Number.MAX_SAFE_INTEGER,
     ].map(encodeKey);
     expect(new Set(edges).size).toBe(edges.length);
+    expect(encodeKey(1)).not.toBe(encodeKey("1"));
   });
 
   it("matches index encoding identity to strict primitive equality", () => {

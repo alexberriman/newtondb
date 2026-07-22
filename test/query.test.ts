@@ -181,15 +181,37 @@ describe("serializable query grammar", () => {
         maxDepth: 1,
         maxNodes: 10,
         maxPathTokens: 4,
+        maxScalarBytes: 20,
         maxSetValues: 4,
+        maxTotalScalarBytes: 100,
       }),
     ).toThrow(expect.objectContaining({ issue: "DEPTH_LIMIT" }));
     expect(() =>
       parseWhere(
         { conditions: [{ op: "eq", path: ["id"], value: "u1" }], op: "and" },
-        { maxDepth: 4, maxNodes: 1, maxPathTokens: 4, maxSetValues: 4 },
+        {
+          maxDepth: 4,
+          maxNodes: 1,
+          maxPathTokens: 4,
+          maxScalarBytes: 20,
+          maxSetValues: 4,
+          maxTotalScalarBytes: 100,
+        },
       ),
     ).toThrow(expect.objectContaining({ issue: "NODE_LIMIT" }));
+    expect(() =>
+      parseWhere(
+        { op: "eq", path: ["value"], value: "x".repeat(21) },
+        {
+          maxDepth: 4,
+          maxNodes: 4,
+          maxPathTokens: 4,
+          maxScalarBytes: 20,
+          maxSetValues: 4,
+          maxTotalScalarBytes: 100,
+        },
+      ),
+    ).toThrow(expect.objectContaining({ issue: "SCALAR_SIZE_LIMIT" }));
   });
 
   it("defines strict, non-coercing comparison truth tables", () => {
@@ -209,6 +231,11 @@ describe("serializable query grammar", () => {
     expect(stringNumber.test({ value: "1" })).toBe(true);
     expect(missingNotEqual.test({ value: null })).toBe(true);
     expect(mixedOrder.test({ value: "10" })).toBe(false);
+    expect(
+      compileWhere({ op: "contains", path: ["value"], value: 1 }).test({
+        value: "123",
+      }),
+    ).toBe(false);
   });
 
   it("matches an independently implemented evaluator over generated ASTs", () => {
@@ -277,6 +304,31 @@ describe("serializable query grammar", () => {
 });
 
 describe("query planning and secondary indexes", () => {
+  it("bounds broad query candidates and order fields", () => {
+    type Row = { id: number; value: number };
+    const rows = Array.from({ length: 100_001 }, (_, id) => ({
+      id,
+      value: id,
+    }));
+    const database = Database.memory(
+      { rows },
+      { schema: { rows: collectionSchema<Row>({ primaryKey: "id" }) } },
+    );
+    const broad = where<Row>().gte("value", 0);
+
+    expect(() => database.collection("rows").findMany(broad)).toThrow(
+      expect.objectContaining({ issue: "CANDIDATE_LIMIT" }),
+    );
+    const transaction = database.beginTransaction();
+    expect(() => transaction.collection("rows").find(broad)).toThrow(
+      expect.objectContaining({ issue: "CANDIDATE_LIMIT" }),
+    );
+    let ordered = database.collection("rows").query(broad).orderBy("value");
+    for (let index = 1; index < 8; index += 1)
+      ordered = ordered.thenBy("value");
+    expect(() => ordered.thenBy("value")).toThrow(/at most 8 fields/u);
+  });
+
   it("selects primary, secondary, and scan plans", () => {
     const db = createIndexedDatabase();
     const w = where<User>();

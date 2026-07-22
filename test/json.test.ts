@@ -119,5 +119,15 @@ describe("JSON ownership boundary", () => {
         issue: expect.objectContaining({ code: "DOCUMENT_SIZE_LIMIT" }),
       }),
     );
+    expect(() =>
+      cloneAndFreezeJsonObject(
+        { value: "\u0000".repeat(5) },
+        { maxDepth: 4, maxDocumentBytes: 30, maxNodes: 10, maxStringBytes: 20 },
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        issue: expect.objectContaining({ code: "DOCUMENT_SIZE_LIMIT" }),
+      }),
+    );
   });
 });
