@@ -16,7 +16,7 @@ NewtonDB is a single ESM npm package for bounded, in-memory JSON document collec
 - Package: `newtondb`; root export is the platform-neutral API; `newtondb/node` exports Node storage.
 - Runtime support: maintained Node 22 and 24 LTS lines. Node 26 is tested after it reaches LTS; Current releases are advisory.
 - TypeScript support: TypeScript 6.0.x, the newest line supported by the lint/type tooling at project initialization; strict mode, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, and NodeNext resolution. TypeScript 7 is tracked for adoption once the toolchain supports it. Declarations must also work for JavaScript consumers.
-- Browser support, CJS, V1 compatibility, V1 migration, SQL, joins, replication, caching, arbitrary query functions, ordered indexes, and cursor pagination are not the initial release scope.
+- Browser support, CJS, legacy compatibility or migration, SQL, joins, replication, caching, arbitrary query functions, ordered indexes, and cursor pagination are not the initial release scope.
 - Workload: a single process owns a database; data and indexes fit in memory. The supported byte/record envelope is fixed from controlled M1–M4 measurements before beta.
 - Delivery: one package and one repository. Internal modules are explicit but are not separately published.
 
@@ -44,15 +44,18 @@ The memory constructor is synchronous. Transactions always return promises so th
 
 ## Supported scale decision process
 
-The release will publish measured limits rather than aspirational record counts. Candidate fixtures are 1k, 10k, 100k, and increasing byte-sized corpora until one of the following is breached:
+The release publishes measured limits rather than aspirational record counts. The controlled Node 24/Linux ARM64 qualification establishes a 100,000-record, 11.3 MB canonical JSON envelope for the deterministic reference schema. Qualification stops at the first fixture that breaches any of these budgets:
 
-- peak RSS exceeds 4× canonical snapshot bytes;
-- p95 full snapshot flush exceeds the approved beta budget;
-- a one-record update shows collection-size allocation;
+- post-load heap exceeds 8 MiB plus 6× canonical bytes;
+- post-load RSS exceeds 512 MiB;
+- p95 load or existing-file open exceeds 3,000 ms;
+- p95 explicit durable flush exceeds 1,000 ms;
+- indexed-hit latency ceases to remain effectively flat across qualified sizes;
+- a one-record update returns to collection-size cloning;
 - event retention prevents bounded memory;
 - load validation cannot reject oversize input before unsafe allocation.
 
-The largest fixture with margin on every supported Node/platform becomes the published envelope.
+The checked report and exact methodology are in `benchmark/baseline-node24-linux-arm64.json` and `docs/project/performance.md`. Process-lifetime execution peak is retained as diagnostic evidence but is not the working-set gate because repeated benchmark trials deliberately exercise allocator high-water. Other supported Node/platform combinations must pass the same functional suite; absolute performance qualification is hardware-specific.
 
 ## Consequences
 

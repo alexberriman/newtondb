@@ -1,0 +1,33 @@
+# Performance and supported scale
+
+NewtonDB is an in-process database whose records and indexes reside in memory. The supported reference envelope is 100,000 records, corresponding to 11.3 MB of canonical JSON for the seeded benchmark schema. This is a tested boundary, not a claim that every document shape consumes the same memory.
+
+## Qualification evidence
+
+The committed Node 24/Linux ARM64 baseline uses seed `0x6e657774`, three warmups, twelve measured samples, and a fresh process for each dataset size. Every timed workload checks its result so a correctness regression cannot masquerade as a speedup. The report records Node, V8, OS, architecture, memory, sample counts, confidence intervals, and both working-set and process-lifetime memory observations.
+
+At 100,000 records the reference run measured:
+
+| Operation                                      |      p95 |
+| ---------------------------------------------- | -------: |
+| Load and validate with three secondary indexes |   913 ms |
+| Ten indexed equality hits                      | 0.079 ms |
+| Ten equivalent full-scan equality hits         |   112 ms |
+| One indexed record update                      |  4.86 ms |
+| Durable flush after a memory commit            |   302 ms |
+| Open, validate, rebuild indexes, and close     |   961 ms |
+
+The canonical snapshot was 11,280,773 bytes. Post-load heap growth was 63.7 MB and post-load RSS was 329.2 MB. The benchmark also records the much larger process-lifetime RSS high-water caused by repeated load trials; that diagnostic is intentionally not presented as the resident size of one loaded database.
+
+## Running benchmarks
+
+```sh
+npm run benchmark:smoke
+npm run benchmark -- --output .benchmark/candidate.json
+npm run benchmark:check
+npm run benchmark:qualify
+```
+
+The smoke profile is a deterministic functional check for shared CI. The standard profile measures 1k, 10k, and 100k fixtures. Qualification fails if any requested fixture breaches the accepted absolute budgets. Regression comparison additionally requires matching report schema, Node major, architecture, operating system, seed, profile, warmups, and samples; its 25% threshold plus a 1 ms noise floor is intended for controlled hosts, not generic hosted runners.
+
+Measurements are specific to the recorded environment and filesystem. Application document widths, index cardinality, query selectivity, storage hardware, and listener retention all change results. Consumers should run the same harness with representative data before treating the reference envelope as their production limit.

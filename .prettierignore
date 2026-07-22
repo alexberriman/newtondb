@@ -1,2 +1,8 @@
 .build/
+.benchmark/
+.coverage/
+.dist-benchmark/
+dist/
 node_modules/
+etc/*.api.md
+PLANV2.md

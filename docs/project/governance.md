@@ -2,17 +2,17 @@
 
 ## Decision log
 
-| ID    | Decision                                                   | Status        | Evidence                  |
-| ----- | ---------------------------------------------------------- | ------------- | ------------------------- |
-| D-001 | Single ESM package; root plus `newtondb/node`              | accepted      | ADR-0001                  |
-| D-002 | Node 22/24 LTS; TypeScript 6.0 strict NodeNext; track TS 7 | accepted      | ADR-0001                  |
-| D-003 | Frozen detached outward JSON                               | accepted      | ADR-0002                  |
-| D-004 | String/safe-integer immutable keys                         | accepted      | ADR-0002                  |
-| D-005 | Fixed query v1 grammar, no regex/functions                 | accepted      | ADR-0002                  |
-| D-006 | Serializable collection-granular optimistic transactions   | accepted      | ADR-0002                  |
-| D-007 | Fenced exclusive writer; revision-ordered persistence      | accepted      | ADR-0003                  |
-| D-008 | No legacy compatibility or migration surface               | accepted      | implementation plan scope |
-| D-009 | Supported envelope set from early measured gates           | pending M1–M4 | ADR-0001                  |
+| ID    | Decision                                                   | Status   | Evidence                  |
+| ----- | ---------------------------------------------------------- | -------- | ------------------------- |
+| D-001 | Single ESM package; root plus `newtondb/node`              | accepted | ADR-0001                  |
+| D-002 | Node 22/24 LTS; TypeScript 6.0 strict NodeNext; track TS 7 | accepted | ADR-0001                  |
+| D-003 | Frozen detached outward JSON                               | accepted | ADR-0002                  |
+| D-004 | String/safe-integer immutable keys                         | accepted | ADR-0002                  |
+| D-005 | Fixed query grammar format 1, no regex/functions           | accepted | ADR-0002                  |
+| D-006 | Serializable collection-granular optimistic transactions   | accepted | ADR-0002                  |
+| D-007 | Fenced exclusive writer; revision-ordered persistence      | accepted | ADR-0003                  |
+| D-008 | No legacy compatibility or migration surface               | accepted | implementation plan scope |
+| D-009 | 100k-record/11.3 MB reference envelope                     | accepted | benchmark baseline        |
 
 ## Risk register
 
