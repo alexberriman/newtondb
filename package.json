@@ -35,10 +35,11 @@
     "pack:check": "npm run build && publint && attw --pack . --profile esm-only",
     "release:check": "node scripts/check-release.mjs",
     "test": "vitest run",
+    "test:crash": "npm run build && node scripts/crash-harness.mjs && node scripts/process-lock-harness.mjs",
     "test:package": "npm run build && node scripts/package-smoke.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run coverage && npm run pack:check"
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test:crash && npm run coverage && npm run pack:check"
   },
   "repository": {
     "type": "git",

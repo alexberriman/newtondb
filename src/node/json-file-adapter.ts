@@ -4,12 +4,13 @@ import {
   lstat,
   mkdir,
   open,
+  readdir,
   readFile,
   rename,
   unlink,
   type FileHandle,
 } from "node:fs/promises";
-import { dirname, basename, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 import {
   CorruptStorageError,
@@ -38,9 +39,20 @@ interface LockRecord {
 
 export interface JsonFileAdapterOptions {
   readonly createDirectories?: boolean;
+  /** Test instrumentation. Throw or terminate the process to simulate a named fault. */
+  readonly faultInjector?: (point: JsonFileFaultPoint) => Promise<void> | void;
   readonly maxBytes?: number;
   readonly mode?: number;
 }
+
+export type JsonFileFaultPoint =
+  | "after-directory-sync"
+  | "after-file-sync"
+  | "after-rename"
+  | "after-temp-close"
+  | "after-temp-open"
+  | "after-write"
+  | "before-temp-open";
 
 function checksum(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -101,6 +113,8 @@ export class JsonFileAdapter<
   readonly path: string;
   readonly #lockPath: string;
   readonly #createDirectories: boolean;
+  readonly #faultInjector:
+    ((point: JsonFileFaultPoint) => Promise<void> | void) | undefined;
   readonly #maxBytes: number;
   readonly #mode: number;
   #closed = false;
@@ -116,6 +130,7 @@ export class JsonFileAdapter<
     this.path = resolve(path);
     this.#lockPath = `${this.path}.lock`;
     this.#createDirectories = options.createDirectories ?? false;
+    this.#faultInjector = options.faultInjector;
     this.#maxBytes = options.maxBytes ?? defaultMaxBytes;
     this.#mode = options.mode ?? 0o600;
     if (!Number.isSafeInteger(this.#maxBytes) || this.#maxBytes <= 0) {
@@ -133,6 +148,7 @@ export class JsonFileAdapter<
     await this.#acquireLock();
     this.#loaded = true;
     try {
+      await this.#removeStaleTemps();
       const snapshot = await this.#readSnapshot();
       this.#generation = snapshot?.generation ?? 0;
       this.#databaseId = snapshot?.databaseId;
@@ -187,17 +203,24 @@ export class JsonFileAdapter<
     const temporaryPath = `${dirname(this.path)}/.${basename(this.path)}.${process.pid}.${randomUUID()}.tmp`;
     let temporary: FileHandle | undefined;
     try {
+      await this.#fault("before-temp-open");
       temporary = await open(
         temporaryPath,
         constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY,
         this.#mode,
       );
+      await this.#fault("after-temp-open");
       await temporary.writeFile(serialized, { encoding: "utf8" });
+      await this.#fault("after-write");
       await temporary.sync();
+      await this.#fault("after-file-sync");
       await temporary.close();
       temporary = undefined;
+      await this.#fault("after-temp-close");
       await rename(temporaryPath, this.path);
+      await this.#fault("after-rename");
       await this.#syncDirectory();
+      await this.#fault("after-directory-sync");
     } catch (error) {
       await temporary?.close().catch(() => undefined);
       await unlink(temporaryPath).catch(() => undefined);
@@ -370,6 +393,23 @@ export class JsonFileAdapter<
     }
   }
 
+  async #removeStaleTemps(): Promise<void> {
+    try {
+      const directory = dirname(this.path);
+      const prefix = `.${basename(this.path)}.`;
+      const names = await readdir(directory);
+      await Promise.all(
+        names
+          .filter((name) => name.startsWith(prefix) && name.endsWith(".tmp"))
+          .map((name) => unlink(join(directory, name))),
+      );
+    } catch (error) {
+      throw new StorageError("Failed to remove stale snapshot files", {
+        cause: error,
+      });
+    }
+  }
+
   async #syncDirectory(): Promise<void> {
     let directory: FileHandle | undefined;
     try {
@@ -396,5 +436,9 @@ export class JsonFileAdapter<
     if (!this.#loaded || this.#lock === undefined) {
       throw new StorageError("load() must acquire storage before store()");
     }
+  }
+
+  async #fault(point: JsonFileFaultPoint): Promise<void> {
+    await this.#faultInjector?.(point);
   }
 }
