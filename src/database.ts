@@ -34,6 +34,7 @@ import {
   type ComparisonCondition,
   type Where,
 } from "./query.js";
+import { reachEngineFailpoint } from "./internal/failpoints.js";
 import {
   type CollectionSchema,
   type DatabaseSchema,
@@ -896,6 +897,7 @@ export class Database<Seed extends DatabaseSeed> {
         assertCollectionInvariant(name, collection);
       }
     }
+    reachEngineFailpoint("transaction:before-publish");
     this.#collections = next;
     this.#revision = revision;
 
@@ -1297,11 +1299,13 @@ export class Transaction<Seed extends DatabaseSeed> {
     this.#recordOperation();
     const collection = this.#writable(name);
     const materialized = materializePrimaryKey(name, input, collection.schema);
+    reachEngineFailpoint("insert:before-validation");
     const document = validateDocument(
       name,
       materialized.document,
       collection.schema,
     );
+    reachEngineFailpoint("insert:after-validation");
     const primaryKey = documentKey(document, collection.schema);
     const encoded = encodeKey(primaryKey);
     const before = collection.records.get(encoded);
@@ -1310,13 +1314,17 @@ export class Transaction<Seed extends DatabaseSeed> {
     if (before !== undefined)
       removeFromIndexes(name, collection.indexes, encoded, before);
     try {
+      reachEngineFailpoint("insert:before-index-add");
       addToIndexes(name, collection.indexes, encoded, document);
+      reachEngineFailpoint("insert:after-index-add");
     } catch (error) {
       if (before !== undefined)
         addToIndexes(name, collection.indexes, encoded, before);
       throw error;
     }
+    reachEngineFailpoint("insert:before-record-write");
     collection.records.set(encoded, document);
+    reachEngineFailpoint("insert:after-record-write");
     if (before === undefined) {
       collection.order.push(encoded);
       collection.positions.set(encoded, collection.nextPosition++);
@@ -1353,18 +1361,26 @@ export class Transaction<Seed extends DatabaseSeed> {
     const before = collection.records.get(encoded);
     if (before === undefined) throw new NotFoundError(name, primaryKey);
     const candidate = mergeDocument(before, patch);
+    reachEngineFailpoint("update:before-validation");
     const after = validateDocument(name, candidate, collection.schema);
+    reachEngineFailpoint("update:after-validation");
     if (documentKey(after, collection.schema) !== primaryKey) {
       throw new ImmutablePrimaryKeyError(name);
     }
+    reachEngineFailpoint("update:before-index-remove");
     removeFromIndexes(name, collection.indexes, encoded, before);
+    reachEngineFailpoint("update:after-index-remove");
     try {
+      reachEngineFailpoint("update:before-index-add");
       addToIndexes(name, collection.indexes, encoded, after);
+      reachEngineFailpoint("update:after-index-add");
     } catch (error) {
       addToIndexes(name, collection.indexes, encoded, before);
       throw error;
     }
+    reachEngineFailpoint("update:before-record-write");
     collection.records.set(encoded, after);
+    reachEngineFailpoint("update:after-record-write");
     this.#changes.push(
       freezeChange({
         after,
@@ -1383,11 +1399,15 @@ export class Transaction<Seed extends DatabaseSeed> {
     const encoded = encodeKey(primaryKey);
     const before = collection.records.get(encoded);
     if (before === undefined) throw new NotFoundError(name, primaryKey);
+    reachEngineFailpoint("delete:before-index-remove");
     removeFromIndexes(name, collection.indexes, encoded, before);
+    reachEngineFailpoint("delete:after-index-remove");
+    reachEngineFailpoint("delete:before-record-delete");
     collection.records.delete(encoded);
     collection.positions.delete(encoded);
     const position = collection.order.indexOf(encoded);
     if (position >= 0) collection.order.splice(position, 1);
+    reachEngineFailpoint("delete:after-record-delete");
     this.#changes.push(
       freezeChange({
         before,
