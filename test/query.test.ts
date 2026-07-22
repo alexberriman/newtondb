@@ -423,4 +423,30 @@ describe("query planning and secondary indexes", () => {
       { numRuns: 100, seed: 20_260_723 },
     );
   });
+
+  it("keeps indexed equality equivalent for negative and positive zero", () => {
+    type Measurement = { id: string; value: number };
+    const db = Database.memory(
+      {
+        measurements: [
+          { id: "negative", value: -0 },
+          { id: "positive", value: 0 },
+        ] satisfies Measurement[],
+      },
+      {
+        schema: {
+          measurements: collectionSchema<Measurement>({
+            indexes: [{ name: "by-value", path: ["value"] }],
+            primaryKey: "id",
+          }),
+        },
+      },
+    );
+    expect(
+      db
+        .collection("measurements")
+        .findMany(where<Measurement>().eq("value", -0))
+        .map(({ id }) => id),
+    ).toEqual(["negative", "positive"]);
+  });
 });

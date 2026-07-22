@@ -166,6 +166,14 @@ export function cloneAndFreezeJsonObject<T extends JsonObject>(
     }
 
     const output: JsonObject = Object.create(null) as JsonObject;
+    const symbols = Object.getOwnPropertySymbols(value);
+    if (symbols.length > 0) {
+      fail(
+        "UNSUPPORTED_VALUE",
+        [...path, String(symbols[0])],
+        "Symbol properties are not supported",
+      );
+    }
     const descriptors = Object.getOwnPropertyDescriptors(value);
     for (const key of Object.keys(descriptors)) {
       const descriptor = descriptors[key];

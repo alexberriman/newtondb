@@ -22,7 +22,7 @@ export function encodeIndexValue(value: JsonPrimitive): string {
   if (typeof value === "string") return `s:${value.length}:${value}`;
   if (!Number.isFinite(value))
     throw new InvalidArgumentError("Index numbers must be finite");
-  return `n:${Object.is(value, -0) ? "-0" : value}`;
+  return `n:${value === 0 ? 0 : value}`;
 }
 
 export function documentKey<T extends JsonObject>(
