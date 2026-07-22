@@ -39,17 +39,23 @@ for (const markdown of markdownFiles) {
 }
 
 const workspace = await mkdtemp(join(tmpdir(), "newtondb-docs-"));
-let tarball;
+let tarball =
+  process.argv[2] === undefined ? undefined : resolve(process.argv[2]);
+let ownsTarball = false;
 try {
-  const packed = spawnSync("npm", ["pack", "--json"], {
-    cwd: resolve("."),
-    encoding: "utf8",
-  });
-  if (packed.status !== 0) throw new Error(packed.stderr || "npm pack failed");
-  const filename = JSON.parse(packed.stdout)[0]?.filename;
-  if (typeof filename !== "string")
-    throw new Error("npm pack returned no file");
-  tarball = resolve(filename);
+  if (tarball === undefined) {
+    const packed = spawnSync("npm", ["pack", "--json"], {
+      cwd: resolve("."),
+      encoding: "utf8",
+    });
+    if (packed.status !== 0)
+      throw new Error(packed.stderr || "npm pack failed");
+    const filename = JSON.parse(packed.stdout)[0]?.filename;
+    if (typeof filename !== "string")
+      throw new Error("npm pack returned no file");
+    tarball = resolve(filename);
+    ownsTarball = true;
+  }
   await writeFile(
     join(workspace, "package.json"),
     JSON.stringify({ private: true, type: "module" }),
@@ -78,5 +84,5 @@ try {
   );
 } finally {
   await rm(workspace, { force: true, recursive: true });
-  if (tarball !== undefined) await rm(tarball, { force: true });
+  if (ownsTarball && tarball !== undefined) await rm(tarball, { force: true });
 }

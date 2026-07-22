@@ -49,6 +49,7 @@
     "mutation:check": "node scripts/mutation-check.mjs",
     "pack:check": "npm run build && publint && attw --pack . --profile esm-only",
     "release:check": "node scripts/check-release.mjs",
+    "release:rehearse": "node scripts/release-rehearsal.mjs",
     "test": "vitest run",
     "test:crash": "npm run build && node scripts/crash-harness.mjs && node scripts/process-lock-harness.mjs",
     "test:package": "npm run build && node scripts/package-smoke.mjs",
