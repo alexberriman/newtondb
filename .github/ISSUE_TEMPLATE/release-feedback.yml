@@ -1,0 +1,72 @@
+name: Release candidate feedback
+description: Report API, adapter, durability, performance, or documentation findings from a prerelease.
+title: "[release feedback]: "
+labels: ["adapter-feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for exercising the release candidate. Do not include secrets, production records, or an unredacted database file.
+  - type: input
+    id: package-version
+    attributes:
+      label: Exact package version
+      description: Copy the version from the installed newtondb/package.json.
+      placeholder: 2.0.0-beta.0
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Public API or TypeScript types
+        - Storage adapter contract
+        - File durability or recovery
+        - Query behavior or limits
+        - Transactions or events
+        - Performance or memory
+        - Documentation or packaging
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node, TypeScript, OS, filesystem, package manager, and adapter.
+      placeholder: Node 24.x; TypeScript 6.0.3; Linux; ext4; npm 11; JsonFileAdapter
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide the smallest redacted program and exact commands that demonstrate the finding.
+      render: javascript
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected contract
+      description: What behavior did the API or documentation lead you to expect?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include the error code and redacted diagnostic, if applicable.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I reproduced this against the exact package version above.
+          required: true
+        - label: I removed secrets and production data from this report.
+          required: true
+        - label: I reviewed the documented support boundaries and limits.
+          required: true

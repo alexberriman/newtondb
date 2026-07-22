@@ -17,6 +17,8 @@ Severity follows `docs/project/governance.md`. No open P0/P1 blocker may be waiv
 
 The release candidate soak is at least seven days. It covers memory and file examples, 1k/10k/100k fixtures, supported Node lines, the qualified Linux local filesystem, custom-adapter conformance, deliberate corruption/recovery, and a fresh consumer install. Ambiguity becomes an ADR/test/doc change or an explicit non-goal before approval.
 
+Collect public findings through the release-candidate feedback issue form. Triage each report into `api`, `adapter-feedback`, `storage`, `security`, or `release-blocker`; link its reproducer and final test/doc/ADR evidence in the disposition log. Close a report only when its disposition is independently reviewable. Security reports always use the private advisory link instead.
+
 ## Build once and publish
 
 Create one tarball with `npm pack --json`, record SHA-256, generate CycloneDX SBOM and provenance, and attach all three to the protected run. Publish that exact filename—never rebuild between review and publication. The tag must be `v<package version>`, point to a commit contained in protected `main`, and pass `release:check`.
