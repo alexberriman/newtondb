@@ -84,7 +84,7 @@
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^10.0.1",
     "@microsoft/api-extractor": "^7.58.12",
-    "@types/node": "^24.10.0",
+    "@types/node": "^26.1.1",
     "@vitest/coverage-v8": "^4.1.10",
     "ajv": "^8.20.0",
     "eslint": "^10.7.0",
@@ -92,7 +92,7 @@
     "prettier": "^3.9.0",
     "publint": "^0.3.21",
     "typedoc": "^0.28.20",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.65.0",
     "vitest": "^4.1.10"
   }
