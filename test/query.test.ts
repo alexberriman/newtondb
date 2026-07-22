@@ -20,6 +20,65 @@ type User = {
   name: string;
 };
 
+type Probe = {
+  flag: boolean;
+  id: string;
+  number: number;
+  text: string;
+  value: null | number | string;
+};
+
+function independentlyEvaluate(
+  condition: Where<Probe>,
+  document: Probe,
+): boolean {
+  if (condition.op === "and") {
+    return condition.conditions.every((child) =>
+      independentlyEvaluate(child, document),
+    );
+  }
+  if (condition.op === "or") {
+    return condition.conditions.some((child) =>
+      independentlyEvaluate(child, document),
+    );
+  }
+  if (condition.op === "not")
+    return !independentlyEvaluate(condition.condition, document);
+  const source = document[condition.path[0] as keyof Probe];
+  const value = condition.value;
+  switch (condition.op) {
+    case "eq":
+      return source === value;
+    case "ne":
+      return source !== value;
+    case "in":
+      return (value as readonly unknown[]).some(
+        (candidate) => candidate === source,
+      );
+    case "gt":
+    case "gte":
+    case "lt":
+    case "lte": {
+      if (
+        (typeof source !== "number" && typeof source !== "string") ||
+        typeof source !== typeof value
+      )
+        return false;
+      const comparable = value as number | string;
+      if (condition.op === "gt") return source > comparable;
+      if (condition.op === "gte") return source >= comparable;
+      if (condition.op === "lt") return source < comparable;
+      return source <= comparable;
+    }
+    case "contains":
+      return typeof source === "string" && source.includes(String(value));
+    case "startsWith":
+      return typeof source === "string" && source.startsWith(String(value));
+    case "endsWith":
+      return typeof source === "string" && source.endsWith(String(value));
+  }
+}
+
 const users: User[] = [
   {
     active: true,
@@ -151,6 +210,70 @@ describe("serializable query grammar", () => {
     expect(missingNotEqual.test({ value: null })).toBe(true);
     expect(mixedOrder.test({ value: "10" })).toBe(false);
   });
+
+  it("matches an independently implemented evaluator over generated ASTs", () => {
+    const primitive = fc.oneof(fc.integer(), fc.string(), fc.constant(null));
+    const base = fc.oneof(
+      fc.record({
+        op: fc.constantFrom("eq" as const, "ne" as const),
+        path: fc.constant(["value"] as const),
+        value: primitive,
+      }),
+      fc.record({
+        op: fc.constantFrom(
+          "gt" as const,
+          "gte" as const,
+          "lt" as const,
+          "lte" as const,
+        ),
+        path: fc.constant(["number"] as const),
+        value: fc.integer(),
+      }),
+      fc.record({
+        op: fc.constantFrom(
+          "contains" as const,
+          "startsWith" as const,
+          "endsWith" as const,
+        ),
+        path: fc.constant(["text"] as const),
+        value: fc.string(),
+      }),
+      fc.record({
+        op: fc.constant("in" as const),
+        path: fc.constant(["value"] as const),
+        value: fc.array(primitive, { maxLength: 8 }),
+      }),
+    );
+    const condition = fc.oneof(
+      base,
+      base.map((child) => ({ condition: child, op: "not" as const })),
+      fc
+        .array(base, { minLength: 1, maxLength: 5 })
+        .chain((conditions) =>
+          fc.constantFrom(
+            { conditions, op: "and" as const },
+            { conditions, op: "or" as const },
+          ),
+        ),
+    );
+    const document = fc.record({
+      flag: fc.boolean(),
+      id: fc.uuid(),
+      number: fc.integer(),
+      text: fc.string(),
+      value: primitive,
+    });
+
+    fc.assert(
+      fc.property(condition, document, (candidate, probe) => {
+        const ast = candidate as Where<Probe>;
+        expect(compileWhere<Probe>(ast).test(probe)).toBe(
+          independentlyEvaluate(ast, probe),
+        );
+      }),
+      { numRuns: 2_000, seed: 20_260_724 },
+    );
+  });
 });
 
 describe("query planning and secondary indexes", () => {
@@ -188,6 +311,50 @@ describe("query planning and secondary indexes", () => {
 
     expect(result.map(({ id }) => id)).toEqual(["u1", "u2"]);
     expect(Object.isFrozen(result)).toBe(true);
+  });
+
+  it("orders deterministically by multiple fields with primary-key tie-breaking", () => {
+    const db = createIndexedDatabase();
+    const query = db
+      .collection("users")
+      .query(where<User>().gte("age", 0))
+      .orderBy("active", "desc")
+      .thenBy("age", "asc");
+    expect(query.toArray().map(({ id }) => id)).toEqual(["u1", "u3", "u2"]);
+    expect(() =>
+      db.collection("users").query(where<User>().gte("age", 0)).thenBy("age"),
+    ).toThrow(/requires orderBy/u);
+  });
+
+  it("orders mixed JSON values with explicit null and missing placement", () => {
+    type ValueDocument = {
+      id: string;
+      value?: boolean | null | number | string;
+    };
+    const db = Database.memory(
+      {
+        values: [
+          { id: "missing" },
+          { id: "null", value: null },
+          { id: "string", value: "x" },
+          { id: "number", value: 2 },
+          { id: "boolean", value: false },
+        ] satisfies ValueDocument[],
+      },
+      {
+        schema: {
+          values: collectionSchema<ValueDocument>({ primaryKey: "id" }),
+        },
+      },
+    );
+    expect(
+      db
+        .collection("values")
+        .query({ op: "ne", path: ["id"], value: "absent" })
+        .orderBy("value")
+        .toArray()
+        .map(({ id }) => id),
+    ).toEqual(["boolean", "number", "string", "null", "missing"]);
   });
 
   it("maintains secondary indexes across updates, inserts, and deletes", async () => {

@@ -84,7 +84,10 @@ interface QueryExecution<T extends JsonObject> {
 interface QueryOptions {
   readonly limit?: number;
   readonly offset: number;
-  readonly order?: Readonly<{ direction: "asc" | "desc"; path: PropertyPath }>;
+  readonly order?: readonly Readonly<{
+    direction: "asc" | "desc";
+    path: PropertyPath;
+  }>[];
 }
 
 export interface CommitReceipt {
@@ -702,15 +705,17 @@ export class Database<Seed extends DatabaseSeed> {
       .filter(compiled.test);
 
     if (options.order !== undefined) {
-      const { direction, path } = options.order;
       documents = documents
         .map((document, position) => ({ document, position }))
         .sort((left, right) => {
-          const compared = compareJson(
-            readPath(left.document, path),
-            readPath(right.document, path),
-          );
-          if (compared !== 0) return direction === "asc" ? compared : -compared;
+          for (const { direction, path } of options.order ?? []) {
+            const compared = compareJson(
+              readPath(left.document, path),
+              readPath(right.document, path),
+            );
+            if (compared !== 0)
+              return direction === "asc" ? compared : -compared;
+          }
           const leftKey = documentKey(left.document, collection.schema);
           const rightKey = documentKey(right.document, collection.schema);
           const keyCompared = compareJson(leftKey, rightKey);
@@ -1027,10 +1032,25 @@ export class Query<
   ): Query<Seed, Name> {
     return new Query(this.database, this.collectionName, this.condition, {
       ...this.options,
-      order: Object.freeze({
-        direction,
-        path: validatePath([field]),
-      }),
+      order: Object.freeze([
+        Object.freeze({ direction, path: validatePath([field]) }),
+      ]),
+    });
+  }
+
+  thenBy(
+    field: keyof DocumentOf<Seed, Name> & string,
+    direction: "asc" | "desc" = "asc",
+  ): Query<Seed, Name> {
+    if (this.options.order === undefined) {
+      throw new InvalidArgumentError("thenBy() requires orderBy() first");
+    }
+    return new Query(this.database, this.collectionName, this.condition, {
+      ...this.options,
+      order: Object.freeze([
+        ...this.options.order,
+        Object.freeze({ direction, path: validatePath([field]) }),
+      ]),
     });
   }
 
