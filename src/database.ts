@@ -83,7 +83,7 @@ interface QueryExecution<T extends JsonObject> {
   readonly plan: QueryPlan;
 }
 
-interface QueryOptions {
+export interface QueryOptions {
   readonly limit?: number;
   readonly offset: number;
   readonly order?: readonly Readonly<{
@@ -684,7 +684,7 @@ export class Database<Seed extends DatabaseSeed> {
   async #performClose(): Promise<void> {
     let failure: unknown;
     try {
-      await this.flushDuringClose();
+      await this.#flushDuringClose();
     } catch (error) {
       failure = error;
     }
@@ -855,7 +855,7 @@ export class Database<Seed extends DatabaseSeed> {
       throw new ClosedError();
   }
 
-  async flushDuringClose(): Promise<void> {
+  async #flushDuringClose(): Promise<void> {
     if (this.#adapter === undefined) return;
     if (this.#persistedRevision < this.#revision) {
       const receipt: CommitReceipt = Object.freeze({
@@ -1030,11 +1030,25 @@ export class Collection<
     return Object.freeze(this.toArray().filter(predicate.test));
   }
 
+  findMany(
+    condition: Where<DocumentOf<Seed, Name>>,
+  ): readonly ReadonlyDeep<DocumentOf<Seed, Name>>[] {
+    return this.query(condition).toArray();
+  }
+
   insert(
     document: InsertDocument<DocumentOf<Seed, Name>>,
   ): Promise<CommitReceipt> {
     return this.database.transaction((transaction) => {
       transaction.collection(this.name).insert(document);
+    });
+  }
+
+  upsert(
+    document: InsertDocument<DocumentOf<Seed, Name>>,
+  ): Promise<CommitReceipt> {
+    return this.database.transaction((transaction) => {
+      transaction.collection(this.name).upsert(document);
     });
   }
 

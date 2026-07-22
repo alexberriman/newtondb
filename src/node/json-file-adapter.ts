@@ -39,13 +39,15 @@ interface LockRecord {
 
 export interface JsonFileAdapterOptions {
   readonly createDirectories?: boolean;
-  /** Test instrumentation. Throw or terminate the process to simulate a named fault. */
-  readonly faultInjector?: (point: JsonFileFaultPoint) => Promise<void> | void;
   readonly maxBytes?: number;
   readonly mode?: number;
 }
 
-export type JsonFileFaultPoint =
+interface InstrumentedJsonFileAdapterOptions extends JsonFileAdapterOptions {
+  readonly faultInjector?: (point: JsonFileFaultPoint) => Promise<void> | void;
+}
+
+type JsonFileFaultPoint =
   | "after-directory-sync"
   | "after-file-sync"
   | "after-rename"
@@ -130,7 +132,9 @@ export class JsonFileAdapter<
     this.path = resolve(path);
     this.#lockPath = `${this.path}.lock`;
     this.#createDirectories = options.createDirectories ?? false;
-    this.#faultInjector = options.faultInjector;
+    this.#faultInjector = (
+      options as InstrumentedJsonFileAdapterOptions
+    ).faultInjector;
     this.#maxBytes = options.maxBytes ?? defaultMaxBytes;
     this.#mode = options.mode ?? 0o600;
     if (!Number.isSafeInteger(this.#maxBytes) || this.#maxBytes <= 0) {

@@ -25,6 +25,8 @@
     "node": "^22.13.0 || >=24.0.0"
   },
   "scripts": {
+    "api:check": "npm run build && api-extractor run --config api-extractor.json && api-extractor run --config api-extractor.node.json",
+    "api:report": "npm run build && api-extractor run --local --config api-extractor.json && api-extractor run --local --config api-extractor.node.json",
     "build": "npm run clean && tsc -p tsconfig.build.json",
     "clean": "node scripts/clean.mjs",
     "coverage": "vitest run --coverage",
@@ -39,7 +41,7 @@
     "test:package": "npm run build && node scripts/package-smoke.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test:crash && npm run coverage && npm run pack:check"
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run api:check && npm run test:crash && npm run coverage && npm run pack:check"
   },
   "repository": {
     "type": "git",
@@ -66,6 +68,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^10.0.1",
+    "@microsoft/api-extractor": "^7.58.12",
     "@types/node": "^24.10.0",
     "@vitest/coverage-v8": "^4.1.10",
     "ajv": "^8.20.0",

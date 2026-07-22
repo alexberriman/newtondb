@@ -61,15 +61,15 @@ export function localPredicate<T extends JsonObject>(
   return Object.freeze({ [localPredicateBrand]: true as const, test });
 }
 
-type ScalarFields<T extends JsonObject> = {
+export type ScalarFields<T extends JsonObject> = {
   [Key in keyof T]-?: T[Key] extends JsonPrimitive ? Key : never;
 }[keyof T] &
   string;
 
-type ScalarAt<T extends JsonObject, Key extends ScalarFields<T>> = Extract<
-  T[Key],
-  JsonPrimitive
->;
+export type ScalarAt<
+  T extends JsonObject,
+  Key extends ScalarFields<T>,
+> = Extract<T[Key], JsonPrimitive>;
 
 export interface WhereBuilder<T extends JsonObject> {
   and(...conditions: readonly Where<T>[]): Where<T>;

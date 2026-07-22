@@ -121,6 +121,28 @@ describe("Database.memory", () => {
     expect(db.collection("posts").count).toBe(0);
   });
 
+  it("provides collection-level findMany and upsert conveniences", async () => {
+    const db = createDatabase();
+    await db.collection("users").upsert({
+      active: true,
+      id: "u2",
+      name: "Albert",
+    });
+    await db.collection("users").upsert({
+      active: false,
+      id: "u1",
+      name: "Isaac Newton",
+    });
+
+    expect(
+      db
+        .collection("users")
+        .findMany({ op: "eq", path: ["active"], value: true })
+        .map(({ id }) => id),
+    ).toEqual(["u2"]);
+    expect(db.collection("users").get("u1")?.name).toBe("Isaac Newton");
+  });
+
   it("publishes none of a transaction when a later operation fails", async () => {
     const db = createDatabase();
 

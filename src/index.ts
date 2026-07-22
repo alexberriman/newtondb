@@ -8,10 +8,13 @@ export {
   type DatabaseOpenOptions,
   type DatabaseOptions,
   type DatabaseState,
+  type EventLimits,
   type GeneratedKey,
   type PersistenceLimits,
   type QueryPlan,
+  type QueryOptions,
   type TransactionOptions,
+  type TransactionLimits,
 } from "./database.js";
 export {
   ClosedError,
@@ -87,6 +90,8 @@ export {
   type NotCondition,
   type OrCondition,
   type QueryLimits,
+  type ScalarAt,
+  type ScalarFields,
   type Where,
   type WhereBuilder,
 } from "./query.js";
