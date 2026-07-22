@@ -25,6 +25,7 @@ import {
   type ReadonlyDeep,
 } from "./json.js";
 import { documentKey, encodeIndexValue, encodeKey } from "./key.js";
+import { OverlayMap } from "./overlay-map.js";
 import { readPath, samePath, validatePath, type PropertyPath } from "./path.js";
 import {
   assertNonNegativeInteger,
@@ -63,15 +64,20 @@ interface WorkingCollection {
   readonly baseRevision: number;
   indexes: Map<string, SecondaryIndexState>;
   order: string[];
-  records: Map<string, ReadonlyDeep<JsonObject>>;
+  records: OverlayMap<string, ReadonlyDeep<JsonObject>>;
   readonly schema: CollectionSchema<JsonObject>;
 }
 
 interface SecondaryIndexState {
-  readonly buckets: Map<string, Set<string>>;
+  readonly buckets: MutableMap<string, ReadonlySet<string>>;
   readonly name: string;
   readonly path: PropertyPath;
   readonly unique: boolean;
+}
+
+interface MutableMap<K, V> extends ReadonlyMap<K, V> {
+  delete(key: K): boolean;
+  set(key: K, value: V): unknown;
 }
 
 export interface QueryPlan {
@@ -279,7 +285,7 @@ function addToIndexes(
     additions.push([index, encoded]);
   }
   for (const [index, encoded] of additions) {
-    const bucket = index.buckets.get(encoded) ?? new Set<string>();
+    const bucket = new Set(index.buckets.get(encoded));
     bucket.add(primaryKey);
     index.buckets.set(encoded, bucket);
   }
@@ -294,9 +300,12 @@ function removeFromIndexes(
   for (const index of indexes.values()) {
     const encoded = indexValue(collection, index, document);
     if (encoded === undefined) continue;
-    const bucket = index.buckets.get(encoded);
-    bucket?.delete(primaryKey);
-    if (bucket?.size === 0) index.buckets.delete(encoded);
+    const current = index.buckets.get(encoded);
+    if (current === undefined) continue;
+    const bucket = new Set(current);
+    bucket.delete(primaryKey);
+    if (bucket.size === 0) index.buckets.delete(encoded);
+    else index.buckets.set(encoded, bucket);
   }
 }
 
@@ -308,12 +317,24 @@ function cloneIndexes(
       name,
       {
         ...index,
-        buckets: new Map(
-          [...index.buckets].map(([value, primaryKeys]) => [
-            value,
-            new Set(primaryKeys),
-          ]),
-        ),
+        buckets: new OverlayMap(index.buckets),
+      },
+    ]),
+  );
+}
+
+function sealIndexes(
+  indexes: ReadonlyMap<string, SecondaryIndexState>,
+): ReadonlyMap<string, SecondaryIndexState> {
+  return new Map(
+    [...indexes].map(([name, index]) => [
+      name,
+      {
+        ...index,
+        buckets:
+          index.buckets instanceof OverlayMap
+            ? index.buckets.seal()
+            : index.buckets,
       },
     ]),
   );
@@ -818,9 +839,9 @@ export class Database<Seed extends DatabaseSeed> {
       next.set(
         name,
         Object.freeze({
-          indexes: collection.indexes,
+          indexes: sealIndexes(collection.indexes),
           order: Object.freeze([...collection.order]),
-          records: collection.records,
+          records: collection.records.seal(),
           revision,
           schema: collection.schema,
         }),
@@ -1376,7 +1397,7 @@ export class Transaction<Seed extends DatabaseSeed> {
       baseRevision: stored.revision,
       indexes: cloneIndexes(stored.indexes),
       order: [...stored.order],
-      records: new Map(stored.records),
+      records: new OverlayMap(stored.records),
       schema: stored.schema,
     };
     this.#working.set(name, working);
