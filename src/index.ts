@@ -19,6 +19,7 @@ export {
   DuplicateKeyError,
   DuplicateUniqueIndexError,
   ImmutablePrimaryKeyError,
+  InvariantViolationError,
   InvalidArgumentError,
   NewtonError,
   NotFoundError,

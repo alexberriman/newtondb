@@ -5,6 +5,7 @@ export type NewtonErrorCode =
   | "ERR_DUPLICATE_KEY"
   | "ERR_DUPLICATE_UNIQUE_INDEX"
   | "ERR_IMMUTABLE_PRIMARY_KEY"
+  | "ERR_INVARIANT"
   | "ERR_INVALID_ARGUMENT"
   | "ERR_INVALID_JSON_DOCUMENT"
   | "ERR_NOT_FOUND"
@@ -86,6 +87,12 @@ export class ImmutablePrimaryKeyError extends NewtonError {
       "ERR_IMMUTABLE_PRIMARY_KEY",
       `The primary key for ${collection} is immutable`,
     );
+  }
+}
+
+export class InvariantViolationError extends NewtonError {
+  constructor(message: string) {
+    super("ERR_INVARIANT", message);
   }
 }
 

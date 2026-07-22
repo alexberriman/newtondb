@@ -5,6 +5,7 @@ import {
   DuplicateKeyError,
   DuplicateUniqueIndexError,
   ImmutablePrimaryKeyError,
+  InvariantViolationError,
   InvalidArgumentError,
   NotFoundError,
   PersistenceError,
@@ -101,6 +102,8 @@ export interface DatabaseOptions<Seed extends DatabaseSeed> {
   readonly persistenceLimits?: Partial<PersistenceLimits>;
   readonly schema: DatabaseSchema<Seed>;
   readonly transactionLimits?: Partial<TransactionLimits>;
+  /** Rebuild and verify internal indexes after every committed mutation. */
+  readonly verifyInvariants?: boolean;
 }
 
 export interface DatabaseOpenOptions<
@@ -271,6 +274,59 @@ function cloneIndexes(
   );
 }
 
+function assertCollectionInvariant(
+  name: string,
+  collection: StoredCollection,
+): void {
+  if (collection.order.length !== collection.records.size) {
+    throw new InvariantViolationError(
+      `${name}: record order cardinality mismatch`,
+    );
+  }
+  const ordered = new Set(collection.order);
+  if (ordered.size !== collection.order.length) {
+    throw new InvariantViolationError(
+      `${name}: record order contains duplicates`,
+    );
+  }
+  for (const [key, document] of collection.records) {
+    if (
+      !ordered.has(key) ||
+      encodeKey(documentKey(document, collection.schema)) !== key
+    ) {
+      throw new InvariantViolationError(
+        `${name}: primary-key map is inconsistent`,
+      );
+    }
+  }
+  for (const index of collection.indexes.values()) {
+    const expected = new Map<string, Set<string>>();
+    for (const [key, document] of collection.records) {
+      const encoded = indexValue(name, index, document);
+      if (encoded === undefined) continue;
+      const bucket = expected.get(encoded) ?? new Set<string>();
+      bucket.add(key);
+      expected.set(encoded, bucket);
+    }
+    if (expected.size !== index.buckets.size) {
+      throw new InvariantViolationError(
+        `${name}.${index.name}: bucket count mismatch`,
+      );
+    }
+    for (const [value, keys] of expected) {
+      const actual = index.buckets.get(value);
+      if (
+        actual?.size !== keys.size ||
+        [...keys].some((key) => !actual.has(key))
+      ) {
+        throw new InvariantViolationError(
+          `${name}.${index.name}: bucket contents mismatch`,
+        );
+      }
+    }
+  }
+}
+
 function createStoredCollection(
   name: string,
   documents: readonly JsonObject[],
@@ -414,6 +470,7 @@ export class Database<Seed extends DatabaseSeed> {
       }
     }
     this.#collections = collections;
+    this.verify();
   }
 
   static memory<Seed extends DatabaseSeed>(
@@ -460,6 +517,14 @@ export class Database<Seed extends DatabaseSeed> {
 
   get state(): DatabaseState {
     return this.#state;
+  }
+
+  /** Reconstructs and validates all primary-key, ordering, and index invariants. */
+  verify(): void {
+    this.#assertOpen();
+    for (const [name, collection] of this.#collections) {
+      assertCollectionInvariant(name, collection);
+    }
   }
 
   collection<Name extends keyof Seed & string>(
@@ -703,6 +768,11 @@ export class Database<Seed extends DatabaseSeed> {
           schema: collection.schema,
         }),
       );
+    }
+    if (this.options.verifyInvariants) {
+      for (const [name, collection] of next) {
+        assertCollectionInvariant(name, collection);
+      }
     }
     this.#collections = next;
     this.#revision = revision;

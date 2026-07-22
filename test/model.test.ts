@@ -41,7 +41,15 @@ describe("memory engine model", () => {
         async (operations: Operation[]) => {
           const db = Database.memory(
             { items: [] as Item[] },
-            { schema: { items: collectionSchema<Item>({ primaryKey: "id" }) } },
+            {
+              schema: {
+                items: collectionSchema<Item>({
+                  indexes: [{ name: "by-value", path: ["value"] }],
+                  primaryKey: "id",
+                }),
+              },
+              verifyInvariants: true,
+            },
           );
           const model = new Map<number, Item>();
           const order: number[] = [];
@@ -108,6 +116,7 @@ describe("memory engine model", () => {
               order.map((id) => model.get(id)),
             );
             expect(db.collection("items").count).toBe(model.size);
+            expect(() => db.verify()).not.toThrow();
           }
         },
       ),
