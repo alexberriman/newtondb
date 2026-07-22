@@ -8,11 +8,15 @@ export type PrimaryKeyField<T extends JsonObject> = {
   string;
 
 export interface CollectionSchema<T extends JsonObject> {
+  readonly generatePrimaryKey?: true | (() => string);
   readonly indexes?: readonly SecondaryIndex[];
   readonly primaryKey: PrimaryKeyField<T>;
   readonly validate?: (document: ReadonlyDeep<T>) => void;
   readonly limits?: Partial<JsonLimits>;
 }
+
+export type InsertDocument<T extends JsonObject> =
+  T | Omit<T, PrimaryKeyField<T>>;
 
 export interface SecondaryIndex {
   readonly name: string;

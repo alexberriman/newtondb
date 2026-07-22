@@ -37,6 +37,7 @@ import {
   type DatabaseSchema,
   type DatabaseSeed,
   type DocumentOf,
+  type InsertDocument,
   type PrimaryKey,
   type WidenSeed,
 } from "./schema.js";
@@ -94,8 +95,14 @@ export interface CommitReceipt {
   readonly affected: number;
   readonly databaseId: string;
   readonly durability: "memory" | "persisted";
+  readonly generatedKeys: readonly GeneratedKey[];
   readonly revision: number;
   readonly transactionId: string;
+}
+
+export interface GeneratedKey {
+  readonly collection: string;
+  readonly primaryKey: string;
 }
 
 export interface DatabaseOptions<Seed extends DatabaseSeed> {
@@ -177,6 +184,39 @@ function validateDocument(
   }
   documentKey(cloned, schema);
   return cloned;
+}
+
+function materializePrimaryKey(
+  collection: string,
+  input: JsonObject,
+  schema: CollectionSchema<JsonObject>,
+): Readonly<{ document: JsonObject; generatedKey?: string }> {
+  const cloned = cloneAndFreezeJsonObject(input, resolvedLimits(schema));
+  if (Object.hasOwn(cloned, schema.primaryKey)) return { document: cloned };
+  const generator = schema.generatePrimaryKey;
+  if (generator === undefined) return { document: cloned };
+  const generatedKey = generator === true ? randomId() : generator();
+  if (typeof generatedKey !== "string" || generatedKey.length === 0) {
+    throw new InvalidArgumentError(
+      `Generated primary key for ${collection} must be a non-empty string`,
+    );
+  }
+  encodeKey(generatedKey);
+  const document: JsonObject = Object.create(null) as JsonObject;
+  for (const [key, descriptor] of Object.entries(
+    Object.getOwnPropertyDescriptors(cloned),
+  )) {
+    if (!("value" in descriptor)) continue;
+    Object.defineProperty(document, key, {
+      enumerable: true,
+      value: descriptor.value as JsonValue,
+    });
+  }
+  Object.defineProperty(document, schema.primaryKey, {
+    enumerable: true,
+    value: generatedKey,
+  });
+  return Object.freeze({ document, generatedKey });
 }
 
 function indexValue(
@@ -567,6 +607,7 @@ export class Database<Seed extends DatabaseSeed> {
           affected: 0,
           databaseId: this.id,
           durability: "memory",
+          generatedKeys: Object.freeze([]),
           revision: this.#revision,
           transactionId: randomId(),
         }),
@@ -620,6 +661,7 @@ export class Database<Seed extends DatabaseSeed> {
         affected: 0,
         databaseId: this.id,
         durability: "memory",
+        generatedKeys: Object.freeze([]),
         revision: target,
         transactionId: randomId(),
       });
@@ -739,6 +781,7 @@ export class Database<Seed extends DatabaseSeed> {
     working: ReadonlyMap<string, WorkingCollection>,
     baseRevisions: ReadonlyMap<string, number>,
     changes: readonly Change[],
+    generatedKeys: readonly GeneratedKey[],
     transactionId: string,
   ): CommitReceipt {
     this.#assertOpen();
@@ -756,6 +799,7 @@ export class Database<Seed extends DatabaseSeed> {
         affected: 0,
         databaseId: this.id,
         durability: "memory",
+        generatedKeys: Object.freeze([...generatedKeys]),
         revision: this.#revision,
         transactionId,
       });
@@ -794,6 +838,7 @@ export class Database<Seed extends DatabaseSeed> {
       affected: frozenChanges.length,
       databaseId: this.id,
       durability: "memory",
+      generatedKeys: Object.freeze([...generatedKeys]),
       revision,
       transactionId,
     });
@@ -816,6 +861,7 @@ export class Database<Seed extends DatabaseSeed> {
         affected: 0,
         databaseId: this.id,
         durability: "memory",
+        generatedKeys: Object.freeze([]),
         revision: this.#revision,
         transactionId: randomId(),
       });
@@ -977,7 +1023,9 @@ export class Collection<
     return new Query(this.database, this.name, condition);
   }
 
-  insert(document: DocumentOf<Seed, Name>): Promise<CommitReceipt> {
+  insert(
+    document: InsertDocument<DocumentOf<Seed, Name>>,
+  ): Promise<CommitReceipt> {
     return this.database.transaction((transaction) => {
       transaction.collection(this.name).insert(document);
     });
@@ -1077,6 +1125,7 @@ export class Transaction<Seed extends DatabaseSeed> {
   readonly id = randomId();
   #baseRevisions = new Map<string, number>();
   #changes: Change[] = [];
+  #generatedKeys: GeneratedKey[] = [];
   readonly #createdAt = Date.now();
   #operations = 0;
   #status: TransactionStatus = "active";
@@ -1101,6 +1150,7 @@ export class Transaction<Seed extends DatabaseSeed> {
     this.#status = "rolledBack";
     this.#working.clear();
     this.#changes = [];
+    this.#generatedKeys = [];
   }
 
   commit(): CommitReceipt {
@@ -1111,6 +1161,7 @@ export class Transaction<Seed extends DatabaseSeed> {
         this.#working,
         this.#baseRevisions,
         this.#changes,
+        this.#generatedKeys,
         this.id,
       );
       this.#status = "committed";
@@ -1149,10 +1200,15 @@ export class Transaction<Seed extends DatabaseSeed> {
   }
 
   /** @internal */
-  _insert(name: string, input: JsonObject, upsert: boolean): void {
+  _insert(name: string, input: JsonObject, upsert: boolean): PrimaryKey {
     this.#recordOperation();
     const collection = this.#writable(name);
-    const document = validateDocument(name, input, collection.schema);
+    const materialized = materializePrimaryKey(name, input, collection.schema);
+    const document = validateDocument(
+      name,
+      materialized.document,
+      collection.schema,
+    );
     const primaryKey = documentKey(document, collection.schema);
     const encoded = encodeKey(primaryKey);
     const before = collection.records.get(encoded);
@@ -1178,6 +1234,15 @@ export class Transaction<Seed extends DatabaseSeed> {
         primaryKey,
       }),
     );
+    if (materialized.generatedKey !== undefined) {
+      this.#generatedKeys.push(
+        Object.freeze({
+          collection: name,
+          primaryKey: materialized.generatedKey,
+        }),
+      );
+    }
+    return primaryKey;
   }
 
   /** @internal */
@@ -1316,12 +1381,12 @@ export class TransactionCollection<
     ) as readonly ReadonlyDeep<DocumentOf<Seed, Name>>[];
   }
 
-  insert(document: DocumentOf<Seed, Name>): void {
-    this.transaction._insert(this.name, document, false);
+  insert(document: InsertDocument<DocumentOf<Seed, Name>>): PrimaryKey {
+    return this.transaction._insert(this.name, document, false);
   }
 
-  upsert(document: DocumentOf<Seed, Name>): void {
-    this.transaction._insert(this.name, document, true);
+  upsert(document: InsertDocument<DocumentOf<Seed, Name>>): PrimaryKey {
+    return this.transaction._insert(this.name, document, true);
   }
 
   update(primaryKey: PrimaryKey, patch: Partial<DocumentOf<Seed, Name>>): void {

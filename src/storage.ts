@@ -5,6 +5,7 @@ export const snapshotFormat = "newtondb" as const;
 export const snapshotFormatVersion = 1 as const;
 
 export interface CatalogCollection {
+  readonly generatedPrimaryKey: boolean;
   readonly indexes: readonly Readonly<{
     readonly name: string;
     readonly path: readonly (number | string)[];
@@ -54,6 +55,7 @@ export function createCatalog<Seed extends DatabaseSeed>(
     Object.defineProperty(output, name, {
       enumerable: true,
       value: Object.freeze({
+        generatedPrimaryKey: collection.generatePrimaryKey !== undefined,
         indexes: Object.freeze(
           [...(collection.indexes ?? [])]
             .map((index) =>

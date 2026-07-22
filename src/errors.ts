@@ -141,6 +141,10 @@ export interface CommittedReceiptMetadata {
   readonly affected: number;
   readonly databaseId: string;
   readonly durability: "memory" | "persisted";
+  readonly generatedKeys: readonly Readonly<{
+    readonly collection: string;
+    readonly primaryKey: string;
+  }>[];
   readonly revision: number;
   readonly transactionId: string;
 }

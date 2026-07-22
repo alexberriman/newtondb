@@ -163,7 +163,11 @@ describe("persistent database lifecycle", () => {
     adapter.snapshot = {
       ...snapshot,
       catalog: {
-        users: { indexes: [], primaryKey: "different" },
+        users: {
+          generatedPrimaryKey: false,
+          indexes: [],
+          primaryKey: "different",
+        },
       },
     };
 
