@@ -1,7 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { Database, collectionSchema } from "../src/index.js";
+import { Database, collectionSchema, where } from "../src/index.js";
+import { MemoryStorage, MemoryStorageAdapter } from "../src/testing/index.js";
 
 type Item = { id: number; value: string };
 
@@ -118,9 +119,89 @@ describe("memory engine model", () => {
             expect(db.collection("items").count).toBe(model.size);
             expect(() => db.verify()).not.toThrow();
           }
+
+          const serialized = JSON.stringify(db.collection("items").toArray());
+          const rebuilt = Database.memory(
+            { items: JSON.parse(serialized) as Item[] },
+            {
+              schema: {
+                items: collectionSchema<Item>({
+                  indexes: [{ name: "by-value", path: ["value"] }],
+                  primaryKey: "id",
+                }),
+              },
+              verifyInvariants: true,
+            },
+          );
+          expect(rebuilt.collection("items").toArray()).toEqual(
+            db.collection("items").toArray(),
+          );
+          for (const value of new Set(
+            [...model.values()].map((item) => item.value),
+          )) {
+            expect(
+              rebuilt
+                .collection("items")
+                .findMany(where<Item>().eq("value", value)),
+            ).toEqual(
+              db.collection("items").findMany(where<Item>().eq("value", value)),
+            );
+          }
         },
       ),
       { numRuns: 100, seed: 20_260_722 },
+    );
+  });
+
+  it("preserves generated histories across persistence restart", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(operation, { maxLength: 50 }),
+        async (operations: Operation[]) => {
+          const storage = new MemoryStorage<{ items: Item[] }>();
+          const schema = {
+            items: collectionSchema<Item>({
+              indexes: [{ name: "by-value", path: ["value"] }],
+              primaryKey: "id",
+            }),
+          };
+          const database = await Database.open({
+            adapter: new MemoryStorageAdapter(storage),
+            initialData: { items: [] },
+            schema,
+            verifyInvariants: true,
+          });
+
+          for (const current of operations) {
+            try {
+              await database.transaction((transaction) => {
+                const items = transaction.collection("items");
+                if (current.kind === "insert")
+                  items.insert({ id: current.id, value: current.value });
+                else if (current.kind === "upsert")
+                  items.upsert({ id: current.id, value: current.value });
+                else if (current.kind === "update")
+                  items.update(current.id, { value: current.value });
+                else items.delete(current.id);
+              });
+            } catch {
+              // Invalid model operations must leave both live and stored roots unchanged.
+            }
+          }
+
+          const before = database.collection("items").toArray();
+          await database.close();
+          const reopened = await Database.open({
+            adapter: new MemoryStorageAdapter(storage),
+            schema,
+            verifyInvariants: true,
+          });
+          expect(reopened.collection("items").toArray()).toEqual(before);
+          expect(() => reopened.verify()).not.toThrow();
+          await reopened.close();
+        },
+      ),
+      { numRuns: 50, seed: 20_260_725 },
     );
   });
 });
