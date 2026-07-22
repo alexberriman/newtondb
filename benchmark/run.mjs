@@ -60,8 +60,8 @@ function dataset(size) {
     return state;
   };
   return Array.from({ length: size }, (_, index) => ({
-    active: (random() & 1) === 0,
-    group: `group-${random() % 100}`,
+    active: ((random() >>> 16) & 1) === 0,
+    group: `group-${(random() >>> 16) % 100}`,
     id: `record-${index.toString().padStart(8, "0")}`,
     name: `Deterministic record ${random().toString(16).padStart(8, "0")}`,
     score: random() % 1_000_000,
@@ -116,10 +116,18 @@ async function qualify(size) {
   const loadedMemory = process.memoryUsage();
   const rssDelta = Math.max(0, loadedMemory.rss - rssBefore);
   const heapDelta = Math.max(0, loadedMemory.heapUsed - heapBefore);
+  globalThis.gc?.();
+  const unindexedHeapBefore = process.memoryUsage().heapUsed;
   const scannedDatabase = Database.memory(
     { records },
     { schema: { records: collectionSchema({ primaryKey: "id" }) } },
   );
+  globalThis.gc?.();
+  const unindexedHeapDelta = Math.max(
+    0,
+    process.memoryUsage().heapUsed - unindexedHeapBefore,
+  );
+  const secondaryIndexHeapBytes = Math.max(0, heapDelta - unindexedHeapDelta);
   const nativeMap = new Map(records.map((record) => [record.id, record]));
   const load = await measure(
     () => {
@@ -186,6 +194,20 @@ async function qualify(size) {
       throw new Error("comparison selectivity mismatch");
     }
   });
+  const selectivityOnePercent = await measure(() => {
+    const found = database
+      .collection("records")
+      .findMany(w.eq("group", "group-42"));
+    if (found.length < size * 0.005 || found.length > size * 0.02) {
+      throw new Error("one-percent selectivity mismatch");
+    }
+  });
+  const selectivityFiftyPercent = await measure(() => {
+    const found = database.collection("records").findMany(w.eq("active", true));
+    if (found.length < size * 0.45 || found.length > size * 0.55) {
+      throw new Error("fifty-percent selectivity mismatch");
+    }
+  });
   const compoundSortLimit = await measure(() => {
     database
       .collection("records")
@@ -204,6 +226,16 @@ async function qualify(size) {
       throw new Error("update mismatch");
     }
   });
+  globalThis.gc?.();
+  const updateHeapBefore = process.memoryUsage().heapUsed;
+  await database
+    .collection("records")
+    .update("record-00000000", { score: mutationSequence++ });
+  globalThis.gc?.();
+  const oneRecordUpdateHeapDeltaBytes = Math.max(
+    0,
+    process.memoryUsage().heapUsed - updateHeapBefore,
+  );
   const rejectedKeyChange = await measure(async () => {
     try {
       await database.collection("records").update("record-00000000", {
@@ -240,21 +272,48 @@ async function qualify(size) {
     }
   });
   let transactionSequence = 0;
-  const transaction100 = await measure(async () => {
-    await database.transaction((transaction) => {
-      const collection = transaction.collection("records");
-      for (let index = 0; index < Math.min(100, size); index += 1) {
-        collection.update(`record-${index.toString().padStart(8, "0")}`, {
-          score: transactionSequence + index,
-        });
-      }
+  const measureTransaction = (batchSize) =>
+    measure(async () => {
+      await database.transaction((transaction) => {
+        const collection = transaction.collection("records");
+        for (let index = 0; index < Math.min(batchSize, size); index += 1) {
+          collection.update(`record-${index.toString().padStart(8, "0")}`, {
+            score: transactionSequence + index,
+          });
+        }
+      });
+      transactionSequence += batchSize;
     });
-    transactionSequence += 100;
-  });
+  const transaction1 = await measureTransaction(1);
+  const transaction10 = await measureTransaction(10);
+  const transaction100 = await measureTransaction(100);
   const serialization = await measure(() => {
     const json = JSON.stringify(database.collection("records").toArray());
     if (json.length === 0) throw new Error("serialization mismatch");
   });
+  globalThis.gc?.();
+  const eventHeapBefore = process.memoryUsage().heapUsed;
+  const retainedBatches = [];
+  const unsubscribe = database.subscribe((batch) =>
+    retainedBatches.push(batch),
+  );
+  for (let index = 0; index < 100; index += 1) {
+    await database
+      .collection("records")
+      .update("record-00000000", { score: mutationSequence++ });
+  }
+  await Promise.resolve();
+  globalThis.gc?.();
+  if (retainedBatches.length !== 100)
+    throw new Error("event retention mismatch");
+  const retainedEventCanonicalBytes = Buffer.byteLength(
+    JSON.stringify(retainedBatches),
+  );
+  const retainedEventBytes = Math.max(
+    0,
+    process.memoryUsage().heapUsed - eventHeapBefore,
+  );
+  unsubscribe();
 
   const directory = await mkdtemp(
     join(process.env.RUNNER_TEMP ?? "/tmp", "newtondb-bench-"),
@@ -307,6 +366,10 @@ async function qualify(size) {
     heapDeltaBytes: heapDelta,
     loadedHeapBytes: loadedMemory.heapUsed,
     loadedRssBytes: loadedMemory.rss,
+    oneRecordUpdateHeapDeltaBytes,
+    retainedEventCanonicalBytes,
+    retainedEventBytes,
+    secondaryIndexHeapBytes,
     heapToCanonicalRatio: heapDelta / canonicalBytes,
     metricsMs: {
       compoundSortLimit,
@@ -323,7 +386,11 @@ async function qualify(size) {
       persistedUpdate,
       rejectedKeyChange,
       scanComparison,
+      selectivityFiftyPercent,
+      selectivityOnePercent,
       serialization,
+      transaction1,
+      transaction10,
       transaction100,
       scannedEqualityHit10: scannedEqualityHit,
     },

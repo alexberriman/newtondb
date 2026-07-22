@@ -1,0 +1,92 @@
+{
+  "benchmarkSchemaVersion": 1,
+  "environment": {
+    "architecture": "arm64",
+    "cpu": "unknown",
+    "cpuCount": 14,
+    "node": "v24.16.0",
+    "platform": "linux 7.0.11-orbstack-00360-gc9bc4d96ac70",
+    "totalMemoryBytes": 16819834880,
+    "v8": "13.6.233.17-node.49"
+  },
+  "methodology": {
+    "datasetSeed": "0x6e657774",
+    "samples": 12,
+    "sourceRevision": "a8eab0c^",
+    "warmups": 3
+  },
+  "results": [
+    {
+      "canonicalBytes": 78894,
+      "metricsMs": {
+        "indexedGet100": {
+          "mean": 0.34044750000000096,
+          "p50": 0.3042120000000068,
+          "p95": 0.46554600000000335,
+          "samples": 12
+        },
+        "load": {
+          "mean": 1.0187625833333331,
+          "p50": 0.9725499999999982,
+          "p95": 1.4989709999999974,
+          "samples": 12
+        },
+        "scanFind10": {
+          "mean": 1.359880166666669,
+          "p50": 1.4642629999999883,
+          "p95": 2.299020999999996,
+          "samples": 12
+        }
+      },
+      "records": 1000
+    },
+    {
+      "canonicalBytes": 788871,
+      "metricsMs": {
+        "indexedGet100": {
+          "mean": 0.4224864166666625,
+          "p50": 0.3690030000000206,
+          "p95": 0.707964000000004,
+          "samples": 12
+        },
+        "load": {
+          "mean": 8.804714333333335,
+          "p50": 8.609701999999999,
+          "p95": 11.27931000000001,
+          "samples": 12
+        },
+        "scanFind10": {
+          "mean": 4.752250916666672,
+          "p50": 4.726375999999959,
+          "p95": 5.5266750000000116,
+          "samples": 12
+        }
+      },
+      "records": 10000
+    },
+    {
+      "canonicalBytes": 7888991,
+      "metricsMs": {
+        "indexedGet100": {
+          "mean": 0.7231420000000336,
+          "p50": 0.48204600000008213,
+          "p95": 3.386322000000291,
+          "samples": 12
+        },
+        "load": {
+          "mean": 81.09469099999997,
+          "p50": 80.26163500000007,
+          "p95": 88.598209,
+          "samples": 12
+        },
+        "scanFind10": {
+          "mean": 38.58014050000005,
+          "p50": 38.22230100000024,
+          "p95": 42.51888000000008,
+          "samples": 12
+        }
+      },
+      "records": 100000
+    }
+  ]
+}

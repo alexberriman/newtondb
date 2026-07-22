@@ -10,14 +10,14 @@ At 100,000 records the reference run measured:
 
 | Operation                                      |      p95 |
 | ---------------------------------------------- | -------: |
-| Load and validate with three secondary indexes |   913 ms |
-| Ten indexed equality hits                      | 0.079 ms |
-| Ten equivalent full-scan equality hits         |   112 ms |
-| One indexed record update                      |  4.86 ms |
-| Durable flush after a memory commit            |   302 ms |
-| Open, validate, rebuild indexes, and close     |   961 ms |
+| Load and validate with three secondary indexes |   879 ms |
+| Ten indexed equality hits                      | 0.063 ms |
+| Ten equivalent full-scan equality hits         |   138 ms |
+| One indexed record update                      |  9.54 ms |
+| Durable flush after a memory commit            |   331 ms |
+| Open, validate, rebuild indexes, and close     |   974 ms |
 
-The canonical snapshot was 11,280,773 bytes. Post-load heap growth was 63.7 MB and post-load RSS was 329.2 MB. The benchmark also records the much larger process-lifetime RSS high-water caused by repeated load trials; that diagnostic is intentionally not presented as the resident size of one loaded database.
+The canonical snapshot was 11,228,656 bytes. Post-load heap growth was 64.2 MB and post-load RSS was 329.4 MB. Declared secondary indexes accounted for approximately 12.0 MB of the measured heap delta. A one-record indexed update retained 2.7 MB in the deliberately noisy forced-GC probe—well below the full 64.2 MB root—and 100 retained event batches serialized to 44.6 KB because records are shared immutable snapshots. The benchmark also records the much larger process-lifetime RSS high-water caused by repeated load trials; that diagnostic is intentionally not presented as the resident size of one loaded database.
 
 ## Running benchmarks
 
@@ -31,3 +31,9 @@ npm run benchmark:qualify
 The smoke profile is a deterministic functional check for shared CI. The standard profile measures 1k, 10k, and 100k fixtures. Qualification fails if any requested fixture breaches the accepted absolute budgets. Regression comparison additionally requires matching report schema, Node major, architecture, operating system, seed, profile, warmups, and samples; its 25% threshold plus a 1 ms noise floor is intended for controlled hosts, not generic hosted runners.
 
 Measurements are specific to the recorded environment and filesystem. Application document widths, index cardinality, query selectivity, storage hardware, and listener retention all change results. Consumers should run the same harness with representative data before treating the reference envelope as their production limit.
+
+## Historical context
+
+`benchmark/baseline-legacy-node24-linux-arm64.json` records the old implementation at the same 1k/10k/100k sizes, runtime profile, sample count, warmups, and seed. Its separate runner is retained because the old API and data structures cannot execute the current workload. The current report also includes native Array filtering and Map lookup references.
+
+These numbers are context, not a parity claim: the current engine validates and freezes JSON, maintains declared indexes, checks transaction invariants, and offers defined persistence semantics that the historical implementation did not. Comparisons should therefore use scaling shape and operation meaning, not present a single misleading “faster” percentage.
