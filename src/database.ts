@@ -54,7 +54,9 @@ import {
 
 interface StoredCollection {
   readonly indexes: ReadonlyMap<string, SecondaryIndexState>;
+  readonly nextPosition: number;
   readonly order: readonly string[];
+  readonly positions: ReadonlyMap<string, number>;
   readonly records: ReadonlyMap<string, ReadonlyDeep<JsonObject>>;
   readonly revision: number;
   readonly schema: CollectionSchema<JsonObject>;
@@ -63,13 +65,16 @@ interface StoredCollection {
 interface WorkingCollection {
   readonly baseRevision: number;
   indexes: Map<string, SecondaryIndexState>;
+  nextPosition: number;
   order: string[];
+  positions: OverlayMap<string, number>;
   records: OverlayMap<string, ReadonlyDeep<JsonObject>>;
   readonly schema: CollectionSchema<JsonObject>;
 }
 
 interface SecondaryIndexState {
   readonly buckets: MutableMap<string, ReadonlySet<string>>;
+  readonly copyOnWrite: boolean;
   readonly name: string;
   readonly path: PropertyPath;
   readonly unique: boolean;
@@ -260,6 +265,7 @@ function createIndexes(
     }
     indexes.set(definition.name, {
       buckets: new Map(),
+      copyOnWrite: false,
       name: definition.name,
       path: validatePath(definition.path),
       unique: definition.unique ?? false,
@@ -285,7 +291,11 @@ function addToIndexes(
     additions.push([index, encoded]);
   }
   for (const [index, encoded] of additions) {
-    const bucket = new Set(index.buckets.get(encoded));
+    const current = index.buckets.get(encoded);
+    const bucket =
+      index.copyOnWrite || current === undefined
+        ? new Set(current)
+        : (current as Set<string>);
     bucket.add(primaryKey);
     index.buckets.set(encoded, bucket);
   }
@@ -302,7 +312,9 @@ function removeFromIndexes(
     if (encoded === undefined) continue;
     const current = index.buckets.get(encoded);
     if (current === undefined) continue;
-    const bucket = new Set(current);
+    const bucket = index.copyOnWrite
+      ? new Set(current)
+      : (current as Set<string>);
     bucket.delete(primaryKey);
     if (bucket.size === 0) index.buckets.delete(encoded);
     else index.buckets.set(encoded, bucket);
@@ -318,6 +330,7 @@ function cloneIndexes(
       {
         ...index,
         buckets: new OverlayMap(index.buckets),
+        copyOnWrite: true,
       },
     ]),
   );
@@ -335,6 +348,7 @@ function sealIndexes(
           index.buckets instanceof OverlayMap
             ? index.buckets.seal()
             : index.buckets,
+        copyOnWrite: false,
       },
     ]),
   );
@@ -349,11 +363,31 @@ function assertCollectionInvariant(
       `${name}: record order cardinality mismatch`,
     );
   }
+  if (collection.positions.size !== collection.records.size) {
+    throw new InvariantViolationError(`${name}: position cardinality mismatch`);
+  }
   const ordered = new Set(collection.order);
   if (ordered.size !== collection.order.length) {
     throw new InvariantViolationError(
       `${name}: record order contains duplicates`,
     );
+  }
+  for (const [position, key] of collection.order.entries()) {
+    const rank = collection.positions.get(key);
+    if (rank === undefined) {
+      throw new InvariantViolationError(`${name}: record position is missing`);
+    }
+    const previousKey =
+      position === 0 ? undefined : collection.order[position - 1];
+    const previous =
+      previousKey === undefined
+        ? undefined
+        : collection.positions.get(previousKey);
+    if (previous !== undefined && previous >= rank) {
+      throw new InvariantViolationError(
+        `${name}: record positions are unordered`,
+      );
+    }
   }
   for (const [key, document] of collection.records) {
     if (
@@ -401,6 +435,7 @@ function createStoredCollection(
 ): StoredCollection {
   const records = new Map<string, ReadonlyDeep<JsonObject>>();
   const order: string[] = [];
+  const positions = new Map<string, number>();
   const indexes = createIndexes(name, schema);
   for (const input of documents) {
     const document = validateDocument(name, input, schema);
@@ -408,12 +443,15 @@ function createStoredCollection(
     const encoded = encodeKey(key);
     if (records.has(encoded)) throw new DuplicateKeyError(name, key);
     records.set(encoded, document);
+    positions.set(encoded, order.length);
     order.push(encoded);
     addToIndexes(name, indexes, encoded, document);
   }
   return Object.freeze({
     indexes,
+    nextPosition: order.length,
     order: Object.freeze(order),
+    positions,
     records,
     revision,
     schema,
@@ -765,7 +803,11 @@ export class Database<Seed extends DatabaseSeed> {
       candidateKeys =
         bucket === undefined
           ? []
-          : collection.order.filter((key) => bucket.has(key));
+          : [...bucket].sort(
+              (left, right) =>
+                (collection.positions.get(left) ?? Number.MAX_SAFE_INTEGER) -
+                (collection.positions.get(right) ?? Number.MAX_SAFE_INTEGER),
+            );
     } else {
       candidateKeys = collection.order;
     }
@@ -840,7 +882,9 @@ export class Database<Seed extends DatabaseSeed> {
         name,
         Object.freeze({
           indexes: sealIndexes(collection.indexes),
+          nextPosition: collection.nextPosition,
           order: Object.freeze([...collection.order]),
+          positions: collection.positions.seal(),
           records: collection.records.seal(),
           revision,
           schema: collection.schema,
@@ -1273,7 +1317,10 @@ export class Transaction<Seed extends DatabaseSeed> {
       throw error;
     }
     collection.records.set(encoded, document);
-    if (before === undefined) collection.order.push(encoded);
+    if (before === undefined) {
+      collection.order.push(encoded);
+      collection.positions.set(encoded, collection.nextPosition++);
+    }
     this.#changes.push(
       freezeChange({
         ...(before === undefined ? {} : { before }),
@@ -1338,6 +1385,7 @@ export class Transaction<Seed extends DatabaseSeed> {
     if (before === undefined) throw new NotFoundError(name, primaryKey);
     removeFromIndexes(name, collection.indexes, encoded, before);
     collection.records.delete(encoded);
+    collection.positions.delete(encoded);
     const position = collection.order.indexOf(encoded);
     if (position >= 0) collection.order.splice(position, 1);
     this.#changes.push(
@@ -1396,7 +1444,9 @@ export class Transaction<Seed extends DatabaseSeed> {
     const working: WorkingCollection = {
       baseRevision: stored.revision,
       indexes: cloneIndexes(stored.indexes),
+      nextPosition: stored.nextPosition,
       order: [...stored.order],
+      positions: new OverlayMap(stored.positions),
       records: new OverlayMap(stored.records),
       schema: stored.schema,
     };

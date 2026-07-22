@@ -382,6 +382,25 @@ describe("query planning and secondary indexes", () => {
     ).toEqual(["u4"]);
   });
 
+  it("preserves insertion order when an indexed bucket is read directly", async () => {
+    const db = createIndexedDatabase();
+    const users = db.collection("users");
+    const active = where<User>().eq("active", true);
+
+    expect(users.findMany(active).map(({ id }) => id)).toEqual(["u1", "u3"]);
+
+    await users.delete("u1");
+    await users.insert({
+      active: true,
+      age: 43,
+      email: "isaac-again@example.com",
+      id: "u1",
+      name: "Isaac again",
+    });
+
+    expect(users.findMany(active).map(({ id }) => id)).toEqual(["u3", "u1"]);
+  });
+
   it("enforces unique secondary indexes without partial updates", async () => {
     const db = createIndexedDatabase();
 
