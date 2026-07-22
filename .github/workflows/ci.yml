@@ -47,3 +47,24 @@ jobs:
           node-version: 24.x
       - run: npm ci --ignore-scripts
       - run: npm run test:package
+
+  typescript:
+    name: TypeScript ${{ matrix.typescript }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        typescript: [6.0.2, 6.0.3]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          cache: npm
+          node-version: 24.x
+      - run: npm ci --ignore-scripts
+      - run: npm install --no-save --package-lock=false typescript@${{ matrix.typescript }}
+      - run: npm run typecheck
+      - run: npm run build
