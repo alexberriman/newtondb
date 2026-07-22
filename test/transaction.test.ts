@@ -7,6 +7,7 @@ import {
   collectionSchema,
   where,
   type ChangeBatch,
+  type ChangeListener,
 } from "../src/index.js";
 
 type Account = { balance: number; id: string };
@@ -77,6 +78,90 @@ describe("transaction histories", () => {
 
     expect(() => stale.commit()).toThrow(ConflictError);
     expect(db.collection("audits").has("predicate")).toBe(false);
+  });
+
+  it("matches a deterministic collection-revision history oracle", () => {
+    const db = createDatabase();
+    type Pending = {
+      readonly baseBalance: number;
+      readonly baseRevision: number;
+      readonly transaction: ReturnType<typeof db.beginTransaction>;
+    };
+    const pending: Pending[] = [];
+    let modelBalance = 100;
+    let modelRevision = 0;
+    let successes = 0;
+    let conflicts = 0;
+    let random = 0x5eed_2026;
+    const nextRandom = () => {
+      random = (Math.imul(random, 1_664_525) + 1_013_904_223) >>> 0;
+      return random;
+    };
+
+    for (let step = 0; step < 500; step += 1) {
+      if (pending.length === 0 || nextRandom() % 3 !== 0) {
+        const transaction = db.beginTransaction();
+        const baseBalance = transaction
+          .collection("accounts")
+          .get("a")?.balance;
+        expect(baseBalance).toBeDefined();
+        pending.push({
+          baseBalance: baseBalance ?? 0,
+          baseRevision: modelRevision,
+          transaction,
+        });
+        continue;
+      }
+      const position = nextRandom() % pending.length;
+      const [current] = pending.splice(position, 1);
+      if (current === undefined) throw new Error("history selection invariant");
+      current.transaction
+        .collection("accounts")
+        .update("a", { balance: current.baseBalance + 1 });
+      const shouldCommit = current.baseRevision === modelRevision;
+      if (shouldCommit) {
+        expect(() => current.transaction.commit()).not.toThrow();
+        modelBalance += 1;
+        modelRevision += 1;
+        successes += 1;
+      } else {
+        expect(() => current.transaction.commit()).toThrow(ConflictError);
+        conflicts += 1;
+      }
+    }
+
+    for (const current of pending) current.transaction.rollback();
+    expect({ conflicts, successes }).toEqual({ conflicts: 140, successes: 24 });
+    expect(db.collection("accounts").get("a")?.balance).toBe(modelBalance);
+    expect(db.revision).toBe(modelRevision);
+  });
+
+  it("publishes 100 concurrently requested independent commits without loss", async () => {
+    const db = createDatabase();
+    const commits = Array.from({ length: 100 }, (_, index) =>
+      db
+        .collection("audits")
+        .insert({ id: `audit-${index}`, message: "recorded" }),
+    );
+    const receipts = await Promise.all(commits);
+
+    expect(receipts.map(({ revision }) => revision)).toEqual(
+      Array.from({ length: 100 }, (_, index) => index + 1),
+    );
+    expect(db.collection("audits").count).toBe(100);
+    expect(db.revision).toBe(100);
+  });
+
+  it("does not allow an unresolved listener promise to delay commits", async () => {
+    const db = createDatabase();
+    const never = new Promise<void>(() => undefined);
+    const slowListener = (() => never) as ChangeListener;
+    db.subscribe(slowListener);
+
+    await expect(
+      db.collection("audits").insert({ id: "slow", message: "listener" }),
+    ).resolves.toMatchObject({ revision: 1 });
+    expect(db.collection("audits").has("slow")).toBe(true);
   });
 
   it("supports read-your-writes and atomic cross-collection publication", () => {
