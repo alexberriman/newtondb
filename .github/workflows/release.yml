@@ -39,7 +39,12 @@ jobs:
       - run: npm pack --json > package-pack.json
       - run: node scripts/hash-pack.mjs package-pack.json package.sha256
       - run: npm sbom --sbom-format cyclonedx > sbom.cdx.json
-      - run: npm publish "$(node -p "require('./package-pack.json')[0].filename")" --access public
+      - name: Publish reviewed artifact without moving the wrong dist-tag
+        run: >-
+          npm publish "$(node -p "require('./package-pack.json')[0].filename")"
+          --access public
+          --provenance
+          --tag "$(node scripts/release-dist-tag.mjs "$(node -p "require('./package.json').version")")"
       - run: mkdir registry
       - run: npm pack "newtondb@$(node -p "require('./package.json').version")" --pack-destination registry --json > registry/pack.json
       - run: node scripts/verify-published.mjs package-pack.json registry/pack.json
