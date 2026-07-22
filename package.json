@@ -42,6 +42,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
+    "license:check": "node scripts/check-licenses.mjs",
+    "mutation:check": "node scripts/mutation-check.mjs",
     "pack:check": "npm run build && publint && attw --pack . --profile esm-only",
     "release:check": "node scripts/check-release.mjs",
     "test": "vitest run",
@@ -49,7 +51,8 @@
     "test:package": "npm run build && node scripts/package-smoke.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run api:check && npm run test:crash && npm run coverage && npm run pack:check"
+    "security:check": "npm audit --audit-level=high && npm run license:check",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run api:check && npm run test:crash && npm run coverage && npm run pack:check && npm run security:check"
   },
   "repository": {
     "type": "git",
