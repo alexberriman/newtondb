@@ -1,42 +1,28 @@
-Changelog
+# Changelog
 
-## [0.3.4](https://github.com/alexberriman/newtondb/compare/v0.3.3...v0.3.4) (2023-04-24)
+All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and semantic versioning.
 
+## 2.0.0-beta.0 — 2026-07-22
 
-### Bug Fixes
+### Added
 
-* orderBy during chain execution ([67029f6](https://github.com/alexberriman/newtondb/commit/67029f64ded91d174217c15b164f737b461d1a51))
+- Typed named collections with immutable JSON snapshots and string or safe-integer primary keys.
+- Declared hash indexes, deterministic query planning, a versioned serializable query grammar, compound ordering, and generated string keys.
+- Atomic collection-granular serializable transactions with revisioned receipts and bounded event delivery.
+- Structural storage adapters, a memory reference adapter, adapter conformance tools, and a crash-qualified Node JSON-file adapter.
+- Versioned, checksummed snapshot envelopes; explicit verified-backup recovery; exclusive cooperative writer fencing; and old-or-new crash recovery.
+- ESM root, `newtondb/node`, and `newtondb/testing` entry points with locked API reports and TypeScript 6.0 declarations.
+- Property, model, history, fault-injection, process-death, package-consumer, mutation, security, and deterministic performance qualification suites.
 
-## [0.3.3](https://github.com/alexberriman/newtondb/compare/v0.3.2...v0.3.3) (2023-02-17)
+### Changed
 
+- The package is a clean semantic-major redesign. Its API, query model, ownership rules, adapters, persistence format, and error contracts intentionally replace the historical prototype.
+- Node 22.13 or newer and ESM are required.
 
-### Bug Fixes
+### Removed
 
-* **set:** updating an array ([e299867](https://github.com/alexberriman/newtondb/commit/e29986749cb432bcdd719171903687016ab36533))
+- Mutable result wrappers, arbitrary serializable JavaScript predicates, deep imports, implicit collection modes, unverified adapter semantics, and compatibility shims.
 
-## [0.3.2](https://github.com/alexberriman/newtondb/compare/v0.3.1...v0.3.2) (2022-08-24)
+## Historical releases
 
-
-### Bug Fixes
-
-* **collection:** deundefined/null value when deleting array ([cd6a62f](https://github.com/alexberriman/newtondb/commit/cd6a62f87838899dadd062099bf15c6ad92b0df0))
-
-## [0.3.1](https://github.com/alexberriman/newtondb/compare/v0.3.0...v0.3.1) (2022-08-02)
-
-
-### Bug Fixes
-
-* update semantic-release and build configuration to correctly deploy ([fa07692](https://github.com/alexberriman/newtondb/commit/fa076920cc12defad87ac96b7a53f20c38998db1))
-
-# [0.3.0](https://github.com/alexberriman/newtondb/compare/v0.2.0...v0.3.0) (2022-08-02)
-
-### Features
-
-- **collection:** add or property to conditionally execute chain operations ([dc4fb79](https://github.com/alexberriman/newtondb/commit/dc4fb79297edf21ec79d302373763b787f881cac))
-
-## [0.2.0](https://github.com/alexberriman/newtondb/compare/v0.1.2...v0.2.0) (2022-07-26)
-
-### Features
-
-- **querying:** add not condition ([fe02ded](https://github.com/alexberriman/newtondb/commit/fe02ded504fce1280718548e918a513647f38955))
-- **utils:** cloneDeep, set, unset ([decbc5c](https://github.com/alexberriman/newtondb/commit/decbc5c1e0e00d95195701c04811e420e56654ab))
+Releases through 0.3.4 belong to the retired prototype. Their original history remains available in Git.

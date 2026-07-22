@@ -31,7 +31,7 @@
   "scripts": {
     "api:check": "npm run build && api-extractor run --config api-extractor.json && api-extractor run --config api-extractor.node.json && api-extractor run --config api-extractor.testing.json",
     "api:report": "npm run build && api-extractor run --local --config api-extractor.json && api-extractor run --local --config api-extractor.node.json && api-extractor run --local --config api-extractor.testing.json",
-    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "build": "npm run clean && tsc -p tsconfig.build.json && node scripts/write-build-manifest.mjs",
     "benchmark": "npm run build && node --expose-gc benchmark/run.mjs",
     "benchmark:check": "node benchmark/check.mjs benchmark/baseline-node24-linux-arm64.json .benchmark/candidate.json",
     "benchmark:qualify": "npm run build && node --expose-gc benchmark/run.mjs --profile qualification --output .benchmark/qualification.json",
