@@ -28,6 +28,8 @@ export type DatabaseSeed = Readonly<Record<string, readonly JsonObject[]>>;
 export class JsonFileAdapter<Seed extends DatabaseSeed> implements StorageAdapter<Seed> {
     constructor(path: string, options?: JsonFileAdapterOptions);
     // (undocumented)
+    readonly backupPath: string;
+    // (undocumented)
     close(): Promise<void>;
     // (undocumented)
     load(): Promise<SnapshotEnvelope<Seed> | null>;
@@ -47,6 +49,7 @@ export interface JsonFileAdapterOptions {
     readonly maxBytes?: number;
     // (undocumented)
     readonly mode?: number;
+    readonly recoverFromBackup?: boolean;
 }
 
 // @public (undocumented)

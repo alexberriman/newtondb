@@ -41,6 +41,8 @@ export interface JsonFileAdapterOptions {
   readonly createDirectories?: boolean;
   readonly maxBytes?: number;
   readonly mode?: number;
+  /** Explicitly permits restoring the last verified snapshot when primary storage is corrupt or missing. */
+  readonly recoverFromBackup?: boolean;
 }
 
 interface InstrumentedJsonFileAdapterOptions extends JsonFileAdapterOptions {
@@ -113,12 +115,14 @@ export class JsonFileAdapter<
   Seed extends DatabaseSeed,
 > implements StorageAdapter<Seed> {
   readonly path: string;
+  readonly backupPath: string;
   readonly #lockPath: string;
   readonly #createDirectories: boolean;
   readonly #faultInjector:
     ((point: JsonFileFaultPoint) => Promise<void> | void) | undefined;
   readonly #maxBytes: number;
   readonly #mode: number;
+  readonly #recoverFromBackup: boolean;
   #closed = false;
   #databaseId: string | undefined;
   #generation = 0;
@@ -130,6 +134,7 @@ export class JsonFileAdapter<
     if (path.length === 0)
       throw new StorageError("Storage path must not be empty");
     this.path = resolve(path);
+    this.backupPath = `${this.path}.backup`;
     this.#lockPath = `${this.path}.lock`;
     this.#createDirectories = options.createDirectories ?? false;
     this.#faultInjector = (
@@ -137,6 +142,7 @@ export class JsonFileAdapter<
     ).faultInjector;
     this.#maxBytes = options.maxBytes ?? defaultMaxBytes;
     this.#mode = options.mode ?? 0o600;
+    this.#recoverFromBackup = options.recoverFromBackup ?? false;
     if (!Number.isSafeInteger(this.#maxBytes) || this.#maxBytes <= 0) {
       throw new StorageError("maxBytes must be a positive safe integer");
     }
@@ -153,7 +159,7 @@ export class JsonFileAdapter<
     this.#loaded = true;
     try {
       await this.#removeStaleTemps();
-      const snapshot = await this.#readSnapshot();
+      const snapshot = await this.#loadWithRecovery();
       this.#generation = snapshot?.generation ?? 0;
       this.#databaseId = snapshot?.databaseId;
       return snapshot;
@@ -207,6 +213,7 @@ export class JsonFileAdapter<
     const temporaryPath = `${dirname(this.path)}/.${basename(this.path)}.${process.pid}.${randomUUID()}.tmp`;
     let temporary: FileHandle | undefined;
     try {
+      if (disk !== null) await this.#writeBackup();
       await this.#fault("before-temp-open");
       temporary = await open(
         temporaryPath,
@@ -341,11 +348,20 @@ export class JsonFileAdapter<
   }
 
   async #readSnapshot(): Promise<SnapshotEnvelope<Seed> | null> {
+    return this.#readSnapshotAt(this.path);
+  }
+
+  async #readSnapshotAt(path: string): Promise<SnapshotEnvelope<Seed> | null> {
     try {
-      const info = await lstat(this.path);
+      const info = await lstat(path);
       if (info.isSymbolicLink() || !info.isFile()) {
         throw new CorruptStorageError(
           "Storage path must be a regular file, not a symlink",
+        );
+      }
+      if (info.nlink !== 1) {
+        throw new CorruptStorageError(
+          "Storage path must not have additional hard links",
         );
       }
       if (info.size > this.#maxBytes) {
@@ -353,7 +369,7 @@ export class JsonFileAdapter<
           "Stored snapshot exceeds the configured byte limit",
         );
       }
-      const bytes = await readFile(this.path);
+      const bytes = await readFile(path);
       if (bytes.length > this.#maxBytes) {
         throw new CorruptStorageError(
           "Stored snapshot exceeds the configured byte limit",
@@ -392,6 +408,75 @@ export class JsonFileAdapter<
         );
       }
       throw new StorageError("Failed to read the database snapshot", {
+        cause: error,
+      });
+    }
+  }
+
+  async #loadWithRecovery(): Promise<SnapshotEnvelope<Seed> | null> {
+    let primaryError: unknown;
+    let primary: SnapshotEnvelope<Seed> | null = null;
+    try {
+      primary = await this.#readSnapshot();
+    } catch (error) {
+      primaryError = error;
+    }
+    if (primaryError === undefined && primary !== null) return primary;
+
+    const backup = await this.#readSnapshotAt(this.backupPath).catch(
+      (error: unknown) => {
+        if (primaryError !== undefined) {
+          throw new CorruptStorageError(
+            "Both the primary snapshot and its backup are unusable",
+            { cause: new AggregateError([primaryError, error]) },
+          );
+        }
+        throw error;
+      },
+    );
+    if (backup === null) {
+      if (primaryError !== undefined) {
+        throw primaryError instanceof Error
+          ? primaryError
+          : new CorruptStorageError("Primary snapshot is unusable", {
+              cause: primaryError,
+            });
+      }
+      return null;
+    }
+    if (!this.#recoverFromBackup) {
+      throw new CorruptStorageError(
+        "A verified backup exists but explicit recoverFromBackup permission is required",
+        { ...(primaryError === undefined ? {} : { cause: primaryError }) },
+      );
+    }
+    await this.#installBytes(this.path, await readFile(this.backupPath));
+    return backup;
+  }
+
+  async #writeBackup(): Promise<void> {
+    await this.#installBytes(this.backupPath, await readFile(this.path));
+  }
+
+  async #installBytes(destination: string, bytes: Uint8Array): Promise<void> {
+    const temporaryPath = `${dirname(destination)}/.${basename(destination)}.${process.pid}.${randomUUID()}.tmp`;
+    let handle: FileHandle | undefined;
+    try {
+      handle = await open(
+        temporaryPath,
+        constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY,
+        this.#mode,
+      );
+      await handle.writeFile(bytes);
+      await handle.sync();
+      await handle.close();
+      handle = undefined;
+      await rename(temporaryPath, destination);
+      await this.#syncDirectory();
+    } catch (error) {
+      await handle?.close().catch(() => undefined);
+      await unlink(temporaryPath).catch(() => undefined);
+      throw new StorageError("Failed to install a verified snapshot copy", {
         cause: error,
       });
     }

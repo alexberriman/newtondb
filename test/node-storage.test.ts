@@ -1,9 +1,11 @@
 import {
+  link,
   mkdtemp,
   readFile,
   rm,
   stat,
   symlink,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -178,5 +180,79 @@ describe("JsonFileAdapter", () => {
     await expect(stat(path)).resolves.toMatchObject({
       size: expect.any(Number),
     });
+  });
+
+  it("creates a verified previous-snapshot backup and requires explicit recovery", async () => {
+    const path = await temporaryPath();
+    const first = await Database.open<Seed>({
+      adapter: new JsonFileAdapter<Seed>(path),
+      initialData: { users: [] },
+      schema,
+    });
+    await first.collection("users").insert({ id: "u1", name: "Isaac" });
+    await first.collection("users").insert({ id: "u2", name: "Albert" });
+    await first.close();
+    await expect(stat(`${path}.backup`)).resolves.toMatchObject({
+      size: expect.any(Number),
+    });
+    await writeFile(path, "corrupt", { mode: 0o600 });
+
+    await expect(
+      Database.open<Seed>({ adapter: new JsonFileAdapter<Seed>(path), schema }),
+    ).rejects.toMatchObject({ code: "ERR_CORRUPT_STORAGE" });
+
+    const recovered = await Database.open<Seed>({
+      adapter: new JsonFileAdapter<Seed>(path, { recoverFromBackup: true }),
+      schema,
+    });
+    expect(recovered.collection("users").toArray()).toEqual([
+      { id: "u1", name: "Isaac" },
+    ]);
+    await recovered.close();
+
+    const verified = await Database.open<Seed>({
+      adapter: new JsonFileAdapter<Seed>(path),
+      schema,
+    });
+    expect(verified.collection("users").has("u1")).toBe(true);
+    await verified.close();
+  });
+
+  it("fails closed when both primary and backup are corrupt", async () => {
+    const path = await temporaryPath();
+    const first = await Database.open<Seed>({
+      adapter: new JsonFileAdapter<Seed>(path),
+      initialData: { users: [] },
+      schema,
+    });
+    await first.collection("users").insert({ id: "u1", name: "Isaac" });
+    await first.collection("users").insert({ id: "u2", name: "Albert" });
+    await first.close();
+    await writeFile(path, "corrupt primary");
+    await writeFile(`${path}.backup`, "corrupt backup");
+
+    await expect(
+      Database.open<Seed>({
+        adapter: new JsonFileAdapter<Seed>(path, { recoverFromBackup: true }),
+        schema,
+      }),
+    ).rejects.toMatchObject({ code: "ERR_CORRUPT_STORAGE" });
+  });
+
+  it("rejects a hard-linked primary snapshot", async () => {
+    const path = await temporaryPath();
+    const first = await Database.open<Seed>({
+      adapter: new JsonFileAdapter<Seed>(path),
+      initialData: { users: [] },
+      schema,
+    });
+    await first.close();
+    const alias = `${path}.alias`;
+    await link(path, alias);
+
+    await expect(
+      Database.open<Seed>({ adapter: new JsonFileAdapter<Seed>(path), schema }),
+    ).rejects.toMatchObject({ code: "ERR_CORRUPT_STORAGE" });
+    await unlink(alias);
   });
 });
