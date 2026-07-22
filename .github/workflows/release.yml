@@ -21,16 +21,16 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           cache: npm
           node-version: 24.x
           registry-url: https://registry.npmjs.org
-      - run: npm install --global npm@11
+      - run: npm install --global npm@11.13.0 --ignore-scripts
       - run: npm ci --ignore-scripts
       - run: npm run verify
       - run: npm run release:check
@@ -40,7 +40,11 @@ jobs:
       - run: node scripts/hash-pack.mjs package-pack.json package.sha256
       - run: npm sbom --sbom-format cyclonedx > sbom.cdx.json
       - run: npm publish "$(node -p "require('./package-pack.json')[0].filename")" --access public
-      - uses: actions/upload-artifact@v4
+      - run: mkdir registry
+      - run: npm pack "newtondb@$(node -p "require('./package.json').version")" --pack-destination registry --json > registry/pack.json
+      - run: node scripts/verify-published.mjs package-pack.json registry/pack.json
+      - run: node scripts/package-smoke.mjs "registry/$(node -p "require('./registry/pack.json')[0].filename")"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           if-no-files-found: error
@@ -50,3 +54,4 @@ jobs:
             package-pack.json
             package.sha256
             sbom.cdx.json
+            registry/
