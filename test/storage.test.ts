@@ -18,6 +18,7 @@ class MemoryAdapter implements StorageAdapter<Seed> {
   failStores = 0;
   storeGate: Promise<void> = Promise.resolve();
   snapshot: SnapshotEnvelope<Seed> | null;
+  storeAttempts = 0;
   readonly stores: SnapshotEnvelope<Seed>[] = [];
 
   constructor(snapshot: SnapshotEnvelope<Seed> | null = null) {
@@ -37,6 +38,7 @@ class MemoryAdapter implements StorageAdapter<Seed> {
     snapshot: SnapshotEnvelope<Seed>,
     options: Readonly<{ expectedGeneration: number }>,
   ) {
+    this.storeAttempts += 1;
     await this.storeGate;
     if (this.failStores-- > 0) throw new Error("injected write failure");
     if ((this.snapshot?.generation ?? 0) !== options.expectedGeneration) {
@@ -239,5 +241,50 @@ describe("persistent database lifecycle", () => {
     await db.flush();
     expect(db.state).toBe("open");
     expect(adapter.snapshot?.revision).toBe(2);
+  });
+
+  it("coalesces concurrent waiters for the same revision", async () => {
+    const adapter = new MemoryAdapter();
+    let release: (value?: void | PromiseLike<void>) => void = () => undefined;
+    adapter.storeGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const db = await open(adapter);
+    await db.transaction(
+      (transaction) => {
+        transaction.collection("users").insert({ id: "u2", name: "Albert" });
+      },
+      { durability: "memory" },
+    );
+
+    const first = db.flush();
+    const second = db.flush();
+    await vi.waitFor(() => expect(adapter.storeAttempts).toBe(1));
+    release();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([1, 1]);
+    expect(adapter.stores).toHaveLength(1);
+  });
+
+  it("keeps a hanging persistence waiter joined through close", async () => {
+    const adapter = new MemoryAdapter();
+    let release: (value?: void | PromiseLike<void>) => void = () => undefined;
+    adapter.storeGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const db = await open(adapter);
+
+    const commit = db.collection("users").insert({ id: "u2", name: "Albert" });
+    await vi.waitFor(() => expect(adapter.storeAttempts).toBe(1));
+    const close = db.close();
+    expect(db.state).toBe("closing");
+    expect(adapter.closed).toBe(false);
+
+    release();
+    await commit;
+    await close;
+    expect(adapter.storeAttempts).toBe(1);
+    expect(adapter.snapshot?.revision).toBe(1);
+    expect(adapter.closed).toBe(true);
   });
 });

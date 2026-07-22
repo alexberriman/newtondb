@@ -525,6 +525,7 @@ export class Database<Seed extends DatabaseSeed> {
   #generation = 0;
   #persistedRevision = 0;
   #persistenceTail: Promise<void> = Promise.resolve();
+  readonly #persistenceByRevision = new Map<number, Promise<void>>();
   #pendingPersistence = 0;
   #revision = 0;
   #state: DatabaseState = "open";
@@ -949,6 +950,8 @@ export class Database<Seed extends DatabaseSeed> {
   #persist(receipt: CommitReceipt): Promise<void> {
     const adapter = this.#adapter;
     if (adapter === undefined) return Promise.resolve();
+    const pending = this.#persistenceByRevision.get(receipt.revision);
+    if (pending !== undefined) return pending;
     const limits = {
       ...defaultPersistenceLimits,
       ...this.options.persistenceLimits,
@@ -1005,7 +1008,11 @@ export class Database<Seed extends DatabaseSeed> {
     });
     const counted = task.finally(() => {
       this.#pendingPersistence -= 1;
+      if (this.#persistenceByRevision.get(receipt.revision) === counted) {
+        this.#persistenceByRevision.delete(receipt.revision);
+      }
     });
+    this.#persistenceByRevision.set(receipt.revision, counted);
     this.#persistenceTail = counted.catch(() => undefined);
     return counted;
   }
